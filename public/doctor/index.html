@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CatchCare — Doctor Dashboard</title>
+  <link rel="stylesheet" href="/shared/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="/shared/app.js" defer></script>
+</head>
+<body>
+
+  <!-- Login Screen -->
+  <section id="login-section" class="auth-screen">
+    <div class="auth-card">
+      <div class="logo-mark">CC</div>
+      <h1>Doctor Login</h1>
+      <p class="subtitle">Enter your practice email and we'll send you a secure login link.</p>
+      <form id="login-form">
+        <div class="form-group">
+          <input type="email" class="form-input" placeholder="doctor@practice.com" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Send Login Link</button>
+        <p class="auth-feedback mt-1 text-sm"></p>
+      </form>
+      <a href="/" class="text-sm text-secondary mt-2" style="display:inline-block;">Back to home</a>
+    </div>
+  </section>
+
+  <!-- Dashboard (shown after auth) -->
+  <section id="dashboard-section" class="dashboard hidden">
+    <header class="dashboard-header">
+      <div class="container container-wide">
+        <span class="logo">CatchCare</span>
+        <div>
+          <span id="user-email" class="user-info"></span>
+          <button onclick="signOut()" class="text-sm text-secondary" style="background:none;border:none;cursor:pointer;margin-left:0.5rem;text-decoration:underline;">Sign out</button>
+        </div>
+      </div>
+    </header>
+    <div class="dashboard-body">
+      <div class="container container-wide">
+        <h2 class="mb-2">Your Patients</h2>
+
+        <div class="card mb-2">
+          <h3 class="mb-1">Upcoming Visits</h3>
+          <div id="visits-list">
+            <p class="text-secondary text-sm">No upcoming visits. Patients will appear here once scheduled.</p>
+          </div>
+        </div>
+
+        <div class="card mb-2">
+          <h3 class="mb-1">Recent Check-ins</h3>
+          <div id="checkins-list">
+            <p class="text-secondary text-sm">No patient check-ins to review.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      setupLoginForm('login-form');
+      await requireAuth('doctor');
+    });
+  </script>
+</body>
+</html>

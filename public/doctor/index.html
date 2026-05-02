@@ -40,19 +40,19 @@
     </header>
     <div class="dashboard-body">
       <div class="container container-wide">
-        <h2 class="mb-2">Your Patients</h2>
+        <h2 class="mb-2" id="doc-greeting">Your Patients</h2>
 
         <div class="card mb-2">
           <h3 class="mb-1">Upcoming Visits</h3>
           <div id="visits-list">
-            <p class="text-secondary text-sm">No upcoming visits. Patients will appear here once scheduled.</p>
+            <p class="text-secondary text-sm">Loading...</p>
           </div>
         </div>
 
         <div class="card mb-2">
           <h3 class="mb-1">Recent Check-ins</h3>
           <div id="checkins-list">
-            <p class="text-secondary text-sm">No patient check-ins to review.</p>
+            <p class="text-secondary text-sm">Loading...</p>
           </div>
         </div>
       </div>
@@ -62,7 +62,77 @@
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       setupLoginForm('login-form');
-      await requireAuth('doctor');
+      const user = await requireAuth('doctor');
+      if (!user) return;
+
+      try {
+        const data = await callFunction('doctor-feed', { doctor_email: user.email });
+
+        // Set greeting
+        if (data.doctor && data.doctor.name) {
+          document.getElementById('doc-greeting').textContent = `Welcome, ${data.doctor.name}`;
+        }
+
+        // Render visits
+        const visitsEl = document.getElementById('visits-list');
+        if (data.visits && data.visits.length > 0) {
+          visitsEl.innerHTML = data.visits.map(v => {
+            const date = formatDate(v.scheduled_for);
+            const time = formatTime(v.scheduled_for);
+            const type = v.visit_type === 'initial' ? 'Initial' : 'Follow-up';
+
+            let badge = '';
+            if (v.snapshot_ready) {
+              badge = '<span class="badge badge-success">Snapshot Ready</span>';
+            } else if (v.status === 'intake_complete') {
+              badge = '<span class="badge badge-warning">Generating...</span>';
+            } else {
+              badge = '<span class="badge badge-neutral">Waiting for Intake</span>';
+            }
+
+            const link = v.snapshot_ready
+              ? `onclick="window.location.href='/doctor/patient.html?visit=${v.id}&snapshot=${v.snapshot_id}'" style="cursor:pointer;"`
+              : 'style="cursor:default;"';
+
+            return `<div class="visit-item" ${link}>
+              <div>
+                <strong>${v.patient_name}</strong>
+                <br><span class="text-sm text-secondary">${type} — ${date} at ${time}</span>
+              </div>
+              ${badge}
+            </div>`;
+          }).join('');
+        } else {
+          visitsEl.innerHTML = '<p class="text-secondary text-sm">No upcoming visits.</p>';
+        }
+
+        // Render check-ins
+        const checkinsEl = document.getElementById('checkins-list');
+        if (data.checkins && data.checkins.length > 0) {
+          checkinsEl.innerHTML = data.checkins.map(c => {
+            const date = formatDate(c.created_at);
+            const urgencyClass = c.urgency === 'escalate' ? 'badge-danger'
+              : c.urgency === 'digest' ? 'badge-warning' : 'badge-neutral';
+            const urgencyLabel = c.urgency === 'escalate' ? 'Urgent'
+              : c.urgency === 'digest' ? 'Review' : 'Logged';
+
+            return `<div class="visit-item">
+              <div>
+                <strong>${c.patient_name}</strong>
+                <br><span class="text-sm text-secondary">${c.summary || 'Check-in'} — ${date}</span>
+              </div>
+              <span class="badge ${urgencyClass}">${urgencyLabel}</span>
+            </div>`;
+          }).join('');
+        } else {
+          checkinsEl.innerHTML = '<p class="text-secondary text-sm">No patient check-ins to review.</p>';
+        }
+
+      } catch (err) {
+        console.error('Dashboard error:', err);
+        document.getElementById('visits-list').innerHTML = '<p class="text-secondary text-sm">Unable to load data. Please try again.</p>';
+        document.getElementById('checkins-list').innerHTML = '';
+      }
     });
   </script>
 </body>

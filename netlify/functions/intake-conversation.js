@@ -176,13 +176,20 @@ exports.handler = async (event) => {
         if (insertErr) console.error("Insert conversation error:", insertErr);
       }
 
-      // Update visit status if complete
+      // Update visit status and trigger snapshot generation if complete
       if (isComplete) {
         const { error: statusErr } = await supabase
           .from("visits")
           .update({ status: "intake_complete" })
           .eq("id", visit_id);
         if (statusErr) console.error("Update visit status error:", statusErr);
+
+        // Fire-and-forget snapshot generation
+        fetch(`${process.env.URL || "https://catchcare.netlify.app"}/.netlify/functions/generate-snapshot`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ visit_id }),
+        }).catch(err => console.error("Snapshot trigger error:", err));
       }
     }
 

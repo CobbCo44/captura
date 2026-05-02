@@ -5,7 +5,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-async function callClaude(system, messages, model = "claude-3-5-sonnet-20241022") {
+async function callClaude(system, messages, model = "claude-sonnet-4-6") {
   const apiKey = process.env.ANTHROPIC_API_KEY || "";
   console.log("API key length:", apiKey.length, "starts:", apiKey.substring(0, 12));
 

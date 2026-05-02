@@ -5,7 +5,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-async function callClaude(system, messages, model = "claude-sonnet-4-5-20250514") {
+async function callClaude(system, messages, model = "claude-3-5-sonnet-latest") {
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {

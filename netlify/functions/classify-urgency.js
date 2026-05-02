@@ -87,6 +87,52 @@ exports.handler = async (event) => {
 
     if (updateErr) console.error("Update checkin urgency error:", updateErr);
 
+    // Send escalation email if urgent
+    if (result.urgency === "escalate") {
+      try {
+        // Get patient and doctor info
+        const { data: checkin } = await supabase
+          .from("checkins")
+          .select("patient_id")
+          .eq("id", checkin_id)
+          .single();
+
+        if (checkin) {
+          const { data: patient } = await supabase
+            .from("patients")
+            .select("first_name, last_name, doctor_id")
+            .eq("id", checkin.patient_id)
+            .single();
+
+          if (patient) {
+            const { data: doctor } = await supabase
+              .from("doctors")
+              .select("email, name")
+              .eq("id", patient.doctor_id)
+              .single();
+
+            if (doctor) {
+              // Send email notification via fetch to a simple email function
+              await fetch(
+                `${process.env.URL || "https://catchcare.netlify.app"}/.netlify/functions/send-alert`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    to: doctor.email,
+                    subject: `CatchCare URGENT: ${patient.first_name} ${patient.last_name} check-in flagged`,
+                    body: `Dr. ${doctor.name},\n\nA patient check-in has been flagged as urgent.\n\nPatient: ${patient.first_name} ${patient.last_name}\nSummary: ${result.summary}\n\nPlease review in your CatchCare dashboard:\nhttps://catchcare.netlify.app/doctor/digest.html\n\n- CatchCare`,
+                  }),
+                }
+              );
+            }
+          }
+        }
+      } catch (emailErr) {
+        console.error("Escalation email error:", emailErr);
+      }
+    }
+
     return {
       statusCode: 200,
       headers: corsHeaders(),

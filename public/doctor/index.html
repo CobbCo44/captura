@@ -34,7 +34,8 @@
         <button type="submit" class="btn btn-outline">Send Login Link</button>
         <p class="auth-feedback mt-1 text-sm"></p>
       </form>
-      <a href="/" class="text-sm text-secondary mt-2" style="display:inline-block;">Back to home</a>
+      <p class="text-sm text-secondary mt-2">New to CatchCare? <a href="/doctor/onboard.html" style="color:var(--primary);">Create an account</a></p>
+      <a href="/" class="text-sm text-secondary mt-1" style="display:inline-block;">Back to home</a>
     </div>
   </section>
 
@@ -54,10 +55,44 @@
         <h2 class="mb-2" id="doc-greeting">Your Patients</h2>
 
         <div class="card mb-2">
-          <h3 class="mb-1">Upcoming Visits</h3>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+            <h3>Upcoming Visits</h3>
+            <button class="text-sm" style="color:var(--primary);background:none;border:none;cursor:pointer;" onclick="document.getElementById('invite-section').classList.toggle('hidden')">+ Invite Patient</button>
+          </div>
+          <div id="invite-section" class="hidden" style="background:var(--accent);border-radius:var(--radius-sm);padding:1rem;margin-bottom:1rem;">
+            <h4 style="margin-bottom:0.75rem;">Invite a New Patient</h4>
+            <div class="form-group">
+              <input type="text" id="inv-first" class="form-input" placeholder="First name">
+            </div>
+            <div class="form-group">
+              <input type="text" id="inv-last" class="form-input" placeholder="Last name">
+            </div>
+            <div class="form-group">
+              <input type="email" id="inv-email" class="form-input" placeholder="Patient email" required>
+            </div>
+            <div class="form-group">
+              <label class="text-sm text-secondary">Visit date (optional)</label>
+              <input type="datetime-local" id="inv-date" class="form-input">
+            </div>
+            <div class="form-group">
+              <select id="inv-type" class="form-input">
+                <option value="initial">Initial Visit</option>
+                <option value="follow-up">Follow-up</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="invitePatient()" style="max-width:200px;">Send Invite</button>
+            <p class="text-sm mt-1" id="invite-feedback"></p>
+          </div>
           <div id="visits-list">
             <p class="text-secondary text-sm">Loading...</p>
           </div>
+        </div>
+
+        <div class="card mb-2" id="demo-card" style="display:none;border-left:4px solid var(--primary-light);">
+          <h3 class="mb-1">Demo Mode</h3>
+          <p class="text-sm text-secondary">Load synthetic patient data to explore the full CatchCare experience.</p>
+          <button class="btn btn-secondary mt-1" onclick="loadDemo()" id="demo-btn" style="max-width:200px;">Load Demo Data</button>
+          <p class="text-sm mt-1" id="demo-feedback"></p>
         </div>
 
         <div class="card mb-2">
@@ -157,6 +192,11 @@
           visitsEl.innerHTML = '<p class="text-secondary text-sm">No upcoming visits.</p>';
         }
 
+        // Show demo card for new doctors
+        if (!data.visits || data.visits.length <= 3) {
+          document.getElementById('demo-card').style.display = '';
+        }
+
         // Render check-ins
         const checkinsEl = document.getElementById('checkins-list');
         if (data.checkins && data.checkins.length > 0) {
@@ -185,6 +225,61 @@
         document.getElementById('checkins-list').innerHTML = '';
       }
     });
+
+    async function loadDemo() {
+      const btn = document.getElementById('demo-btn');
+      const feedback = document.getElementById('demo-feedback');
+      btn.disabled = true;
+      btn.textContent = 'Loading...';
+
+      try {
+        const user = await getUser();
+        const feedData = await callFunction('doctor-feed', { doctor_email: user.email });
+        const result = await callFunction('load-demo', { doctor_id: feedData.doctor.id });
+        feedback.textContent = result.message;
+        feedback.style.color = 'var(--success)';
+        setTimeout(() => window.location.reload(), 1500);
+      } catch (err) {
+        feedback.textContent = err.message || 'Failed to load demo data.';
+        feedback.style.color = 'var(--danger)';
+        btn.disabled = false;
+        btn.textContent = 'Load Demo Data';
+      }
+    }
+
+    async function invitePatient() {
+      const email = document.getElementById('inv-email').value.trim();
+      if (!email) return;
+
+      const feedback = document.getElementById('invite-feedback');
+      const user = await getUser();
+
+      try {
+        const result = await callFunction('invite-patient', {
+          doctor_email: user.email,
+          patient_email: email,
+          first_name: document.getElementById('inv-first').value.trim(),
+          last_name: document.getElementById('inv-last').value.trim(),
+          visit_date: document.getElementById('inv-date').value || null,
+          visit_type: document.getElementById('inv-type').value,
+        });
+
+        feedback.textContent = result.message || 'Invitation sent!';
+        feedback.style.color = 'var(--success)';
+
+        // Clear form
+        document.getElementById('inv-email').value = '';
+        document.getElementById('inv-first').value = '';
+        document.getElementById('inv-last').value = '';
+        document.getElementById('inv-date').value = '';
+
+        // Reload visits after short delay
+        setTimeout(() => window.location.reload(), 1500);
+      } catch (err) {
+        feedback.textContent = err.message || 'Failed to send invitation.';
+        feedback.style.color = 'var(--danger)';
+      }
+    }
   </script>
 </body>
 </html>

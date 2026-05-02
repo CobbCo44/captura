@@ -5,17 +5,17 @@
 const SUPABASE_URL = 'https://zadevqqyeaeotwbpgaj.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_CSWz4sWt3-MUgsd9yBcggQ_ArJmMF71';
 
-let supabase = null;
+let sbClient = null;
 
 function initSupabase() {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     console.warn('CatchCare: Supabase keys not configured. Auth will not work.');
     return null;
   }
-  if (!supabase) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  if (!sbClient) {
+    sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
-  return supabase;
+  return sbClient;
 }
 
 // ── Auth helpers ──

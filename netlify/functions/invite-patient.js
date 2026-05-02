@@ -80,13 +80,23 @@ exports.handler = async (event) => {
     }
 
     // Send magic link invite to patient
-    const { error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(patient_email, {
-      redirectTo: "https://catchcare.netlify.app/patient/",
-    });
+    // First check if user already exists in auth
+    const { data: existingUsers } = await supabase.auth.admin.listUsers();
+    const userExists = existingUsers?.users?.some(u => u.email === patient_email);
 
-    if (inviteErr) {
-      console.error("Invite error:", inviteErr);
-      // Patient may already have an account, that's fine
+    if (userExists) {
+      // User already has an account, send them a magic link instead
+      const { error: otpErr } = await supabase.auth.admin.generateLink({
+        type: "magiclink",
+        email: patient_email,
+        options: { redirectTo: "https://catchcare.netlify.app/patient/" },
+      });
+      if (otpErr) console.error("Magic link error:", otpErr);
+    } else {
+      const { error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(patient_email, {
+        redirectTo: "https://catchcare.netlify.app/patient/",
+      });
+      if (inviteErr) console.error("Invite error:", inviteErr);
     }
 
     return {

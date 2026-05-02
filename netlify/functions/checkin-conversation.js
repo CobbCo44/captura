@@ -43,11 +43,15 @@ ${patientName ? `- Patient's name: ${patientName}` : ""}
 
 ## Your role
 You're here to:
-1. Ask how they've been since their last visit or check-in
-2. Ask about any new or changing symptoms
+1. Ask how they're doing and what's on their mind
+2. Ask about any symptoms, concerns, or changes they want to share
 3. If they're on a protocol, ask how it's going (adherence, side effects, improvements)
 4. Ask if there's anything they want their doctor to know
 5. Wrap up when you have a clear picture (usually 5-8 exchanges)
+
+## IMPORTANT: Adapt to the patient's history
+- If there is NO recent snapshot and NO protocol below, this patient has not had a visit yet. Do NOT reference "your last visit" or "since we last spoke." Instead, just ask what's on their mind and what they'd like their doctor to know.
+- Only reference prior visits, protocols, or history if that information actually exists below.
 
 ## What you know about this patient
 ${protocolContext || "No active protocol on file."}
@@ -69,7 +73,7 @@ When you have a good picture, wrap up: "Thanks for checking in. I've got all of 
 Then include [CHECKIN_COMPLETE] at the very end of your final message.
 
 ## Opening message
-"Hi${patientName ? " " + patientName : ""}! Thanks for checking in. How have things been going since your last visit?"`;
+"Hi${patientName ? " " + patientName : ""}! Thanks for checking in. ${recentSnapshot ? "How have things been going since your last visit?" : "What's on your mind today? I'll make sure your doctor sees everything you share."}"`;
 }
 
 exports.handler = async (event) => {

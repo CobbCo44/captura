@@ -147,6 +147,17 @@
             <p class="text-secondary">Loading snapshot...</p>
           </div>
         </div>
+
+        <!-- Doctor's Notes -->
+        <div class="card mt-3" id="doctor-notes-section" style="display:none;">
+          <h3 class="mb-1" style="display:flex;justify-content:space-between;align-items:center;">
+            Doctor's Notes
+            <span class="text-sm text-secondary" id="notes-saved-indicator"></span>
+          </h3>
+          <div id="past-notes"></div>
+          <textarea id="new-note" class="form-input" rows="3" placeholder="Add a note about this patient..." style="margin-top:0.75rem;font-family:inherit;"></textarea>
+          <button class="btn btn-primary mt-1" id="save-note-btn" onclick="saveNote()" style="max-width:160px;">Save Note</button>
+        </div>
       </div>
     </div>
   </section>
@@ -190,6 +201,10 @@
 
         container.innerHTML = feedData.rendered_html;
 
+        // Show doctor notes section and load existing notes
+        document.getElementById('doctor-notes-section').style.display = '';
+        loadNotes();
+
       } catch (err) {
         console.error('Snapshot load error:', err);
         container.innerHTML = `
@@ -208,6 +223,54 @@
         btn.textContent = 'Copied!';
         setTimeout(() => btn.textContent = 'Copy to Clipboard', 2000);
       });
+    }
+
+    async function loadNotes() {
+      try {
+        const data = await callFunction('doctor-notes', { visit_id: visitId, action: 'list' });
+        const container = document.getElementById('past-notes');
+        if (data.notes && data.notes.length > 0) {
+          container.innerHTML = data.notes.map(n => `
+            <div style="padding:0.75rem 0;border-bottom:1px solid var(--border);">
+              <p style="font-size:0.9375rem;margin:0;">${escapeHtml(n.note)}</p>
+              <span class="text-sm text-secondary">${formatDate(n.created_at)}</span>
+            </div>
+          `).join('');
+        } else {
+          container.innerHTML = '<p class="text-sm text-secondary">No notes yet.</p>';
+        }
+      } catch (err) {
+        console.error('Load notes error:', err);
+      }
+    }
+
+    async function saveNote() {
+      const textarea = document.getElementById('new-note');
+      const note = textarea.value.trim();
+      if (!note) return;
+
+      const btn = document.getElementById('save-note-btn');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      try {
+        await callFunction('doctor-notes', { visit_id: visitId, action: 'add', note });
+        textarea.value = '';
+        const indicator = document.getElementById('notes-saved-indicator');
+        indicator.textContent = 'Saved';
+        indicator.style.color = 'var(--success)';
+        setTimeout(() => indicator.textContent = '', 2000);
+        loadNotes();
+      } catch (err) {
+        console.error('Save note error:', err);
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Save Note';
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
   </script>
 </body>

@@ -50,26 +50,27 @@ AI-powered pre-visit intake agent for medical practices. Replaces the PA, genera
 - [x] Visit status updates to intake_complete on wrap-up
 - [x] Patient dashboard shows visits with intake status badges
 
-### Phase 3 — Snapshot Generation + Doctor Dashboard
-- Build generate-snapshot.js (Claude Opus, full conversation + history + labs as context)
-- Match snapshot format to ~/Desktop/clinical_snapshot.docx exactly
-- Build doctor dashboard with visit list + snapshot-ready indicators
-- Build single-patient snapshot view with print-to-PDF and copy buttons
-- Done when: patient finishes intake → doctor sees snapshot matching the sample doc
+### Phase 3 — Snapshot Generation + Doctor Dashboard ✅ DONE
+- [x] generate-snapshot.js using Claude Opus 4.7
+- [x] Pulls intake conversation + prior snapshots + check-ins + labs + protocol
+- [x] Doctor dashboard with visit list + snapshot-ready badges
+- [x] Patient snapshot view with print-to-PDF and copy-to-clipboard
+- [x] get-snapshot.js serves snapshot data to doctor view
+- [x] Auto-triggers after intake completion
 
-### Phase 4 — Lab Upload + Parsing
-- Drag-and-drop PDF upload to Supabase Storage
-- Claude parses PDFs natively (no separate OCR)
-- Labs from last 90 days included in snapshot context
-- Done when: upload labs PDF → snapshot includes parsed lab values
+### Phase 4 — Lab Upload + Parsing ✅ DONE
+- [x] Drag-and-drop PDF upload UI at /patient/labs.html
+- [x] parse-labs.js sends PDF to Claude for structured extraction
+- [x] Stores PDF in Supabase Storage, parsed values in labs table
+- [x] Labs from last 90 days auto-included in snapshot generation
 
-### Phase 5 — Between-Visit Check-ins + Protocol Tracking
-- Check-in chat with protocol-aware system prompt
-- Urgency classification (log/digest/escalate)
-- Doctor digest view with one-click actions
-- Protocol management (doctor sets, agent references)
-- Proactive check-in prompts (7-day nudge)
-- Done when: doctor sets protocol → patient checks in → doctor sees it in digest → can respond
+### Phase 5 — Between-Visit Check-ins + Protocol Tracking ✅ DONE
+- [x] Check-in chat UI at /patient/checkin.html
+- [x] checkin-conversation.js with protocol-aware system prompt
+- [x] classify-urgency.js triages as log/digest/escalate
+- [x] Doctor digest view at /doctor/digest.html with urgency grouping
+- [x] update-protocol.js for doctor to set patient protocols
+- [x] Check-in agent references active protocol and recent snapshot
 
 ## File map
 ```

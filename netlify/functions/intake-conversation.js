@@ -138,42 +138,49 @@ exports.handler = async (event) => {
       updatedHistory.push({ role: "assistant", content: cleanMessage });
 
       // Upsert the intake conversation
-      const { data: existing } = await supabase
+      const { data: existing, error: fetchErr } = await supabase
         .from("intake_conversations")
         .select("id")
         .eq("visit_id", visit_id)
-        .single();
+        .maybeSingle();
+
+      console.log("Existing conversation lookup:", { existing, fetchErr });
 
       if (existing) {
-        await supabase
+        const { error: updateErr } = await supabase
           .from("intake_conversations")
           .update({
             messages: updatedHistory,
             ...(isComplete ? { completed_at: new Date().toISOString() } : {}),
           })
           .eq("visit_id", visit_id);
+        if (updateErr) console.error("Update conversation error:", updateErr);
       } else {
         // Get patient_id from visit
-        const { data: visit } = await supabase
+        const { data: visit, error: visitErr } = await supabase
           .from("visits")
           .select("patient_id")
           .eq("id", visit_id)
           .single();
 
-        await supabase.from("intake_conversations").insert({
+        console.log("Visit lookup:", { visit, visitErr });
+
+        const { error: insertErr } = await supabase.from("intake_conversations").insert({
           visit_id,
           patient_id: visit?.patient_id || null,
           messages: updatedHistory,
           ...(isComplete ? { completed_at: new Date().toISOString() } : {}),
         });
+        if (insertErr) console.error("Insert conversation error:", insertErr);
       }
 
       // Update visit status if complete
       if (isComplete) {
-        await supabase
+        const { error: statusErr } = await supabase
           .from("visits")
           .update({ status: "intake_complete" })
           .eq("id", visit_id);
+        if (statusErr) console.error("Update visit status error:", statusErr);
       }
     }
 

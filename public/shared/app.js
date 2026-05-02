@@ -1,7 +1,7 @@
 /* CatchCare — Shared App Logic
    Supabase auth, routing helpers, utilities */
 
-// Supabase client — keys injected at build or set here
+// Supabase client
 const SUPABASE_URL = 'https://zadevqqyeaeotwbpgaj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphZGV2cXF5ZWFlZW90d2JwZ2FqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NzgwNDAsImV4cCI6MjA5MzI1NDA0MH0.3mx7vccDkBOdlL1aOKv-s2Z2nuCxQuQ_CGlsmg7q26Y';
 
@@ -9,7 +9,7 @@ let sbClient = null;
 
 function initSupabase() {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.warn('CatchCare: Supabase keys not configured. Auth will not work.');
+    console.warn('CatchCare: Supabase keys not configured.');
     return null;
   }
   if (!sbClient) {
@@ -21,24 +21,37 @@ function initSupabase() {
 // ── Auth helpers ──
 
 async function sendMagicLink(email) {
-  const sb = initSupabase();
-  if (!sb) return { error: { message: 'Supabase not configured yet.' } };
+  try {
+    const sb = initSupabase();
+    if (!sb) return { error: { message: 'Supabase not configured.' } };
 
-  const { error } = await sb.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: window.location.origin + window.location.pathname
-    }
-  });
-  return { error };
+    const { data, error } = await sb.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin + window.location.pathname
+      }
+    });
+
+    console.log('signInWithOtp response:', { data, error });
+
+    if (error) return { error };
+    return { error: null };
+  } catch (err) {
+    console.error('sendMagicLink caught:', err);
+    return { error: { message: err.message || 'Something went wrong.' } };
+  }
 }
 
 async function getSession() {
-  const sb = initSupabase();
-  if (!sb) return null;
-
-  const { data: { session } } = await sb.auth.getSession();
-  return session;
+  try {
+    const sb = initSupabase();
+    if (!sb) return null;
+    const { data: { session } } = await sb.auth.getSession();
+    return session;
+  } catch (err) {
+    console.error('getSession error:', err);
+    return null;
+  }
 }
 
 async function getUser() {
@@ -54,7 +67,6 @@ async function signOut() {
 }
 
 // ── Auth gate ──
-// Call this on any protected page. Shows login form if not authenticated.
 
 async function requireAuth(role) {
   const user = await getUser();
@@ -65,11 +77,8 @@ async function requireAuth(role) {
   if (user) {
     if (loginSection) loginSection.classList.add('hidden');
     if (dashSection) dashSection.classList.remove('hidden');
-
-    // Set user email in header if element exists
     const userEmail = document.getElementById('user-email');
     if (userEmail) userEmail.textContent = user.email;
-
     return user;
   } else {
     if (loginSection) loginSection.classList.remove('hidden');
@@ -95,6 +104,7 @@ function setupLoginForm(formId) {
 
     submitBtn.disabled = true;
     submitBtn.textContent = 'Sending...';
+    if (feedback) { feedback.textContent = ''; }
 
     const { error } = await sendMagicLink(email);
 
@@ -111,6 +121,7 @@ function setupLoginForm(formId) {
         feedback.style.color = 'var(--success)';
       }
       submitBtn.textContent = 'Link Sent';
+      submitBtn.disabled = false;
     }
   });
 }
@@ -168,7 +179,6 @@ function relativeTime(dateStr) {
   const d = new Date(dateStr);
   const diff = Math.floor((d - now) / 1000);
   const absDiff = Math.abs(diff);
-
   if (absDiff < 60) return 'just now';
   if (absDiff < 3600) return `${Math.floor(absDiff / 60)}m ${diff > 0 ? 'from now' : 'ago'}`;
   if (absDiff < 86400) return `${Math.floor(absDiff / 3600)}h ${diff > 0 ? 'from now' : 'ago'}`;

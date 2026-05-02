@@ -2,8 +2,8 @@
    Supabase auth, routing helpers, utilities */
 
 // Supabase client — keys injected at build or set here
-const SUPABASE_URL = window.CATCHCARE_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = window.CATCHCARE_SUPABASE_ANON_KEY || '';
+const SUPABASE_URL = 'https://zadevqqyeaeotwbpgaj.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_CSWz4sWt3-MUgsd9yBcggQ_ArJmMF71';
 
 let supabase = null;
 

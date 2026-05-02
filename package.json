@@ -4,7 +4,7 @@
   "description": "AI-powered pre-visit intake agent for medical practices",
   "private": true,
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0",
+    "@anthropic-ai/sdk": "^0.52.0",
     "@supabase/supabase-js": "^2.49.0"
   }
 }

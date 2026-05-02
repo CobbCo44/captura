@@ -1,11 +1,26 @@
-const Anthropic = require("@anthropic-ai/sdk");
 const { createClient } = require("@supabase/supabase-js");
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 );
+
+async function callClaude(system, messages, model = "claude-sonnet-4-5-20250514") {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": process.env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({ model, max_tokens: 1024, system, messages }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`${res.status} ${err}`);
+  }
+  return res.json();
+}
 
 const SYSTEM_PROMPT = `You are CatchCare, a warm and thorough pre-visit intake agent for a medical practice. Your job is to interview the patient before their doctor visit so the physician walks in fully prepared.
 
@@ -94,12 +109,7 @@ exports.handler = async (event) => {
     }
 
     // Call Claude
-    const response = await anthropic.messages.create({
-      model: "claude-3-7-sonnet-20250219",
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: messages,
-    });
+    const response = await callClaude(SYSTEM_PROMPT, messages);
 
     const agentMessage = response.content[0].text;
 

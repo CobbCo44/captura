@@ -54,6 +54,15 @@
       <div class="container container-wide">
         <h2 class="mb-2" id="doc-greeting">Your Patients</h2>
 
+        <!-- Patient Search -->
+        <div class="card mb-2">
+          <div style="position:relative;">
+            <input type="text" id="patient-search" class="form-input" placeholder="Search patients by name..." style="padding-left:2.5rem;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <div id="search-results" style="margin-top:0.5rem;"></div>
+        </div>
+
         <div class="card mb-2">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
             <h3>Upcoming Visits</h3>
@@ -151,18 +160,53 @@
       const user = await requireAuth('doctor');
       if (!user) return;
 
+      // Patient search
+      let allPatients = [];
+      const searchInput = document.getElementById('patient-search');
+      const searchResults = document.getElementById('search-results');
+
+      searchInput.addEventListener('input', () => {
+        const q = searchInput.value.trim().toLowerCase();
+        if (q.length < 2) {
+          searchResults.innerHTML = '';
+          return;
+        }
+        const matches = allPatients.filter(p =>
+          p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q)
+        );
+        if (matches.length === 0) {
+          searchResults.innerHTML = '<p class="text-sm text-secondary">No patients found.</p>';
+        } else {
+          searchResults.innerHTML = matches.slice(0, 10).map(p =>
+            `<div class="visit-item" style="cursor:pointer;" onclick="window.location.href='/doctor/patient-profile.html?id=${p.id}'">
+              <div><strong>${p.name}</strong><br><span class="text-sm text-secondary">${p.email}</span></div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-light)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </div>`
+          ).join('');
+        }
+      });
+
       try {
         const data = await callFunction('doctor-feed', { doctor_email: user.email });
+
+        // Store patients for search
+        if (data.patients) {
+          allPatients = data.patients;
+        }
 
         // Set greeting
         if (data.doctor && data.doctor.name) {
           document.getElementById('doc-greeting').textContent = `Welcome, ${data.doctor.name}`;
         }
 
+        // Filter to only upcoming visits (future dates)
+        const now = new Date();
+        const upcomingVisits = (data.visits || []).filter(v => new Date(v.scheduled_for) > now);
+
         // Render visits
         const visitsEl = document.getElementById('visits-list');
-        if (data.visits && data.visits.length > 0) {
-          visitsEl.innerHTML = data.visits.map(v => {
+        if (upcomingVisits.length > 0) {
+          visitsEl.innerHTML = upcomingVisits.map(v => {
             const date = formatDate(v.scheduled_for);
             const time = formatTime(v.scheduled_for);
             const type = v.visit_type === 'initial' ? 'Initial' : 'Follow-up';
@@ -193,7 +237,7 @@
         }
 
         // Show demo card for new doctors
-        if (!data.visits || data.visits.length <= 3) {
+        if (!data.visits || data.visits.length <= 3 || upcomingVisits.length === 0) {
           document.getElementById('demo-card').style.display = '';
         }
 

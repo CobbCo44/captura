@@ -89,11 +89,19 @@ exports.handler = async (event) => {
       patient_name: patientMap[c.patient_id] || "Unknown",
     }));
 
+    // Build patient list for search
+    const patientList = (patients || []).map(p => ({
+      id: p.id,
+      name: `${p.first_name || ""} ${p.last_name || ""}`.trim() || p.email,
+      email: p.email,
+    }));
+
     return {
       statusCode: 200,
       headers: corsHeaders(),
       body: JSON.stringify({
         doctor,
+        patients: patientList,
         visits: enrichedVisits,
         checkins: enrichedCheckins,
       }),

@@ -15,12 +15,23 @@
     <div class="auth-card">
       <div class="logo-mark">CC</div>
       <h1>Doctor Login</h1>
-      <p class="subtitle">Enter your practice email and we'll send you a secure login link.</p>
-      <form id="login-form">
+      <p class="subtitle">Sign in with your email and password.</p>
+      <form id="password-form">
+        <div class="form-group">
+          <input type="email" id="doc-email" class="form-input" placeholder="doctor@practice.com" required>
+        </div>
+        <div class="form-group">
+          <input type="password" id="doc-password" class="form-input" placeholder="Password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Sign In</button>
+        <p class="auth-feedback mt-1 text-sm" id="password-feedback"></p>
+      </form>
+      <p class="text-sm text-secondary mt-2">Or <a href="#" id="toggle-magic-link" style="color:var(--primary);">sign in with a magic link</a></p>
+      <form id="login-form" class="hidden" style="margin-top:1rem;">
         <div class="form-group">
           <input type="email" class="form-input" placeholder="doctor@practice.com" required>
         </div>
-        <button type="submit" class="btn btn-primary">Send Login Link</button>
+        <button type="submit" class="btn btn-outline">Send Login Link</button>
         <p class="auth-feedback mt-1 text-sm"></p>
       </form>
       <a href="/" class="text-sm text-secondary mt-2" style="display:inline-block;">Back to home</a>
@@ -65,6 +76,43 @@
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       setupLoginForm('login-form');
+
+      // Toggle magic link form
+      document.getElementById('toggle-magic-link').addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById('login-form').classList.toggle('hidden');
+      });
+
+      // Password login
+      document.getElementById('password-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('doc-email').value.trim();
+        const password = document.getElementById('doc-password').value;
+        const feedback = document.getElementById('password-feedback');
+        const btn = e.target.querySelector('button[type="submit"]');
+
+        btn.disabled = true;
+        btn.textContent = 'Signing in...';
+
+        try {
+          const sb = initSupabase();
+          const { data, error } = await sb.auth.signInWithPassword({ email, password });
+          if (error) {
+            feedback.textContent = error.message;
+            feedback.style.color = 'var(--danger)';
+            btn.disabled = false;
+            btn.textContent = 'Sign In';
+          } else {
+            window.location.reload();
+          }
+        } catch (err) {
+          feedback.textContent = 'Something went wrong.';
+          feedback.style.color = 'var(--danger)';
+          btn.disabled = false;
+          btn.textContent = 'Sign In';
+        }
+      });
+
       const user = await requireAuth('doctor');
       if (!user) return;
 

@@ -11,13 +11,23 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { patient_id, doctor_email, protocol } = JSON.parse(event.body);
+    const { patient_id, visit_id, doctor_email, protocol } = JSON.parse(event.body);
 
-    if (!patient_id || !protocol) {
+    let patientId = patient_id;
+    if (!patientId && visit_id) {
+      const { data: visit } = await supabase
+        .from("visits")
+        .select("patient_id")
+        .eq("id", visit_id)
+        .single();
+      patientId = visit?.patient_id;
+    }
+
+    if (!patientId || !protocol) {
       return {
         statusCode: 400,
         headers: corsHeaders(),
-        body: JSON.stringify({ error: "patient_id and protocol required" }),
+        body: JSON.stringify({ error: "patient_id or visit_id and protocol required" }),
       };
     }
 
@@ -40,7 +50,7 @@ exports.handler = async (event) => {
     await supabase
       .from("protocols")
       .update({ active: false })
-      .eq("patient_id", patient_id)
+      .eq("patient_id", patientId)
       .eq("active", true);
 
     // Insert new protocol

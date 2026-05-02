@@ -155,10 +155,15 @@
             <p class="text-sm">${c.summary || 'No summary available'}</p>
             <div class="checkin-actions">
               <button class="btn btn-outline" onclick="toggleMessages('msgs-${c.id}')">View Conversation</button>
+              <button class="btn btn-outline" onclick="toggleReply('reply-${c.id}')">Reply to Patient</button>
               <button class="btn btn-outline" onclick="markReviewed('${c.id}', this)">Mark Reviewed</button>
             </div>
             <div class="checkin-messages" id="msgs-${c.id}">
               ${(c.messages || []).map(m => `<div class="msg"><strong>${m.role === 'user' ? 'Patient' : 'Agent'}:</strong> ${m.content}</div>`).join('')}
+            </div>
+            <div class="checkin-messages" id="reply-${c.id}" style="background:var(--accent);">
+              <textarea class="form-input" id="reply-text-${c.id}" rows="2" placeholder="Type your reply to the patient..." style="font-family:inherit;font-size:0.875rem;"></textarea>
+              <button class="btn btn-primary mt-1" onclick="sendReply('${c.id}')" style="padding:0.375rem 0.75rem;font-size:0.8125rem;width:auto;">Send Reply</button>
             </div>
           </div>
         `).join('')}
@@ -170,11 +175,30 @@
       if (el) el.classList.toggle('show');
     }
 
+    function toggleReply(id) {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle('show');
+    }
+
+    async function sendReply(checkinId) {
+      const textarea = document.getElementById('reply-text-' + checkinId);
+      const reply = textarea.value.trim();
+      if (!reply) return;
+
+      try {
+        await callFunction('doctor-reply', { checkin_id: checkinId, reply });
+        textarea.value = '';
+        document.getElementById('reply-' + checkinId).classList.remove('show');
+        showToast('Reply sent to patient');
+      } catch (err) {
+        console.error('Reply error:', err);
+        showToast('Failed to send reply');
+      }
+    }
+
     async function markReviewed(checkinId, btn) {
       try {
-        const sb = initSupabase();
-        // Use service role via direct update won't work from client
-        // For now just visually mark it
+        await callFunction('doctor-reply', { checkin_id: checkinId, action: 'reviewed' });
         btn.textContent = 'Reviewed';
         btn.disabled = true;
         btn.style.opacity = '0.5';

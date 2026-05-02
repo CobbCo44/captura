@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CatchCare — Message Your Doctor</title>
+  <link rel="stylesheet" href="/shared/styles.css">
+  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="/shared/app.js" defer></script>
+</head>
+<body>
+
+  <section id="login-section" class="auth-screen">
+    <div class="auth-card">
+      <div class="logo-mark">CC</div>
+      <h1>Patient Login</h1>
+      <form id="login-form">
+        <div class="form-group">
+          <input type="email" class="form-input" placeholder="your@email.com" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Send Login Link</button>
+        <p class="auth-feedback mt-1 text-sm"></p>
+      </form>
+    </div>
+  </section>
+
+  <section id="dashboard-section" class="dashboard hidden">
+    <header class="dashboard-header">
+      <div class="container">
+        <a href="/patient/" class="logo" style="text-decoration:none;">CatchCare</a>
+        <span id="user-email" class="user-info"></span>
+      </div>
+    </header>
+    <div class="dashboard-body">
+      <div class="container">
+        <a href="/patient/" class="text-sm text-secondary" style="display:inline-flex;align-items:center;gap:0.25rem;margin-bottom:1rem;text-decoration:none;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+          Back to Dashboard
+        </a>
+
+        <h2 class="mb-2">Message Your Doctor</h2>
+        <p class="text-secondary text-sm mb-2">Send a message directly to your doctor. They'll see it in their dashboard. For emergencies, please call 911 or your doctor's office directly.</p>
+
+        <div class="card">
+          <div id="past-messages"></div>
+          <form id="message-form">
+            <div class="form-group">
+              <label>Your message</label>
+              <textarea id="message-text" class="form-input" rows="4" placeholder="What would you like your doctor to know?" required style="font-family:inherit;"></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Send Message</button>
+            <p class="text-sm mt-1" id="message-feedback"></p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      setupLoginForm('login-form');
+      const user = await requireAuth('patient');
+      if (!user) return;
+
+      loadMessages(user.email);
+
+      document.getElementById('message-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const text = document.getElementById('message-text').value.trim();
+        if (!text) return;
+
+        const btn = e.target.querySelector('button[type="submit"]');
+        const feedback = document.getElementById('message-feedback');
+        btn.disabled = true;
+        btn.textContent = 'Sending...';
+
+        try {
+          await callFunction('patient-message', {
+            patient_email: user.email,
+            message: text,
+          });
+          document.getElementById('message-text').value = '';
+          feedback.textContent = 'Message sent to your doctor.';
+          feedback.style.color = 'var(--success)';
+          loadMessages(user.email);
+        } catch (err) {
+          feedback.textContent = 'Failed to send. Please try again.';
+          feedback.style.color = 'var(--danger)';
+          console.error('Message error:', err);
+        }
+
+        btn.disabled = false;
+        btn.textContent = 'Send Message';
+      });
+    });
+
+    async function loadMessages(email) {
+      try {
+        const data = await callFunction('patient-message', {
+          patient_email: email,
+          action: 'list',
+        });
+        const container = document.getElementById('past-messages');
+        if (data.messages && data.messages.length > 0) {
+          container.innerHTML = data.messages.map(m => `
+            <div style="padding:0.75rem 0;border-bottom:1px solid var(--border);">
+              <p style="font-size:0.9375rem;margin:0 0 0.25rem;">${escapeHtml(m.message)}</p>
+              <span class="text-sm text-secondary">${formatDate(m.created_at)} at ${formatTime(m.created_at)}</span>
+              ${m.doctor_reply ? `<div style="background:var(--accent);border-left:3px solid var(--primary);padding:0.5rem 0.75rem;border-radius:0 8px 8px 0;margin-top:0.5rem;font-size:0.875rem;">
+                <strong style="color:var(--primary-dark);">Doctor replied:</strong> ${escapeHtml(m.doctor_reply)}
+                <br><span class="text-sm text-secondary">${formatDate(m.replied_at)} at ${formatTime(m.replied_at)}</span>
+              </div>` : '<span class="badge badge-neutral" style="margin-top:0.25rem;">Awaiting reply</span>'}
+            </div>
+          `).join('') + '<div style="height:1rem;"></div>';
+        }
+      } catch (err) {
+        console.error('Load messages error:', err);
+      }
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

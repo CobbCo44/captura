@@ -148,6 +148,28 @@
           </div>
         </div>
 
+        <!-- Protocol Builder -->
+        <div class="card mt-3" id="protocol-section" style="display:none;">
+          <h3 class="mb-1" style="display:flex;justify-content:space-between;align-items:center;">
+            Patient Protocol
+            <span class="text-sm text-secondary" id="protocol-saved-indicator"></span>
+          </h3>
+          <div id="current-protocol"></div>
+          <div class="form-group mt-1">
+            <label>Medications</label>
+            <textarea id="proto-meds" class="form-input" rows="2" placeholder="e.g. Testosterone cypionate 100mg 2x/week IM" style="font-family:inherit;"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Supplements</label>
+            <textarea id="proto-supps" class="form-input" rows="2" placeholder="e.g. Vitamin D3 5000IU daily, Magnesium 400mg nightly" style="font-family:inherit;"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Instructions</label>
+            <textarea id="proto-instructions" class="form-input" rows="2" placeholder="e.g. Recheck labs in 6 weeks, walk 30 min daily" style="font-family:inherit;"></textarea>
+          </div>
+          <button class="btn btn-primary" onclick="saveProtocol()" style="max-width:200px;">Save Protocol</button>
+        </div>
+
         <!-- Doctor's Notes -->
         <div class="card mt-3" id="doctor-notes-section" style="display:none;">
           <h3 class="mb-1" style="display:flex;justify-content:space-between;align-items:center;">
@@ -201,9 +223,11 @@
 
         container.innerHTML = feedData.rendered_html;
 
-        // Show doctor notes section and load existing notes
+        // Show doctor notes and protocol sections
         document.getElementById('doctor-notes-section').style.display = '';
+        document.getElementById('protocol-section').style.display = '';
         loadNotes();
+        loadProtocol();
 
       } catch (err) {
         console.error('Snapshot load error:', err);
@@ -267,6 +291,49 @@
 
       btn.disabled = false;
       btn.textContent = 'Save Note';
+    }
+
+    async function loadProtocol() {
+      try {
+        const data = await callFunction('get-protocol', { visit_id: visitId });
+        if (data.protocol) {
+          const p = data.protocol;
+          document.getElementById('proto-meds').value = p.medications || '';
+          document.getElementById('proto-supps').value = p.supplements || '';
+          document.getElementById('proto-instructions').value = p.instructions || '';
+          document.getElementById('current-protocol').innerHTML =
+            '<p class="text-sm text-secondary mb-1">Current protocol loaded. Edit and save to update.</p>';
+        } else {
+          document.getElementById('current-protocol').innerHTML =
+            '<p class="text-sm text-secondary mb-1">No protocol set yet. Add one below.</p>';
+        }
+      } catch (err) {
+        console.error('Load protocol error:', err);
+      }
+    }
+
+    async function saveProtocol() {
+      const protocol = {
+        medications: document.getElementById('proto-meds').value.trim(),
+        supplements: document.getElementById('proto-supps').value.trim(),
+        instructions: document.getElementById('proto-instructions').value.trim(),
+      };
+
+      try {
+        const user = await getUser();
+        await callFunction('update-protocol', {
+          patient_id: null, // will be resolved from visit_id
+          visit_id: visitId,
+          doctor_email: user.email,
+          protocol,
+        });
+        const indicator = document.getElementById('protocol-saved-indicator');
+        indicator.textContent = 'Saved';
+        indicator.style.color = 'var(--success)';
+        setTimeout(() => indicator.textContent = '', 2000);
+      } catch (err) {
+        console.error('Save protocol error:', err);
+      }
     }
 
     function escapeHtml(str) {

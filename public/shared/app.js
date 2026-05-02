@@ -2,7 +2,7 @@
    Supabase auth, routing helpers, utilities */
 
 // Supabase client
-const SUPABASE_URL = 'https://zadevqqyeaeotwbpgaj.supabase.co';
+const SUPABASE_URL = 'https://zadevqqyeaeeotwbpgaj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InphZGV2cXF5ZWFlZW90d2JwZ2FqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2NzgwNDAsImV4cCI6MjA5MzI1NDA0MH0.3mx7vccDkBOdlL1aOKv-s2Z2nuCxQuQ_CGlsmg7q26Y';
 
 let sbClient = null;

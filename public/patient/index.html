@@ -174,8 +174,10 @@
             } else {
               feedback.textContent = 'Password set! You can now log in with your email and password.';
               feedback.style.color = 'var(--success)';
-              document.getElementById('set-password-card').style.borderLeftColor = 'var(--success)';
-              btn.textContent = 'Done';
+              localStorage.setItem('catchcare_password_set', 'true');
+              setTimeout(() => {
+                document.getElementById('set-password-card').classList.add('hidden');
+              }, 2000);
             }
           } catch (err) {
             feedback.textContent = 'Something went wrong.';
@@ -189,10 +191,9 @@
       const user = await requireAuth('patient');
       if (!user) return;
 
-      // Show set-password prompt if user came in via magic link (no password set)
-      // Check if the URL has a hash (magic link redirect) or user has no identities with password
-      const hasPasswordProvider = user.app_metadata?.providers?.includes('email') && user.user_metadata?.password_set;
-      if (!hasPasswordProvider) {
+      // Show set-password prompt only if password hasn't been set yet
+      const passwordAlreadySet = localStorage.getItem('catchcare_password_set') === 'true';
+      if (!passwordAlreadySet) {
         const setPassCard = document.getElementById('set-password-card');
         if (setPassCard) setPassCard.classList.remove('hidden');
       }

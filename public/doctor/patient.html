@@ -233,7 +233,7 @@
           container.innerHTML = data.notes.map(n => `
             <div style="padding:0.75rem 0;border-bottom:1px solid var(--border);">
               <p style="font-size:0.9375rem;margin:0;">${escapeHtml(n.note)}</p>
-              <span class="text-sm text-secondary">${formatDate(n.created_at)}</span>
+              <span class="text-sm text-secondary">${formatDate(n.created_at)} at ${formatTime(n.created_at)}</span>
             </div>
           `).join('');
         } else {

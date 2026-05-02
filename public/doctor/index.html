@@ -176,16 +176,16 @@
               badge = '<span class="badge badge-neutral">Waiting for Intake</span>';
             }
 
-            const link = v.snapshot_ready
-              ? `onclick="window.location.href='/doctor/patient.html?visit=${v.id}&snapshot=${v.snapshot_id}'" style="cursor:pointer;"`
-              : 'style="cursor:default;"';
+            const snapshotLink = v.snapshot_ready
+              ? `<a href="/doctor/patient.html?visit=${v.id}&snapshot=${v.snapshot_id}" class="badge badge-success" style="text-decoration:none;">Snapshot Ready</a>`
+              : badge;
 
-            return `<div class="visit-item" ${link}>
+            return `<div class="visit-item" style="cursor:pointer;" onclick="window.location.href='/doctor/patient-profile.html?id=${v.patient_id}'">
               <div>
                 <strong>${v.patient_name}</strong>
                 <br><span class="text-sm text-secondary">${type} — ${date} at ${time}</span>
               </div>
-              ${badge}
+              ${snapshotLink}
             </div>`;
           }).join('');
         } else {

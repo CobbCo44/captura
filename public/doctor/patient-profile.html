@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CatchCare — Patient Profile</title>
+  <link rel="stylesheet" href="/shared/styles.css">
+  <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="/shared/app.js" defer></script>
+  <style>
+    .profile-header {
+      background: var(--accent);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    .profile-header h2 { margin: 0; }
+    .profile-meta { font-size: 0.875rem; color: var(--text-secondary); }
+    .profile-meta span { display: inline-block; margin-right: 1rem; }
+
+    .tab-bar {
+      display: flex;
+      border-bottom: 2px solid var(--border);
+      margin-bottom: 1.5rem;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 0.625rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .timeline-item {
+      position: relative;
+      padding: 1rem;
+      padding-left: 2rem;
+      border-left: 2px solid var(--border);
+      margin-left: 0.5rem;
+    }
+    .timeline-item:last-child { border-left-color: transparent; }
+    .timeline-dot {
+      position: absolute; left: -7px; top: 1.25rem;
+      width: 12px; height: 12px; border-radius: 50%;
+      background: var(--primary); border: 2px solid var(--surface);
+    }
+    .timeline-dot.checkin { background: var(--primary-light); }
+    .timeline-dot.lab { background: var(--success); }
+    .timeline-dot.message { background: var(--warning); }
+    .timeline-date { font-size: 0.75rem; color: var(--text-light); margin-bottom: 0.25rem; }
+    .timeline-title { font-weight: 600; font-size: 0.9375rem; margin-bottom: 0.25rem; }
+    .timeline-body { font-size: 0.875rem; color: var(--text-secondary); line-height: 1.5; }
+
+    .snapshot-link {
+      display: inline-flex; align-items: center; gap: 0.25rem;
+      color: var(--primary); font-size: 0.8125rem; margin-top: 0.375rem;
+      text-decoration: none;
+    }
+    .snapshot-link:hover { text-decoration: underline; }
+
+    .msg-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .msg-card .msg-body { font-size: 0.9375rem; margin-bottom: 0.375rem; }
+    .msg-card .msg-meta { font-size: 0.75rem; color: var(--text-light); }
+    .reply-box {
+      background: var(--accent); border-left: 3px solid var(--primary);
+      padding: 0.5rem 0.75rem; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      margin-top: 0.5rem; font-size: 0.875rem;
+    }
+
+    .protocol-display { font-size: 0.9375rem; line-height: 1.6; }
+    .protocol-display h4 { color: var(--primary); margin: 0.75rem 0 0.25rem; font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.03em; }
+    .protocol-display p { margin: 0 0 0.25rem; white-space: pre-line; }
+
+    .note-item {
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .note-item:last-child { border-bottom: none; }
+  </style>
+</head>
+<body>
+
+  <section id="login-section" class="auth-screen">
+    <div class="auth-card">
+      <div class="logo-mark">CC</div>
+      <h1>Doctor Login</h1>
+      <form id="login-form">
+        <div class="form-group"><input type="email" class="form-input" placeholder="doctor@practice.com" required></div>
+        <button type="submit" class="btn btn-primary">Send Login Link</button>
+        <p class="auth-feedback mt-1 text-sm"></p>
+      </form>
+    </div>
+  </section>
+
+  <section id="dashboard-section" class="dashboard hidden">
+    <header class="dashboard-header">
+      <div class="container container-wide">
+        <a href="/doctor/" class="logo" style="text-decoration:none;">CatchCare</a>
+        <span id="user-email" class="user-info"></span>
+      </div>
+    </header>
+    <div class="dashboard-body">
+      <div class="container container-wide">
+        <a href="/doctor/" class="text-sm text-secondary" style="display:inline-flex;align-items:center;gap:0.25rem;margin-bottom:1rem;text-decoration:none;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+          Back to Dashboard
+        </a>
+
+        <div id="profile-loading" style="text-align:center;padding:3rem;">
+          <div class="spinner" style="margin:0 auto 1rem;"></div>
+          <p class="text-secondary">Loading patient profile...</p>
+        </div>
+
+        <div id="profile-content" style="display:none;">
+          <div class="profile-header">
+            <div>
+              <h2 id="patient-name"></h2>
+              <div class="profile-meta">
+                <span id="patient-dob"></span>
+                <span id="patient-email-display"></span>
+              </div>
+            </div>
+            <div>
+              <span class="badge badge-neutral" id="patient-visit-count"></span>
+            </div>
+          </div>
+
+          <div class="tab-bar">
+            <button class="tab-btn active" onclick="switchTab('timeline')">Timeline</button>
+            <button class="tab-btn" onclick="switchTab('snapshots')">Snapshots</button>
+            <button class="tab-btn" onclick="switchTab('messages')">Messages</button>
+            <button class="tab-btn" onclick="switchTab('protocol')">Protocol</button>
+            <button class="tab-btn" onclick="switchTab('notes')">Notes</button>
+          </div>
+
+          <div class="tab-content active" id="tab-timeline"></div>
+          <div class="tab-content" id="tab-snapshots"></div>
+          <div class="tab-content" id="tab-messages"></div>
+          <div class="tab-content" id="tab-protocol"></div>
+          <div class="tab-content" id="tab-notes"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const patientId = new URLSearchParams(window.location.search).get('id');
+    let profileData = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      setupLoginForm('login-form');
+      const user = await requireAuth('doctor');
+      if (!user) return;
+
+      if (!patientId) {
+        document.getElementById('profile-loading').innerHTML = '<p class="text-secondary">No patient selected.</p>';
+        return;
+      }
+
+      try {
+        profileData = await callFunction('patient-profile', { patient_id: patientId, doctor_email: user.email });
+        renderProfile();
+      } catch (err) {
+        console.error('Profile error:', err);
+        document.getElementById('profile-loading').innerHTML = '<p class="text-secondary">Unable to load patient profile.</p>';
+      }
+    });
+
+    function renderProfile() {
+      const d = profileData;
+      document.getElementById('profile-loading').style.display = 'none';
+      document.getElementById('profile-content').style.display = '';
+
+      document.getElementById('patient-name').textContent = d.patient.name;
+      document.getElementById('patient-dob').textContent = d.patient.dob ? `DOB: ${d.patient.dob}` : '';
+      document.getElementById('patient-email-display').textContent = d.patient.email;
+      document.getElementById('patient-visit-count').textContent = `${d.visits.length} visit${d.visits.length !== 1 ? 's' : ''}`;
+
+      renderTimeline();
+      renderSnapshots();
+      renderMessages();
+      renderProtocol();
+      renderNotes();
+    }
+
+    function renderTimeline() {
+      const items = [];
+      profileData.visits.forEach(v => {
+        items.push({
+          date: v.scheduled_for, type: 'visit',
+          title: `${v.visit_type === 'initial' ? 'Initial' : 'Follow-up'} Visit`,
+          body: v.status === 'intake_complete' ? 'Intake completed' : v.status === 'completed' ? 'Visit completed' : 'Scheduled',
+          visit_id: v.id, snapshot_id: v.snapshot_id,
+        });
+      });
+      profileData.checkins.forEach(c => {
+        items.push({
+          date: c.created_at, type: 'checkin',
+          title: 'Check-in',
+          body: c.summary || 'Between-visit check-in',
+          urgency: c.urgency,
+        });
+      });
+      profileData.labs.forEach(l => {
+        const count = l.parsed_values ? Object.keys(l.parsed_values).length : 0;
+        items.push({
+          date: l.uploaded_at, type: 'lab',
+          title: 'Lab Upload',
+          body: `${count} values parsed${l.drawn_at ? ', drawn ' + l.drawn_at : ''}`,
+        });
+      });
+      profileData.messages.forEach(m => {
+        items.push({
+          date: m.created_at, type: 'message',
+          title: 'Patient Message',
+          body: m.message,
+          reply: m.doctor_reply,
+        });
+      });
+
+      items.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      const container = document.getElementById('tab-timeline');
+      if (items.length === 0) {
+        container.innerHTML = '<p class="text-secondary">No activity yet.</p>';
+        return;
+      }
+
+      container.innerHTML = items.map(item => {
+        let extra = '';
+        if (item.snapshot_id) {
+          extra = `<a class="snapshot-link" href="/doctor/patient.html?visit=${item.visit_id}&snapshot=${item.snapshot_id}">View Snapshot &rarr;</a>`;
+        }
+        if (item.urgency) {
+          const cls = item.urgency === 'escalate' ? 'badge-danger' : item.urgency === 'digest' ? 'badge-warning' : 'badge-neutral';
+          extra = `<span class="badge ${cls}" style="margin-top:0.25rem;">${item.urgency}</span>`;
+        }
+        if (item.reply) {
+          extra += `<div class="reply-box" style="margin-top:0.5rem;"><strong>Your reply:</strong> ${esc(item.reply)}</div>`;
+        }
+        return `<div class="timeline-item">
+          <div class="timeline-dot ${item.type}"></div>
+          <div class="timeline-date">${formatDate(item.date)} at ${formatTime(item.date)}</div>
+          <div class="timeline-title">${item.title}</div>
+          <p class="timeline-body">${esc(item.body)}</p>
+          ${extra}
+        </div>`;
+      }).join('');
+    }
+
+    function renderSnapshots() {
+      const container = document.getElementById('tab-snapshots');
+      const snaps = profileData.visits.filter(v => v.snapshot_id);
+      if (snaps.length === 0) {
+        container.innerHTML = '<p class="text-secondary">No snapshots generated yet.</p>';
+        return;
+      }
+      container.innerHTML = snaps.map(v =>
+        `<div class="card mb-2">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <strong>${v.visit_type === 'initial' ? 'Initial' : 'Follow-up'} Visit</strong>
+              <br><span class="text-sm text-secondary">${formatDate(v.scheduled_for)}</span>
+            </div>
+            <a href="/doctor/patient.html?visit=${v.id}&snapshot=${v.snapshot_id}" class="btn btn-outline" style="width:auto;padding:0.375rem 0.75rem;font-size:0.8125rem;">View Snapshot</a>
+          </div>
+        </div>`
+      ).join('');
+    }
+
+    function renderMessages() {
+      const container = document.getElementById('tab-messages');
+      const msgs = profileData.messages;
+      if (msgs.length === 0) {
+        container.innerHTML = '<p class="text-secondary">No messages from this patient.</p>';
+        return;
+      }
+      container.innerHTML = msgs.map(m =>
+        `<div class="msg-card">
+          <p class="msg-body">${esc(m.message)}</p>
+          <p class="msg-meta">${formatDate(m.created_at)} at ${formatTime(m.created_at)}</p>
+          ${m.doctor_reply
+            ? `<div class="reply-box"><strong>Your reply:</strong> ${esc(m.doctor_reply)}<br><span class="msg-meta">${formatDate(m.replied_at)} at ${formatTime(m.replied_at)}</span></div>`
+            : `<div style="margin-top:0.5rem;">
+                <textarea class="form-input" id="reply-msg-${m.id}" rows="2" placeholder="Reply to this message..." style="font-family:inherit;font-size:0.875rem;"></textarea>
+                <button class="btn btn-primary mt-1" onclick="replyToMessage('${m.id}')" style="width:auto;padding:0.375rem 0.75rem;font-size:0.8125rem;">Send Reply</button>
+              </div>`
+          }
+        </div>`
+      ).join('');
+    }
+
+    function renderProtocol() {
+      const container = document.getElementById('tab-protocol');
+      const p = profileData.protocol;
+      if (!p) {
+        container.innerHTML = '<p class="text-secondary">No active protocol. Set one from the snapshot page.</p>';
+        return;
+      }
+      container.innerHTML = `<div class="protocol-display">
+        ${p.medications ? `<h4>Medications</h4><p>${esc(p.medications)}</p>` : ''}
+        ${p.supplements ? `<h4>Supplements</h4><p>${esc(p.supplements)}</p>` : ''}
+        ${p.instructions ? `<h4>Instructions</h4><p>${esc(p.instructions)}</p>` : ''}
+        <p class="text-sm text-secondary mt-2">To update, go to the patient's snapshot page.</p>
+      </div>`;
+    }
+
+    function renderNotes() {
+      const container = document.getElementById('tab-notes');
+      const notes = profileData.notes;
+      if (notes.length === 0) {
+        container.innerHTML = '<p class="text-secondary">No notes yet. Add notes from the snapshot page.</p>';
+        return;
+      }
+      container.innerHTML = notes.map(n =>
+        `<div class="note-item">
+          <p style="font-size:0.9375rem;margin:0;">${esc(n.note)}</p>
+          <span class="text-sm text-secondary">${formatDate(n.created_at)} at ${formatTime(n.created_at)}</span>
+        </div>`
+      ).join('');
+    }
+
+    function switchTab(name) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('tab-' + name).classList.add('active');
+    }
+
+    async function replyToMessage(msgId) {
+      const textarea = document.getElementById('reply-msg-' + msgId);
+      const reply = textarea.value.trim();
+      if (!reply) return;
+      try {
+        await callFunction('patient-message', {
+          patient_email: profileData.patient.email,
+          action: 'reply',
+          message_id: msgId,
+          doctor_reply: reply,
+        });
+        showToast('Reply sent');
+        // Reload profile
+        const user = await getUser();
+        profileData = await callFunction('patient-profile', { patient_id: patientId, doctor_email: user.email });
+        renderMessages();
+      } catch (err) {
+        console.error('Reply error:', err);
+      }
+    }
+
+    function esc(str) {
+      if (!str) return '';
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

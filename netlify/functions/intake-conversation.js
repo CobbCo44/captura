@@ -5,21 +5,30 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-async function callClaude(system, messages, model = "claude-3-haiku-20240307") {
+async function callClaude(system, messages, model = "claude-3-5-sonnet-20241022") {
+  const apiKey = process.env.ANTHROPIC_API_KEY || "";
+  console.log("API key length:", apiKey.length, "starts:", apiKey.substring(0, 12));
+
+  const body = { model, max_tokens: 1024, system, messages };
+  console.log("Request model:", model);
+
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": process.env.ANTHROPIC_API_KEY,
+      "x-api-key": apiKey,
       "anthropic-version": "2023-06-01",
     },
-    body: JSON.stringify({ model, max_tokens: 1024, system, messages }),
+    body: JSON.stringify(body),
   });
+
+  const responseText = await res.text();
+  console.log("Response status:", res.status, "body:", responseText.substring(0, 300));
+
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`${res.status} ${err}`);
+    throw new Error(`${res.status} ${responseText}`);
   }
-  return res.json();
+  return JSON.parse(responseText);
 }
 
 const SYSTEM_PROMPT = `You are CatchCare, a warm and thorough pre-visit intake agent for a medical practice. Your job is to interview the patient before their doctor visit so the physician walks in fully prepared.

@@ -42,22 +42,13 @@ AI-powered pre-visit intake agent for medical practices. Replaces the PA, genera
 - [x] All 7 serverless function placeholders
 - [x] netlify.toml configured
 
-### Phase 1 — Still needs human action before it's truly done:
-- [ ] Connect Netlify to GitHub repo (Netlify account pending — paid, waiting up to 24hrs)
-  - app.netlify.com → Add new site → Import from Git → CobbCo44/catchcare
-  - Publish directory: public
-- [ ] Add env vars in Netlify: ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_KEY, SUPABASE_ANON_KEY
-- [ ] Run supabase/schema.sql in Supabase SQL Editor
-- [ ] Give Claude the SUPABASE_URL and SUPABASE_ANON_KEY so they can be wired into public/shared/app.js
-- [ ] Test: hit live site → click "I'm a Patient" → login via magic link → see placeholder dashboard
-
-### Phase 2 — Patient Intake Conversation (next up)
-- Build chat UI at /patient/intake.html (mobile-first, warm, clean)
-- Build intake-conversation.js serverless function
-- Write the intake agent system prompt (structured PA-style interview)
-- Conversation state stored in intake_conversations table
-- Auto-trigger snapshot generation when agent wraps up
-- Done when: login as patient, have a 15-min conversation, conversation stored properly
+### Phase 2 — Patient Intake Conversation ✅ DONE
+- [x] Mobile-first chat UI at /patient/intake.html with typing indicators
+- [x] intake-conversation.js using direct Anthropic API (claude-sonnet-4-6)
+- [x] System prompt: structured PA-style interview, never gives clinical advice
+- [x] Conversation stored in intake_conversations table
+- [x] Visit status updates to intake_complete on wrap-up
+- [x] Patient dashboard shows visits with intake status badges
 
 ### Phase 3 — Snapshot Generation + Doctor Dashboard
 - Build generate-snapshot.js (Claude Opus, full conversation + history + labs as context)

@@ -15,12 +15,23 @@
     <div class="auth-card">
       <div class="logo-mark">CC</div>
       <h1>Patient Login</h1>
-      <p class="subtitle">Enter your email and we'll send you a secure login link. No password needed.</p>
-      <form id="login-form">
+      <p class="subtitle">Sign in with your email and password.</p>
+      <form id="password-form">
+        <div class="form-group">
+          <input type="email" id="pat-email" class="form-input" placeholder="your@email.com" required>
+        </div>
+        <div class="form-group">
+          <input type="password" id="pat-password" class="form-input" placeholder="Password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Sign In</button>
+        <p class="auth-feedback mt-1 text-sm" id="password-feedback"></p>
+      </form>
+      <p class="text-sm text-secondary mt-2">First time? <a href="#" id="toggle-magic-link" style="color:var(--primary);">Sign in with a magic link</a></p>
+      <form id="login-form" class="hidden" style="margin-top:1rem;">
         <div class="form-group">
           <input type="email" class="form-input" placeholder="your@email.com" required>
         </div>
-        <button type="submit" class="btn btn-primary">Send Login Link</button>
+        <button type="submit" class="btn btn-outline">Send Login Link</button>
         <p class="auth-feedback mt-1 text-sm"></p>
       </form>
       <a href="/" class="text-sm text-secondary mt-2" style="display:inline-block;">Back to home</a>
@@ -41,6 +52,19 @@
     <div class="dashboard-body">
       <div class="container">
         <h2 class="mb-2">Welcome back</h2>
+
+        <!-- Set password prompt (shown for magic-link users without a password) -->
+        <div class="card mb-2 hidden" id="set-password-card" style="border-left:4px solid var(--primary);">
+          <h3 class="mb-1">Set Your Password</h3>
+          <p class="text-sm text-secondary">Create a password so you can log in anytime without needing a new link.</p>
+          <form id="set-password-form" style="margin-top:0.75rem;">
+            <div class="form-group">
+              <input type="password" id="new-password" class="form-input" placeholder="Choose a password (6+ characters)" required minlength="6">
+            </div>
+            <button type="submit" class="btn btn-primary">Set Password</button>
+            <p class="text-sm mt-1" id="set-password-feedback"></p>
+          </form>
+        </div>
 
         <div class="card mb-2" id="visits-card">
           <h3 class="mb-1">Upcoming Visits</h3>
@@ -64,8 +88,98 @@
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       setupLoginForm('login-form');
+
+      // Toggle magic link form
+      const toggleLink = document.getElementById('toggle-magic-link');
+      if (toggleLink) {
+        toggleLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          document.getElementById('login-form').classList.toggle('hidden');
+        });
+      }
+
+      // Password login
+      const passwordForm = document.getElementById('password-form');
+      if (passwordForm) {
+        passwordForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const email = document.getElementById('pat-email').value.trim();
+          const password = document.getElementById('pat-password').value;
+          const feedback = document.getElementById('password-feedback');
+          const btn = e.target.querySelector('button[type="submit"]');
+
+          btn.disabled = true;
+          btn.textContent = 'Signing in...';
+
+          try {
+            const sb = initSupabase();
+            const { data, error } = await sb.auth.signInWithPassword({ email, password });
+            if (error) {
+              feedback.textContent = error.message;
+              feedback.style.color = 'var(--danger)';
+              btn.disabled = false;
+              btn.textContent = 'Sign In';
+            } else {
+              window.location.reload();
+            }
+          } catch (err) {
+            feedback.textContent = 'Something went wrong.';
+            feedback.style.color = 'var(--danger)';
+            btn.disabled = false;
+            btn.textContent = 'Sign In';
+          }
+        });
+      }
+
+      // Set password form
+      const setPassForm = document.getElementById('set-password-form');
+      if (setPassForm) {
+        setPassForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const password = document.getElementById('new-password').value;
+          const feedback = document.getElementById('set-password-feedback');
+          const btn = e.target.querySelector('button[type="submit"]');
+
+          if (password.length < 6) {
+            feedback.textContent = 'Password must be at least 6 characters.';
+            feedback.style.color = 'var(--danger)';
+            return;
+          }
+
+          btn.disabled = true;
+          btn.textContent = 'Setting...';
+
+          try {
+            const sb = initSupabase();
+            const { error } = await sb.auth.updateUser({ password });
+            if (error) {
+              feedback.textContent = error.message;
+              feedback.style.color = 'var(--danger)';
+            } else {
+              feedback.textContent = 'Password set! You can now log in with your email and password.';
+              feedback.style.color = 'var(--success)';
+              document.getElementById('set-password-card').style.borderLeftColor = 'var(--success)';
+              btn.textContent = 'Done';
+            }
+          } catch (err) {
+            feedback.textContent = 'Something went wrong.';
+            feedback.style.color = 'var(--danger)';
+            btn.disabled = false;
+            btn.textContent = 'Set Password';
+          }
+        });
+      }
+
       const user = await requireAuth('patient');
       if (!user) return;
+
+      // Show set-password prompt if user came in via magic link (no password set)
+      // Check if the URL has a hash (magic link redirect) or user has no identities with password
+      const hasPasswordProvider = user.app_metadata?.providers?.includes('email') && user.user_metadata?.password_set;
+      if (!hasPasswordProvider) {
+        const setPassCard = document.getElementById('set-password-card');
+        if (setPassCard) setPassCard.classList.remove('hidden');
+      }
 
       // Load upcoming visits for this patient
       try {

@@ -80,8 +80,10 @@ If the patient goes off topic, gently acknowledge and steer back. "That's good t
 The conversation context may include prior visit information. Reference it naturally: "I see from your last visit you were dealing with... How has that been going?"
 
 ## Opening message
-When the conversation starts (empty patient message), introduce yourself warmly:
-"Hi there! I'm your CatchCare intake assistant. I'll be gathering some information before your visit so your doctor has a head start. This usually takes about 10-15 minutes, and you can type as much or as little as you'd like. Let's start with the basics: what's the main reason you're coming in today?"`;
+When the conversation starts (empty patient message), introduce yourself warmly and ask for their name and date of birth first. This is for recordkeeping and to confirm identity:
+"Hi there! I'm your CatchCare intake assistant. I'll be gathering some information before your visit so your doctor has a head start. This usually takes about 10-15 minutes, and you can type as much or as little as you'd like. First, can I get your full name and date of birth for our records?"
+
+After they provide name and DOB, acknowledge it and move into the interview: "Thanks, [name]. Now let's get into why you're coming in. What's the main reason for your visit?"`;
 
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") {

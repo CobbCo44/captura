@@ -66,6 +66,20 @@
           </form>
         </div>
 
+        <!-- Notifications -->
+        <div class="card mb-2 hidden" id="notifications-card" style="border-left:4px solid var(--primary);">
+          <h3 class="mb-1">New from Your Doctor</h3>
+          <div id="notifications-list"></div>
+        </div>
+
+        <!-- Patient snapshot (patient-safe version) -->
+        <div class="card mb-2 hidden" id="my-snapshot-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+            <h3>My Visit Summary</h3>
+          </div>
+          <div id="my-snapshot-content"></div>
+        </div>
+
         <div class="card mb-2" id="visits-card">
           <h3 class="mb-1">Upcoming Visits</h3>
           <div id="visits-list">
@@ -224,6 +238,70 @@
             }
           } else {
             listEl.innerHTML = '<p class="text-secondary text-sm">No visits scheduled yet. Your doctor will set one up for you.</p>';
+          }
+          // Load notifications (doctor replies on check-ins and messages)
+          const { data: checkins } = await sb
+            .from('checkins')
+            .select('id, doctor_reply, summary, created_at')
+            .eq('patient_id', patient.id)
+            .not('doctor_reply', 'is', null)
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+          const { data: messages } = await sb
+            .from('patient_messages')
+            .select('id, doctor_reply, replied_at, message')
+            .eq('patient_id', patient.id)
+            .not('doctor_reply', 'is', null)
+            .order('replied_at', { ascending: false })
+            .limit(5);
+
+          const notifications = [];
+          (checkins || []).forEach(c => {
+            notifications.push({
+              text: `Replied to your check-in: "${c.doctor_reply}"`,
+              date: c.created_at,
+            });
+          });
+          (messages || []).forEach(m => {
+            notifications.push({
+              text: `Replied to your message: "${m.doctor_reply}"`,
+              date: m.replied_at,
+            });
+          });
+
+          if (notifications.length > 0) {
+            const notifCard = document.getElementById('notifications-card');
+            notifCard.classList.remove('hidden');
+            document.getElementById('notifications-list').innerHTML = notifications
+              .sort((a, b) => new Date(b.date) - new Date(a.date))
+              .slice(0, 5)
+              .map(n => `<div style="padding:0.5rem 0;border-bottom:1px solid var(--border);font-size:0.9375rem;">
+                <p style="margin:0;">${n.text}</p>
+                <span class="text-sm text-secondary">${formatDate(n.date)}</span>
+              </div>`).join('');
+          }
+
+          // Show patient-safe snapshot for most recent completed visit
+          const { data: recentSnapshot } = await sb
+            .from('snapshots')
+            .select('patient_content, created_at')
+            .eq('patient_id', patient.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (recentSnapshot && recentSnapshot.patient_content) {
+            const snapCard = document.getElementById('my-snapshot-card');
+            snapCard.classList.remove('hidden');
+            const s = recentSnapshot.patient_content;
+            const sections = [];
+            if (s.chief_complaint) sections.push(`<strong>Chief Complaint:</strong> ${s.chief_complaint.split('\\n')[0]}`);
+            if (s.current_protocol && s.current_protocol !== 'Not discussed during intake.') sections.push(`<strong>Current Protocol:</strong> ${s.current_protocol.split('\\n')[0]}`);
+            if (s.patient_goal) sections.push(`<strong>Your Goal:</strong> ${s.patient_goal}`);
+            document.getElementById('my-snapshot-content').innerHTML =
+              sections.map(s => `<p class="text-sm" style="margin:0.375rem 0;">${s}</p>`).join('') +
+              '<a href="/patient/history.html" class="text-sm" style="color:var(--primary);margin-top:0.5rem;display:inline-block;">View full history</a>';
           }
         } else {
           document.getElementById('visits-list').innerHTML = '<p class="text-secondary text-sm">No visits scheduled yet. Your doctor will set one up for you.</p>';

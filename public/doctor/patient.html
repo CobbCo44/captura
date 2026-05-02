@@ -139,6 +139,20 @@
         <div class="snap-actions">
           <button class="btn btn-outline" onclick="window.print()">Print / Save PDF</button>
           <button class="btn btn-outline" id="copy-btn" onclick="copySnapshot()">Copy to Clipboard</button>
+          <button class="btn btn-outline" id="complete-btn" onclick="markVisitComplete()">Mark Visit Complete</button>
+        </div>
+
+        <!-- Schedule Follow-up -->
+        <div class="card mb-2 hidden" id="followup-section" style="border-left:4px solid var(--primary-light);">
+          <h3 class="mb-1">Schedule Follow-up</h3>
+          <div style="display:flex;gap:0.75rem;flex-wrap:wrap;align-items:flex-end;">
+            <div class="form-group" style="flex:1;min-width:180px;margin:0;">
+              <label class="text-sm text-secondary">Date and time</label>
+              <input type="datetime-local" id="followup-date" class="form-input">
+            </div>
+            <button class="btn btn-primary" onclick="scheduleFollowup()" style="width:auto;padding:0.625rem 1rem;">Schedule</button>
+          </div>
+          <p class="text-sm mt-1" id="followup-feedback"></p>
         </div>
 
         <div id="snapshot-container">
@@ -333,6 +347,45 @@
         setTimeout(() => indicator.textContent = '', 2000);
       } catch (err) {
         console.error('Save protocol error:', err);
+      }
+    }
+
+    async function markVisitComplete() {
+      const btn = document.getElementById('complete-btn');
+      btn.disabled = true;
+      btn.textContent = 'Completing...';
+      try {
+        await callFunction('visit-action', { visit_id: visitId, action: 'complete' });
+        btn.textContent = 'Visit Completed';
+        btn.style.background = 'var(--success)';
+        btn.style.color = 'white';
+        btn.style.borderColor = 'var(--success)';
+        // Show follow-up scheduling
+        document.getElementById('followup-section').classList.remove('hidden');
+      } catch (err) {
+        console.error('Complete error:', err);
+        btn.disabled = false;
+        btn.textContent = 'Mark Visit Complete';
+      }
+    }
+
+    async function scheduleFollowup() {
+      const dateVal = document.getElementById('followup-date').value;
+      if (!dateVal) return;
+      const feedback = document.getElementById('followup-feedback');
+      try {
+        const user = await getUser();
+        await callFunction('visit-action', {
+          visit_id: visitId,
+          action: 'schedule-followup',
+          scheduled_for: dateVal,
+          doctor_email: user.email,
+        });
+        feedback.textContent = 'Follow-up scheduled! The patient will see it on their dashboard.';
+        feedback.style.color = 'var(--success)';
+      } catch (err) {
+        feedback.textContent = 'Failed to schedule.';
+        feedback.style.color = 'var(--danger)';
       }
     }
 

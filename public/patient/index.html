@@ -42,14 +42,17 @@
       <div class="container">
         <h2 class="mb-2">Welcome back</h2>
 
-        <div class="card mb-2">
+        <div class="card mb-2" id="visits-card">
           <h3 class="mb-1">Upcoming Visits</h3>
-          <p class="text-secondary text-sm">No visits scheduled yet. Your doctor will set one up for you.</p>
+          <div id="visits-list">
+            <p class="text-secondary text-sm">Loading...</p>
+          </div>
         </div>
 
         <div class="card mb-2">
           <h3 class="mb-1">Quick Actions</h3>
           <div class="gap-1">
+            <a href="/patient/intake.html" class="btn btn-primary" id="start-intake-btn" style="display:none;">Start Pre-Visit Intake</a>
             <a href="/patient/checkin.html" class="btn btn-outline">Start a Check-in</a>
             <a href="/patient/labs.html" class="btn btn-outline">Upload Lab Results</a>
           </div>
@@ -61,7 +64,58 @@
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       setupLoginForm('login-form');
-      await requireAuth('patient');
+      const user = await requireAuth('patient');
+      if (!user) return;
+
+      // Load upcoming visits for this patient
+      try {
+        const sb = initSupabase();
+        const { data: patient } = await sb
+          .from('patients')
+          .select('id')
+          .eq('email', user.email)
+          .single();
+
+        if (patient) {
+          const { data: visits } = await sb
+            .from('visits')
+            .select('id, scheduled_for, visit_type, status')
+            .eq('patient_id', patient.id)
+            .in('status', ['scheduled', 'intake_complete'])
+            .order('scheduled_for', { ascending: true });
+
+          const listEl = document.getElementById('visits-list');
+          const intakeBtn = document.getElementById('start-intake-btn');
+
+          if (visits && visits.length > 0) {
+            listEl.innerHTML = visits.map(v => {
+              const date = formatDate(v.scheduled_for);
+              const type = v.visit_type === 'initial' ? 'Initial Visit' : 'Follow-up';
+              const statusLabel = v.status === 'intake_complete'
+                ? '<span class="badge badge-success">Intake Done</span>'
+                : '<span class="badge badge-warning">Intake Needed</span>';
+              return `<div class="visit-item" style="cursor:default;">
+                <div><strong>${type}</strong><br><span class="text-sm text-secondary">${date}</span></div>
+                ${statusLabel}
+              </div>`;
+            }).join('');
+
+            // Show intake button for first visit that needs intake
+            const needsIntake = visits.find(v => v.status === 'scheduled');
+            if (needsIntake) {
+              intakeBtn.href = `/patient/intake.html?visit=${needsIntake.id}`;
+              intakeBtn.style.display = '';
+            }
+          } else {
+            listEl.innerHTML = '<p class="text-secondary text-sm">No visits scheduled yet. Your doctor will set one up for you.</p>';
+          }
+        } else {
+          document.getElementById('visits-list').innerHTML = '<p class="text-secondary text-sm">No visits scheduled yet. Your doctor will set one up for you.</p>';
+        }
+      } catch (err) {
+        console.error('Error loading visits:', err);
+        document.getElementById('visits-list').innerHTML = '<p class="text-secondary text-sm">No visits scheduled yet. Your doctor will set one up for you.</p>';
+      }
     });
   </script>
 </body>

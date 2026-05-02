@@ -64,7 +64,7 @@ exports.handler = async (event) => {
     // Get recent check-ins
     const { data: checkins } = await supabase
       .from("checkins")
-      .select("id, patient_id, summary, urgency, status, created_at")
+      .select("id, patient_id, summary, urgency, status, messages, created_at")
       .in("patient_id", patientIds.length > 0 ? patientIds : ["none"])
       .order("created_at", { ascending: false })
       .limit(20);

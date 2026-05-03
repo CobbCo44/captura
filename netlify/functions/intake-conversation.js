@@ -1,4 +1,6 @@
 const { createClient } = require("@supabase/supabase-js");
+const { checkForCrisis } = require("./safety");
+const { logAudit } = require("./audit");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -102,6 +104,72 @@ exports.handler = async (event) => {
       event.body
     );
 
+    // SAFETY CHECK: Intercept crisis situations before Claude sees the message
+    if (patient_message && patient_message.trim()) {
+      const crisis = checkForCrisis(patient_message);
+      if (crisis) {
+        console.log(`SAFETY TRIGGERED: ${crisis.category} in intake for visit ${visit_id}`);
+
+        // Store the crisis exchange in the conversation
+        const crisisHistory = [...(conversation_history || [])];
+        crisisHistory.push({ role: "user", content: patient_message });
+        crisisHistory.push({ role: "assistant", content: crisis.response });
+
+        // Save to database
+        if (visit_id) {
+          const { data: existing } = await supabase
+            .from("intake_conversations")
+            .select("id")
+            .eq("visit_id", visit_id)
+            .maybeSingle();
+
+          if (existing) {
+            await supabase.from("intake_conversations")
+              .update({ messages: crisisHistory })
+              .eq("visit_id", visit_id);
+          }
+
+          // Create an escalation check-in
+          const { data: visit } = await supabase
+            .from("visits")
+            .select("patient_id")
+            .eq("id", visit_id)
+            .single();
+
+          if (visit) {
+            await supabase.from("checkins").insert({
+              patient_id: visit.patient_id,
+              messages: [
+                { role: "user", content: patient_message },
+                { role: "assistant", content: crisis.response },
+              ],
+              summary: `${crisis.summary_prefix} ${patient_message.substring(0, 200)}`,
+              urgency: "escalate",
+              status: "new",
+            });
+          }
+        }
+
+        // Log to audit
+        await logAudit("safety_trigger", {
+          category: crisis.category,
+          visit_id,
+          matched_pattern: crisis.matched_pattern,
+          message_excerpt: patient_message.substring(0, 100),
+        });
+
+        return {
+          statusCode: 200,
+          headers: corsHeaders(),
+          body: JSON.stringify({
+            agent_message: crisis.response,
+            conversation_complete: false,
+            safety_triggered: true,
+          }),
+        };
+      }
+    }
+
     // Build messages array for Claude
     const messages = [];
 
@@ -199,6 +267,13 @@ exports.handler = async (event) => {
         }).catch(err => console.error("Snapshot trigger error:", err));
       }
     }
+
+    // Audit log
+    await logAudit("intake_message", {
+      visit_id,
+      is_complete: isComplete,
+      message_length: (patient_message || "").length,
+    });
 
     return {
       statusCode: 200,

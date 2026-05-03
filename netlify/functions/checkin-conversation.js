@@ -1,4 +1,6 @@
 const { createClient } = require("@supabase/supabase-js");
+const { checkForCrisis } = require("./safety");
+const { logAudit } = require("./audit");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -83,6 +85,66 @@ exports.handler = async (event) => {
 
   try {
     const { checkin_id, patient_message, conversation_history, patient_email } = JSON.parse(event.body);
+
+    // SAFETY CHECK: Intercept crisis situations before Claude sees the message
+    if (patient_message && patient_message.trim()) {
+      const crisis = checkForCrisis(patient_message);
+      if (crisis) {
+        console.log(`SAFETY TRIGGERED: ${crisis.category} in checkin`);
+
+        // Look up patient for escalation
+        let crisisPatientId = null;
+        if (patient_email) {
+          const { data: pat } = await supabase
+            .from("patients")
+            .select("id")
+            .eq("email", patient_email)
+            .single();
+          crisisPatientId = pat?.id;
+        }
+
+        const crisisHistory = [...(conversation_history || [])];
+        crisisHistory.push({ role: "user", content: patient_message });
+        crisisHistory.push({ role: "assistant", content: crisis.response });
+
+        // Save or create the check-in with escalation
+        if (checkin_id) {
+          await supabase.from("checkins").update({
+            messages: crisisHistory,
+            summary: `${crisis.summary_prefix} ${patient_message.substring(0, 200)}`,
+            urgency: "escalate",
+            status: "new",
+          }).eq("id", checkin_id);
+        } else if (crisisPatientId) {
+          await supabase.from("checkins").insert({
+            patient_id: crisisPatientId,
+            messages: crisisHistory,
+            summary: `${crisis.summary_prefix} ${patient_message.substring(0, 200)}`,
+            urgency: "escalate",
+            status: "new",
+          });
+        }
+
+        // Log to audit
+        await logAudit("safety_trigger", {
+          category: crisis.category,
+          checkin_id,
+          patient_email,
+          matched_pattern: crisis.matched_pattern,
+          message_excerpt: patient_message.substring(0, 100),
+        });
+
+        return {
+          statusCode: 200,
+          headers: corsHeaders(),
+          body: JSON.stringify({
+            agent_message: crisis.response,
+            conversation_complete: false,
+            safety_triggered: true,
+          }),
+        };
+      }
+    }
 
     // Look up patient context
     let patientName = "";

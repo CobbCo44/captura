@@ -1,4 +1,5 @@
 const { createClient } = require("@supabase/supabase-js");
+const { logAudit } = require("./audit");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -202,6 +203,12 @@ exports.handler = async (event) => {
         body: JSON.stringify({ error: "Failed to save snapshot" }),
       };
     }
+
+    await logAudit("snapshot_generated", {
+      snapshot_id: snapshot.id,
+      visit_id: conversation.visit_id,
+      patient_id: conversation.patient_id,
+    });
 
     return {
       statusCode: 200,

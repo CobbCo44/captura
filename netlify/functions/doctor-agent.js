@@ -1,4 +1,5 @@
 const { createClient } = require("@supabase/supabase-js");
+const { logAudit } = require("./audit");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -619,6 +620,13 @@ exports.handler = async (event) => {
         updated_at: new Date().toISOString(),
       })
       .eq("id", conversation.id);
+
+    // Audit log
+    await logAudit("doctor_agent_query", {
+      doctor_id: doctor.id,
+      tool_calls: toolCallsMade.map(t => t.name),
+      message_length: user_message.length,
+    }, doctor_email);
 
     return {
       statusCode: 200,

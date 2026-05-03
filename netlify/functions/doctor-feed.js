@@ -11,7 +11,8 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { doctor_email } = JSON.parse(event.body);
+    const { doctor_email, page = 1, per_page = 20 } = JSON.parse(event.body);
+    const offset = (page - 1) * per_page;
 
     if (!doctor_email) {
       return {
@@ -44,12 +45,13 @@ exports.handler = async (event) => {
 
     const patientIds = (patients || []).map(p => p.id);
 
-    // Get visits with snapshot status
-    const { data: visits } = await supabase
+    // Get visits with snapshot status (paginated, upcoming first)
+    const { data: visits, count: totalVisits } = await supabase
       .from("visits")
-      .select("id, patient_id, scheduled_for, visit_type, status")
+      .select("id, patient_id, scheduled_for, visit_type, status", { count: "exact" })
       .eq("doctor_id", doctor.id)
-      .order("scheduled_for", { ascending: true });
+      .order("scheduled_for", { ascending: true })
+      .range(offset, offset + per_page - 1);
 
     // Get snapshots for these visits
     const visitIds = (visits || []).map(v => v.id);
@@ -104,6 +106,12 @@ exports.handler = async (event) => {
         patients: patientList,
         visits: enrichedVisits,
         checkins: enrichedCheckins,
+        pagination: {
+          page,
+          per_page,
+          total_visits: totalVisits || 0,
+          total_pages: Math.ceil((totalVisits || 0) / per_page),
+        },
       }),
     };
   } catch (err) {

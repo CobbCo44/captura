@@ -95,6 +95,11 @@
           <div id="visits-list">
             <p class="text-secondary text-sm">Loading...</p>
           </div>
+          <div id="pagination" style="display:none;margin-top:0.75rem;display:flex;justify-content:center;gap:0.5rem;align-items:center;">
+            <button class="btn btn-outline" id="prev-page" onclick="changePage(-1)" style="width:auto;padding:0.375rem 0.75rem;font-size:0.8125rem;" disabled>Previous</button>
+            <span class="text-sm text-secondary" id="page-info"></span>
+            <button class="btn btn-outline" id="next-page" onclick="changePage(1)" style="width:auto;padding:0.375rem 0.75rem;font-size:0.8125rem;">Next</button>
+          </div>
         </div>
 
         <div class="card mb-2" id="demo-card" style="display:none;border-left:4px solid var(--primary-light);">
@@ -160,6 +165,9 @@
       const user = await requireAuth('doctor');
       if (!user) return;
 
+      let currentPage = 1;
+      const perPage = 20;
+
       // Patient search
       let allPatients = [];
       const searchInput = document.getElementById('patient-search');
@@ -187,7 +195,7 @@
       });
 
       try {
-        const data = await callFunction('doctor-feed', { doctor_email: user.email });
+        const data = await callFunction('doctor-feed', { doctor_email: user.email, page: currentPage, per_page: perPage });
 
         // Store patients for search
         if (data.patients) {
@@ -241,6 +249,15 @@
           document.getElementById('demo-card').style.display = '';
         }
 
+        // Show pagination if needed
+        if (data.pagination && data.pagination.total_pages > 1) {
+          const pagEl = document.getElementById('pagination');
+          pagEl.style.display = 'flex';
+          document.getElementById('page-info').textContent = `Page ${data.pagination.page} of ${data.pagination.total_pages}`;
+          document.getElementById('prev-page').disabled = data.pagination.page <= 1;
+          document.getElementById('next-page').disabled = data.pagination.page >= data.pagination.total_pages;
+        }
+
         // Render check-ins
         const checkinsEl = document.getElementById('checkins-list');
         if (data.checkins && data.checkins.length > 0) {
@@ -269,6 +286,12 @@
         document.getElementById('checkins-list').innerHTML = '';
       }
     });
+
+    async function changePage(delta) {
+      currentPage += delta;
+      if (currentPage < 1) currentPage = 1;
+      window.location.reload(); // Simple reload with new page — for v1 this is fine
+    }
 
     async function loadDemo() {
       const btn = document.getElementById('demo-btn');

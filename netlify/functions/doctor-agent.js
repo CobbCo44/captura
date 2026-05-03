@@ -558,6 +558,22 @@ exports.handler = async (event) => {
       };
     }
 
+    // Rate limiting: max 30 requests per doctor per minute
+    const oneMinuteAgo = new Date(Date.now() - 60000).toISOString();
+    const { count: recentRequests } = await supabase
+      .from("doctor_conversations")
+      .select("id", { count: "exact", head: true })
+      .eq("doctor_id", doctor.id)
+      .gte("updated_at", oneMinuteAgo);
+
+    if (recentRequests > 30) {
+      return {
+        statusCode: 429,
+        headers: corsHeaders(),
+        body: JSON.stringify({ error: "Too many requests. Please wait a moment." }),
+      };
+    }
+
     // Get or create today's conversation thread
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);

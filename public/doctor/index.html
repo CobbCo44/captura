@@ -5,12 +5,275 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CatchCare — Doctor Dashboard</title>
   <link rel="stylesheet" href="/shared/styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="/shared/app.js" defer></script>
+  <style>
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; -webkit-font-smoothing: antialiased; }
+
+    /* ── Sidebar + Layout ── */
+    .app-layout {
+      display: flex; min-height: 100vh;
+    }
+    .sidebar {
+      width: 240px; background: #FAFBFC;
+      border-right: 1px solid var(--border);
+      padding: 1.25rem 0; flex-shrink: 0;
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0; z-index: 50;
+    }
+    .sidebar-logo {
+      font-weight: 800; font-size: 1.25rem; letter-spacing: -0.03em;
+      color: var(--primary); padding: 0 1.25rem; margin-bottom: 1.75rem;
+    }
+    .sidebar-nav { flex: 1; display: flex; flex-direction: column; gap: 0.125rem; padding: 0 0.75rem; }
+    .sidebar-link {
+      display: flex; align-items: center; gap: 0.625rem;
+      padding: 0.625rem 0.75rem; border-radius: 8px;
+      font-size: 0.875rem; font-weight: 500; color: var(--text-secondary);
+      text-decoration: none; transition: all 0.15s ease;
+    }
+    .sidebar-link:hover { background: var(--accent); color: var(--primary-dark); }
+    .sidebar-link.active {
+      background: var(--primary); color: white;
+    }
+    .sidebar-link.active svg { stroke: white; }
+    .sidebar-link svg { width: 18px; height: 18px; flex-shrink: 0; stroke: currentColor; }
+    .sidebar-user {
+      padding: 1rem 1.25rem; border-top: 1px solid var(--border);
+      margin-top: auto;
+    }
+    .sidebar-user-email {
+      font-size: 0.75rem; color: var(--text-secondary);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      margin-bottom: 0.375rem;
+    }
+    .sidebar-signout {
+      font-size: 0.75rem; color: var(--text-light); background: none;
+      border: none; cursor: pointer; padding: 0; text-decoration: underline;
+      transition: color 0.15s;
+    }
+    .sidebar-signout:hover { color: var(--danger); }
+
+    /* Main content area */
+    .main-content {
+      flex: 1; margin-left: 240px; background: var(--bg); min-height: 100vh;
+    }
+    .main-header {
+      background: white; border-bottom: 1px solid var(--border);
+      padding: 1.25rem 2rem; position: sticky; top: 0; z-index: 40;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .main-header h1 {
+      font-size: 1.375rem; font-weight: 700; letter-spacing: -0.02em;
+    }
+    .main-body { padding: 1.5rem 2rem; max-width: 960px; }
+
+    /* ── Stat Cards ── */
+    .stat-row {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat-card {
+      background: white; border-radius: 12px; padding: 1.25rem 1.5rem;
+      border: 1px solid var(--border);
+    }
+    .stat-label {
+      font-size: 0.6875rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.06em; color: var(--text-light); margin-bottom: 0.25rem;
+    }
+    .stat-value {
+      font-size: 2rem; font-weight: 800; letter-spacing: -0.03em; color: var(--text);
+    }
+    .stat-value.green { color: var(--success); }
+    .stat-value.amber { color: var(--warning); }
+
+    /* ── Search ── */
+    .search-bar {
+      background: white; border-radius: 12px; padding: 1rem 1.25rem;
+      border: 1px solid var(--border); margin-bottom: 1.5rem;
+    }
+    .search-input-wrap { position: relative; }
+    .search-input-wrap svg {
+      position: absolute; left: 0.875rem; top: 50%; transform: translateY(-50%);
+      color: var(--text-light);
+    }
+    .search-input-wrap input {
+      width: 100%; padding: 0.625rem 1rem 0.625rem 2.5rem;
+      border: 1px solid var(--border); border-radius: 8px; font-size: 0.875rem;
+      background: var(--bg); transition: all 0.15s;
+    }
+    .search-input-wrap input:focus {
+      outline: none; border-color: var(--primary-light);
+      box-shadow: 0 0 0 3px rgba(43,122,120,0.08); background: white;
+    }
+
+    /* ── Patient List ── */
+    .section-card {
+      background: white; border-radius: 12px;
+      border: 1px solid var(--border); margin-bottom: 1.5rem;
+      overflow: hidden;
+    }
+    .section-card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+    }
+    .section-card-header h3 {
+      font-size: 0.9375rem; font-weight: 700; letter-spacing: -0.01em;
+    }
+    .section-card-header .action-link {
+      font-size: 0.8125rem; font-weight: 600; color: var(--primary);
+      background: none; border: none; cursor: pointer; text-decoration: none;
+      transition: color 0.15s;
+    }
+    .section-card-header .action-link:hover { color: var(--primary-dark); }
+    .section-card-body { padding: 0; }
+
+    /* Visit rows */
+    .visit-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.875rem 1.25rem; border-bottom: 1px solid #F3F4F6;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .visit-row:last-child { border-bottom: none; }
+    .visit-row:hover { background: #F9FAFB; }
+    .visit-row-left { display: flex; align-items: center; gap: 0.75rem; }
+    .patient-avatar {
+      width: 36px; height: 36px; border-radius: 8px;
+      background: var(--accent); color: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.75rem; flex-shrink: 0;
+      letter-spacing: -0.02em;
+    }
+    .patient-name {
+      font-size: 0.875rem; font-weight: 600; color: var(--text);
+    }
+    .patient-detail {
+      font-size: 0.75rem; color: var(--text-light); margin-top: 0.125rem;
+    }
+
+    /* Better badges */
+    .status-pill {
+      font-size: 0.6875rem; font-weight: 700; padding: 0.25rem 0.625rem;
+      border-radius: 999px; text-transform: uppercase; letter-spacing: 0.03em;
+      white-space: nowrap;
+    }
+    .pill-success { background: #ECFDF5; color: #059669; }
+    .pill-warning { background: #FEF3C7; color: #D97706; }
+    .pill-danger { background: #FEF2F2; color: #DC2626; }
+    .pill-neutral { background: #F3F4F6; color: #6B7280; }
+
+    /* Invite form */
+    .invite-form {
+      padding: 1.25rem; background: #F9FAFB;
+      border-bottom: 1px solid var(--border);
+    }
+    .invite-form h4 {
+      font-size: 0.875rem; font-weight: 700; margin-bottom: 0.75rem;
+    }
+    .invite-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;
+    }
+    .invite-grid .full-width { grid-column: 1 / -1; }
+    .invite-grid input, .invite-grid select {
+      width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 0.8125rem; background: white;
+    }
+    .invite-grid input:focus, .invite-grid select:focus {
+      outline: none; border-color: var(--primary-light);
+    }
+    .invite-actions {
+      display: flex; align-items: center; gap: 0.75rem; margin-top: 0.75rem;
+    }
+    .invite-actions button {
+      padding: 0.5rem 1.25rem; border-radius: 6px; font-size: 0.8125rem;
+      font-weight: 600; cursor: pointer; transition: all 0.15s;
+      border: none; background: var(--primary); color: white;
+    }
+    .invite-actions button:hover { background: var(--primary-dark); }
+
+    /* Demo card */
+    .demo-card {
+      background: white; border-radius: 12px; padding: 1.25rem 1.5rem;
+      border: 1px solid var(--border); border-left: 4px solid var(--primary-light);
+      margin-bottom: 1.5rem;
+    }
+    .demo-card h3 { font-size: 0.9375rem; font-weight: 700; margin-bottom: 0.25rem; }
+    .demo-card p { font-size: 0.8125rem; color: var(--text-secondary); margin: 0 0 0.75rem; }
+    .demo-card button {
+      padding: 0.5rem 1.25rem; border-radius: 6px; font-size: 0.8125rem;
+      font-weight: 600; cursor: pointer; border: 1px solid var(--primary-light);
+      background: var(--accent); color: var(--primary-dark); transition: all 0.15s;
+    }
+    .demo-card button:hover { background: var(--primary-light); color: white; }
+
+    /* Check-in rows */
+    .checkin-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 1.25rem; border-bottom: 1px solid #F3F4F6;
+    }
+    .checkin-row:last-child { border-bottom: none; }
+
+    /* Pagination */
+    .pagination {
+      display: flex; justify-content: center; align-items: center; gap: 0.75rem;
+      padding: 0.75rem 1.25rem; border-top: 1px solid #F3F4F6;
+    }
+    .pagination button {
+      padding: 0.375rem 0.875rem; border-radius: 6px; font-size: 0.75rem;
+      font-weight: 600; cursor: pointer; border: 1px solid var(--border);
+      background: white; color: var(--text); transition: all 0.15s;
+    }
+    .pagination button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+    .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pagination span { font-size: 0.75rem; color: var(--text-light); }
+
+    /* ── Mobile ── */
+    .mobile-header {
+      display: none; background: white; border-bottom: 1px solid var(--border);
+      padding: 0.875rem 1.25rem; position: sticky; top: 0; z-index: 60;
+      align-items: center; justify-content: space-between;
+    }
+    .mobile-header .logo {
+      font-weight: 800; font-size: 1.125rem; color: var(--primary);
+    }
+    .mobile-nav {
+      display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 50;
+      background: white; border-top: 1px solid var(--border);
+      padding: 0.5rem 0.25rem; padding-bottom: env(safe-area-inset-bottom);
+    }
+    .mobile-nav-inner {
+      display: flex; justify-content: space-around;
+    }
+    .mobile-nav-link {
+      display: flex; flex-direction: column; align-items: center; gap: 0.125rem;
+      font-size: 0.625rem; font-weight: 600; color: var(--text-light);
+      text-decoration: none; padding: 0.375rem 0.5rem; border-radius: 6px;
+      transition: color 0.15s;
+    }
+    .mobile-nav-link.active { color: var(--primary); }
+    .mobile-nav-link svg { width: 20px; height: 20px; stroke: currentColor; }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main-content { margin-left: 0; }
+      .main-header { display: none; }
+      .mobile-header { display: flex; }
+      .mobile-nav { display: block; }
+      .main-body { padding: 1rem; padding-bottom: 5rem; }
+      .stat-row { grid-template-columns: 1fr 1fr; }
+      .invite-grid { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 480px) {
+      .stat-row { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
 
-  <!-- Login Screen -->
+  <!-- Login Screen (unchanged functionality) -->
   <section id="login-section" class="auth-screen">
     <div class="auth-card">
       <div class="logo-mark">CC</div>
@@ -39,90 +302,161 @@
     </div>
   </section>
 
-  <!-- Dashboard (shown after auth) -->
-  <section id="dashboard-section" class="dashboard hidden">
-    <header class="dashboard-header">
-      <div class="container container-wide">
+  <!-- Dashboard -->
+  <section id="dashboard-section" class="hidden">
+    <div class="app-layout">
+
+      <!-- Sidebar (desktop) -->
+      <aside class="sidebar">
+        <div class="sidebar-logo">CatchCare</div>
+        <nav class="sidebar-nav">
+          <a href="/doctor/" class="sidebar-link active">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+            Dashboard
+          </a>
+          <a href="/doctor/digest.html" class="sidebar-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            Check-ins
+          </a>
+        </nav>
+        <div class="sidebar-user">
+          <div class="sidebar-user-email" id="sidebar-email"></div>
+          <button class="sidebar-signout" onclick="signOut()">Sign out</button>
+        </div>
+      </aside>
+
+      <!-- Mobile header -->
+      <div class="mobile-header">
         <span class="logo">CatchCare</span>
-        <div>
-          <span id="user-email" class="user-info"></span>
-          <button onclick="signOut()" class="text-sm text-secondary" style="background:none;border:none;cursor:pointer;margin-left:0.5rem;text-decoration:underline;">Sign out</button>
+        <button onclick="signOut()" style="background:none;border:none;cursor:pointer;font-size:0.75rem;color:var(--text-light);text-decoration:underline;">Sign out</button>
+      </div>
+
+      <!-- Main -->
+      <div class="main-content">
+        <div class="main-header">
+          <h1 id="doc-greeting">Your Patients</h1>
+          <div id="header-date" style="font-size:0.8125rem;color:var(--text-light);font-weight:500;"></div>
+        </div>
+        <div class="main-body">
+
+          <!-- Stat cards -->
+          <div class="stat-row" id="stat-row" style="display:none;">
+            <div class="stat-card">
+              <div class="stat-label">Today's Visits</div>
+              <div class="stat-value" id="stat-visits">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Snapshots Ready</div>
+              <div class="stat-value green" id="stat-snapshots">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Pending Intake</div>
+              <div class="stat-value amber" id="stat-pending">0</div>
+            </div>
+          </div>
+
+          <!-- Search -->
+          <div class="search-bar">
+            <div class="search-input-wrap">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="patient-search" placeholder="Search patients by name...">
+            </div>
+            <div id="search-results" style="margin-top:0.5rem;"></div>
+          </div>
+
+          <!-- Visits -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <h3>Upcoming Visits</h3>
+              <button class="action-link" onclick="document.getElementById('invite-section').classList.toggle('hidden')">+ Invite Patient</button>
+            </div>
+            <div id="invite-section" class="hidden">
+              <div class="invite-form">
+                <h4>Invite a New Patient</h4>
+                <div class="invite-grid">
+                  <input type="text" id="inv-first" placeholder="First name">
+                  <input type="text" id="inv-last" placeholder="Last name">
+                  <input type="email" id="inv-email" placeholder="Patient email" class="full-width" required>
+                  <div>
+                    <label style="font-size:0.6875rem;color:var(--text-light);margin-bottom:0.25rem;display:block;">Visit date</label>
+                    <input type="datetime-local" id="inv-date">
+                  </div>
+                  <div>
+                    <label style="font-size:0.6875rem;color:var(--text-light);margin-bottom:0.25rem;display:block;">Visit type</label>
+                    <select id="inv-type">
+                      <option value="initial">Initial Visit</option>
+                      <option value="follow-up">Follow-up</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="invite-actions">
+                  <button onclick="invitePatient()">Send Invite</button>
+                  <span class="text-sm" id="invite-feedback"></span>
+                </div>
+              </div>
+            </div>
+            <div class="section-card-body" id="visits-list">
+              <div style="padding:2rem;text-align:center;">
+                <div class="spinner" style="margin:0 auto;"></div>
+              </div>
+            </div>
+            <div id="pagination" style="display:none;">
+              <div class="pagination">
+                <button id="prev-page" onclick="changePage(-1)" disabled>Previous</button>
+                <span id="page-info"></span>
+                <button id="next-page" onclick="changePage(1)">Next</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Demo card -->
+          <div class="demo-card" id="demo-card" style="display:none;">
+            <h3>Demo Mode</h3>
+            <p>Load synthetic patient data to explore the full CatchCare experience.</p>
+            <button onclick="loadDemo()" id="demo-btn">Load Demo Data</button>
+            <span class="text-sm" id="demo-feedback" style="margin-left:0.75rem;"></span>
+          </div>
+
+          <!-- Recent check-ins -->
+          <div class="section-card">
+            <div class="section-card-header">
+              <h3>Recent Check-ins</h3>
+              <a href="/doctor/digest.html" class="action-link">View Full Digest</a>
+            </div>
+            <div class="section-card-body" id="checkins-list">
+              <div style="padding:1.5rem;text-align:center;">
+                <p class="text-sm text-secondary" style="margin:0;">Loading...</p>
+              </div>
+            </div>
+          </div>
+
         </div>
       </div>
-    </header>
-    <div class="dashboard-body">
-      <div class="container container-wide">
-        <h2 class="mb-2" id="doc-greeting">Your Patients</h2>
 
-        <!-- Patient Search -->
-        <div class="card mb-2">
-          <div style="position:relative;">
-            <input type="text" id="patient-search" class="form-input" placeholder="Search patients by name..." style="padding-left:2.5rem;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-light)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          </div>
-          <div id="search-results" style="margin-top:0.5rem;"></div>
+      <!-- Mobile bottom nav -->
+      <nav class="mobile-nav">
+        <div class="mobile-nav-inner">
+          <a href="/doctor/" class="mobile-nav-link active">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+            Home
+          </a>
+          <a href="/doctor/digest.html" class="mobile-nav-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            Check-ins
+          </a>
         </div>
+      </nav>
 
-        <div class="card mb-2">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
-            <h3>Upcoming Visits</h3>
-            <button class="text-sm" style="color:var(--primary);background:none;border:none;cursor:pointer;" onclick="document.getElementById('invite-section').classList.toggle('hidden')">+ Invite Patient</button>
-          </div>
-          <div id="invite-section" class="hidden" style="background:var(--accent);border-radius:var(--radius-sm);padding:1rem;margin-bottom:1rem;">
-            <h4 style="margin-bottom:0.75rem;">Invite a New Patient</h4>
-            <div class="form-group">
-              <input type="text" id="inv-first" class="form-input" placeholder="First name">
-            </div>
-            <div class="form-group">
-              <input type="text" id="inv-last" class="form-input" placeholder="Last name">
-            </div>
-            <div class="form-group">
-              <input type="email" id="inv-email" class="form-input" placeholder="Patient email" required>
-            </div>
-            <div class="form-group">
-              <label class="text-sm text-secondary">Visit date (optional)</label>
-              <input type="datetime-local" id="inv-date" class="form-input">
-            </div>
-            <div class="form-group">
-              <select id="inv-type" class="form-input">
-                <option value="initial">Initial Visit</option>
-                <option value="follow-up">Follow-up</option>
-              </select>
-            </div>
-            <button class="btn btn-primary" onclick="invitePatient()" style="max-width:200px;">Send Invite</button>
-            <p class="text-sm mt-1" id="invite-feedback"></p>
-          </div>
-          <div id="visits-list">
-            <p class="text-secondary text-sm">Loading...</p>
-          </div>
-          <div id="pagination" style="display:none;margin-top:0.75rem;display:flex;justify-content:center;gap:0.5rem;align-items:center;">
-            <button class="btn btn-outline" id="prev-page" onclick="changePage(-1)" style="width:auto;padding:0.375rem 0.75rem;font-size:0.8125rem;" disabled>Previous</button>
-            <span class="text-sm text-secondary" id="page-info"></span>
-            <button class="btn btn-outline" id="next-page" onclick="changePage(1)" style="width:auto;padding:0.375rem 0.75rem;font-size:0.8125rem;">Next</button>
-          </div>
-        </div>
-
-        <div class="card mb-2" id="demo-card" style="display:none;border-left:4px solid var(--primary-light);">
-          <h3 class="mb-1">Demo Mode</h3>
-          <p class="text-sm text-secondary">Load synthetic patient data to explore the full CatchCare experience.</p>
-          <button class="btn btn-secondary mt-1" onclick="loadDemo()" id="demo-btn" style="max-width:200px;">Load Demo Data</button>
-          <p class="text-sm mt-1" id="demo-feedback"></p>
-        </div>
-
-        <div class="card mb-2">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
-            <h3>Recent Check-ins</h3>
-            <a href="/doctor/digest.html" class="text-sm" style="color:var(--primary);">View Full Digest</a>
-          </div>
-          <div id="checkins-list">
-            <p class="text-secondary text-sm">Loading...</p>
-          </div>
-        </div>
-      </div>
     </div>
   </section>
 
   <script>
+    // Set today's date in header
+    const dateEl = document.getElementById('header-date');
+    if (dateEl) {
+      dateEl.textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+    }
+
     document.addEventListener('DOMContentLoaded', async () => {
       setupLoginForm('login-form');
 
@@ -165,6 +499,10 @@
       const user = await requireAuth('doctor');
       if (!user) return;
 
+      // Set sidebar email
+      const sidebarEmail = document.getElementById('sidebar-email');
+      if (sidebarEmail) sidebarEmail.textContent = user.email;
+
       let currentPage = 1;
       const perPage = 20;
 
@@ -183,14 +521,21 @@
           p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q)
         );
         if (matches.length === 0) {
-          searchResults.innerHTML = '<p class="text-sm text-secondary">No patients found.</p>';
+          searchResults.innerHTML = '<p class="text-sm text-secondary" style="padding:0.5rem 0;">No patients found.</p>';
         } else {
-          searchResults.innerHTML = matches.slice(0, 10).map(p =>
-            `<div class="visit-item" style="cursor:pointer;" onclick="window.location.href='/doctor/patient-profile.html?id=${p.id}'">
-              <div><strong>${p.name}</strong><br><span class="text-sm text-secondary">${p.email}</span></div>
+          searchResults.innerHTML = matches.slice(0, 10).map(p => {
+            const initials = getInitials(p.name);
+            return `<div class="visit-row" onclick="window.location.href='/doctor/patient-profile.html?id=${p.id}'">
+              <div class="visit-row-left">
+                <div class="patient-avatar">${initials}</div>
+                <div>
+                  <div class="patient-name">${p.name}</div>
+                  <div class="patient-detail">${p.email}</div>
+                </div>
+              </div>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-light)" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-            </div>`
-          ).join('');
+            </div>`;
+          }).join('');
         }
       });
 
@@ -211,6 +556,14 @@
         const now = new Date();
         const upcomingVisits = (data.visits || []).filter(v => new Date(v.scheduled_for) > now);
 
+        // Stat cards
+        const snapshotsReady = upcomingVisits.filter(v => v.snapshot_ready).length;
+        const pendingIntake = upcomingVisits.filter(v => !v.snapshot_ready && v.status !== 'intake_complete').length;
+        document.getElementById('stat-visits').textContent = upcomingVisits.length;
+        document.getElementById('stat-snapshots').textContent = snapshotsReady;
+        document.getElementById('stat-pending').textContent = pendingIntake;
+        document.getElementById('stat-row').style.display = '';
+
         // Render visits
         const visitsEl = document.getElementById('visits-list');
         if (upcomingVisits.length > 0) {
@@ -218,30 +571,30 @@
             const date = formatDate(v.scheduled_for);
             const time = formatTime(v.scheduled_for);
             const type = v.visit_type === 'initial' ? 'Initial' : 'Follow-up';
+            const initials = getInitials(v.patient_name);
 
             let badge = '';
             if (v.snapshot_ready) {
-              badge = '<span class="badge badge-success">Snapshot Ready</span>';
+              badge = `<a href="/doctor/patient.html?visit=${v.id}&snapshot=${v.snapshot_id}" class="status-pill pill-success" style="text-decoration:none;" onclick="event.stopPropagation();">Snapshot Ready</a>`;
             } else if (v.status === 'intake_complete') {
-              badge = '<span class="badge badge-warning">Generating...</span>';
+              badge = '<span class="status-pill pill-warning">Generating...</span>';
             } else {
-              badge = '<span class="badge badge-neutral">Waiting for Intake</span>';
+              badge = '<span class="status-pill pill-neutral">Waiting for Intake</span>';
             }
 
-            const snapshotLink = v.snapshot_ready
-              ? `<a href="/doctor/patient.html?visit=${v.id}&snapshot=${v.snapshot_id}" class="badge badge-success" style="text-decoration:none;">Snapshot Ready</a>`
-              : badge;
-
-            return `<div class="visit-item" style="cursor:pointer;" onclick="window.location.href='/doctor/patient-profile.html?id=${v.patient_id}'">
-              <div>
-                <strong>${v.patient_name}</strong>
-                <br><span class="text-sm text-secondary">${type} — ${date} at ${time}</span>
+            return `<div class="visit-row" onclick="window.location.href='/doctor/patient-profile.html?id=${v.patient_id}'">
+              <div class="visit-row-left">
+                <div class="patient-avatar">${initials}</div>
+                <div>
+                  <div class="patient-name">${v.patient_name}</div>
+                  <div class="patient-detail">${type}, ${date} at ${time}</div>
+                </div>
               </div>
-              ${snapshotLink}
+              ${badge}
             </div>`;
           }).join('');
         } else {
-          visitsEl.innerHTML = '<p class="text-secondary text-sm">No upcoming visits.</p>';
+          visitsEl.innerHTML = '<div style="padding:2rem;text-align:center;"><p class="text-sm text-secondary" style="margin:0;">No upcoming visits.</p></div>';
         }
 
         // Show demo card for new doctors
@@ -252,7 +605,7 @@
         // Show pagination if needed
         if (data.pagination && data.pagination.total_pages > 1) {
           const pagEl = document.getElementById('pagination');
-          pagEl.style.display = 'flex';
+          pagEl.style.display = '';
           document.getElementById('page-info').textContent = `Page ${data.pagination.page} of ${data.pagination.total_pages}`;
           document.getElementById('prev-page').disabled = data.pagination.page <= 1;
           document.getElementById('next-page').disabled = data.pagination.page >= data.pagination.total_pages;
@@ -263,34 +616,45 @@
         if (data.checkins && data.checkins.length > 0) {
           checkinsEl.innerHTML = data.checkins.map(c => {
             const date = formatDate(c.created_at);
-            const urgencyClass = c.urgency === 'escalate' ? 'badge-danger'
-              : c.urgency === 'digest' ? 'badge-warning' : 'badge-neutral';
+            const initials = getInitials(c.patient_name);
+            const urgencyClass = c.urgency === 'escalate' ? 'pill-danger'
+              : c.urgency === 'digest' ? 'pill-warning' : 'pill-neutral';
             const urgencyLabel = c.urgency === 'escalate' ? 'Urgent'
               : c.urgency === 'digest' ? 'Review' : 'Logged';
 
-            return `<div class="visit-item">
-              <div>
-                <strong>${c.patient_name}</strong>
-                <br><span class="text-sm text-secondary">${c.summary || 'Check-in'} — ${date}</span>
+            return `<div class="visit-row">
+              <div class="visit-row-left">
+                <div class="patient-avatar">${initials}</div>
+                <div>
+                  <div class="patient-name">${c.patient_name}</div>
+                  <div class="patient-detail">${c.summary || 'Check-in'} &middot; ${date}</div>
+                </div>
               </div>
-              <span class="badge ${urgencyClass}">${urgencyLabel}</span>
+              <span class="status-pill ${urgencyClass}">${urgencyLabel}</span>
             </div>`;
           }).join('');
         } else {
-          checkinsEl.innerHTML = '<p class="text-secondary text-sm">No patient check-ins to review.</p>';
+          checkinsEl.innerHTML = '<div style="padding:1.5rem;text-align:center;"><p class="text-sm text-secondary" style="margin:0;">No patient check-ins to review.</p></div>';
         }
 
       } catch (err) {
         console.error('Dashboard error:', err);
-        document.getElementById('visits-list').innerHTML = '<p class="text-secondary text-sm">Unable to load data. Please try again.</p>';
+        document.getElementById('visits-list').innerHTML = '<div style="padding:2rem;text-align:center;"><p class="text-sm text-secondary" style="margin:0;">Unable to load data. Please try again.</p></div>';
         document.getElementById('checkins-list').innerHTML = '';
       }
     });
 
+    function getInitials(name) {
+      if (!name) return '?';
+      const parts = name.trim().split(/\s+/);
+      if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      return parts[0][0].toUpperCase();
+    }
+
     async function changePage(delta) {
       currentPage += delta;
       if (currentPage < 1) currentPage = 1;
-      window.location.reload(); // Simple reload with new page — for v1 this is fine
+      window.location.reload();
     }
 
     async function loadDemo() {
@@ -334,13 +698,11 @@
         feedback.textContent = result.message || 'Invitation sent!';
         feedback.style.color = 'var(--success)';
 
-        // Clear form
         document.getElementById('inv-email').value = '';
         document.getElementById('inv-first').value = '';
         document.getElementById('inv-last').value = '';
         document.getElementById('inv-date').value = '';
 
-        // Reload visits after short delay
         setTimeout(() => window.location.reload(), 1500);
       } catch (err) {
         feedback.textContent = err.message || 'Failed to send invitation.';

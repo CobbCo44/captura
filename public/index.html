@@ -7,313 +7,488 @@
   <link rel="stylesheet" href="/shared/styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
-    /* ── Foundation ── */
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #FAFBFC; color: #1A1A2E;
+      background: #09090B; color: #FAFAFA;
       line-height: 1.6; overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ── Scroll animations ── */
+    /* ── Animations ── */
     .reveal {
-      opacity: 0; transform: translateY(32px);
-      transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1);
+      opacity: 0; transform: translateY(40px);
+      transition: opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1);
     }
     .reveal.visible { opacity: 1; transform: translateY(0); }
-    .reveal-delay-1 { transition-delay: 0.1s; }
-    .reveal-delay-2 { transition-delay: 0.2s; }
-    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-d1 { transition-delay: 0.08s; }
+    .reveal-d2 { transition-delay: 0.16s; }
+    .reveal-d3 { transition-delay: 0.24s; }
+    .reveal-d4 { transition-delay: 0.32s; }
 
     /* ── Nav ── */
     .nav {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      padding: 0 1.5rem; height: 64px;
-      display: flex; align-items: center; justify-content: space-between;
-      background: rgba(250,251,252,0.8); backdrop-filter: blur(20px) saturate(180%);
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
-      border-bottom: 1px solid rgba(0,0,0,0.06);
-      transition: all 0.3s ease;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      height: 64px; padding: 0 2rem;
+      display: flex; align-items: center;
+      background: rgba(9,9,11,0.7);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      transition: background 0.3s;
     }
-    .nav.scrolled { box-shadow: 0 1px 12px rgba(0,0,0,0.06); }
+    .nav.scrolled { background: rgba(9,9,11,0.92); }
     .nav-inner {
       max-width: 1200px; width: 100%; margin: 0 auto;
       display: flex; align-items: center; justify-content: space-between;
     }
     .logo {
-      font-weight: 800; font-size: 1.25rem; letter-spacing: -0.03em;
-      text-decoration: none;
-      background: linear-gradient(135deg, #2B7A78, #3AAFA9);
+      font-weight: 800; font-size: 1.25rem; letter-spacing: -0.04em;
+      text-decoration: none; color: white;
+    }
+    .logo em {
+      font-style: normal;
+      background: linear-gradient(135deg, #34D399, #3AAFA9);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       background-clip: text;
     }
-    .nav-links { display: flex; gap: 2rem; align-items: center; }
+    .nav-links { display: flex; gap: 1.75rem; align-items: center; }
     .nav-links a {
-      font-size: 0.875rem; font-weight: 500; color: #6B7280;
+      font-size: 0.875rem; font-weight: 500; color: rgba(255,255,255,0.5);
       text-decoration: none; transition: color 0.2s;
     }
-    .nav-links a:hover { color: #2B7A78; }
-    .nav-cta {
-      padding: 0.5rem 1.25rem; border-radius: 8px; font-size: 0.875rem;
+    .nav-links a:hover { color: white; }
+    .nav-btn {
+      padding: 0.5rem 1.125rem; border-radius: 8px; font-size: 0.8125rem;
       font-weight: 600; text-decoration: none; transition: all 0.2s;
+      border: 1px solid rgba(255,255,255,0.1);
+      color: white;
     }
-    .nav-cta-ghost { color: #2B7A78; }
-    .nav-cta-solid {
-      background: #2B7A78; color: white !important;
-      -webkit-text-fill-color: white !important;
-      box-shadow: 0 1px 3px rgba(43,122,120,0.3);
+    .nav-btn:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.2); }
+    .nav-btn-primary {
+      background: white; color: #09090B !important; border-color: white;
     }
-    .nav-cta-solid:hover {
-      background: #17494D; box-shadow: 0 2px 8px rgba(43,122,120,0.4);
-      transform: translateY(-1px); color: white !important;
+    .nav-btn-primary:hover {
+      background: #E4E4E7; transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(255,255,255,0.1);
     }
 
     /* ── Hero ── */
     .hero {
-      min-height: 100vh; position: relative;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      padding: 7rem 1.5rem 5rem; text-align: center;
-      overflow: hidden;
+      position: relative; min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 8rem 1.5rem 4rem; text-align: center; overflow: hidden;
     }
-    .hero::before {
-      content: ''; position: absolute; inset: 0; z-index: 0;
-      background:
-        radial-gradient(ellipse 80% 60% at 50% -10%, rgba(58,175,169,0.15) 0%, transparent 70%),
-        radial-gradient(ellipse 60% 50% at 80% 50%, rgba(43,122,120,0.08) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 50% at 20% 60%, rgba(222,242,241,0.4) 0%, transparent 60%);
+    .hero-glow {
+      position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
+      width: 800px; height: 600px;
+      background: radial-gradient(ellipse at center,
+        rgba(52,211,153,0.15) 0%,
+        rgba(58,175,169,0.08) 30%,
+        transparent 70%);
+      pointer-events: none; z-index: 0;
     }
-    .hero-grid {
+    .hero-grid-bg {
       position: absolute; inset: 0; z-index: 0;
       background-image:
-        linear-gradient(rgba(43,122,120,0.03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(43,122,120,0.03) 1px, transparent 1px);
-      background-size: 60px 60px;
-      mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 20%, transparent 70%);
-      -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black 20%, transparent 70%);
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: radial-gradient(ellipse 60% 50% at 50% 30%, black, transparent 70%);
+      -webkit-mask-image: radial-gradient(ellipse 60% 50% at 50% 30%, black, transparent 70%);
     }
-    .hero-content { position: relative; z-index: 1; max-width: 720px; }
+    .hero-content { position: relative; z-index: 1; max-width: 800px; }
     .hero-badge {
       display: inline-flex; align-items: center; gap: 0.5rem;
-      background: white; border: 1px solid rgba(43,122,120,0.15);
-      padding: 0.4rem 1.125rem; border-radius: 999px;
-      font-size: 0.8125rem; font-weight: 500; color: #6B7280;
+      padding: 0.375rem 1rem; border-radius: 999px;
+      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+      font-size: 0.8125rem; font-weight: 500; color: rgba(255,255,255,0.6);
       margin-bottom: 2rem;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
     }
-    .hero-badge .pulse {
-      width: 8px; height: 8px; border-radius: 50%; background: #059669;
-      position: relative;
+    .hero-badge .dot {
+      width: 7px; height: 7px; border-radius: 50%; background: #34D399;
+      box-shadow: 0 0 8px rgba(52,211,153,0.5);
+      animation: dot-pulse 2.5s ease-in-out infinite;
     }
-    .hero-badge .pulse::after {
-      content: ''; position: absolute; inset: -3px;
-      border-radius: 50%; background: rgba(5,150,105,0.3);
-      animation: pulse-ring 2s ease-out infinite;
-    }
-    @keyframes pulse-ring {
-      0% { transform: scale(1); opacity: 1; }
-      100% { transform: scale(2.2); opacity: 0; }
+    @keyframes dot-pulse {
+      0%, 100% { opacity: 1; } 50% { opacity: 0.4; }
     }
     .hero h1 {
-      font-size: 3.5rem; font-weight: 800; line-height: 1.08;
-      letter-spacing: -0.035em; margin-bottom: 1.5rem;
-      color: #1A1A2E;
+      font-size: 4.25rem; font-weight: 900; line-height: 1.05;
+      letter-spacing: -0.045em; margin-bottom: 1.5rem; color: white;
     }
-    .hero h1 .gradient {
-      background: linear-gradient(135deg, #2B7A78 0%, #3AAFA9 50%, #2B7A78 100%);
-      background-size: 200% auto;
+    .hero h1 .accent {
+      background: linear-gradient(135deg, #34D399 0%, #3AAFA9 60%, #2B7A78 100%);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       background-clip: text;
-      animation: shimmer 4s ease-in-out infinite;
-    }
-    @keyframes shimmer {
-      0%, 100% { background-position: 0% center; }
-      50% { background-position: 100% center; }
     }
     .hero-sub {
-      font-size: 1.25rem; color: #6B7280; line-height: 1.7;
-      max-width: 560px; margin: 0 auto 2.5rem; font-weight: 400;
+      font-size: 1.1875rem; color: rgba(255,255,255,0.5); line-height: 1.75;
+      max-width: 580px; margin: 0 auto 2.5rem; font-weight: 400;
     }
     .hero-ctas {
-      display: flex; gap: 0.875rem; flex-wrap: wrap; justify-content: center;
+      display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap;
+      margin-bottom: 3rem;
     }
-    .hero-ctas .btn-hero {
-      padding: 0.875rem 2rem; border-radius: 10px; font-size: 1rem;
+    .btn-main {
+      padding: 0.875rem 2rem; border-radius: 10px; font-size: 0.9375rem;
       font-weight: 600; text-decoration: none; display: inline-flex;
       align-items: center; gap: 0.5rem; transition: all 0.25s ease;
     }
-    .btn-hero-primary {
-      background: linear-gradient(135deg, #2B7A78, #3AAFA9);
-      color: white; box-shadow: 0 4px 16px rgba(43,122,120,0.3), 0 1px 3px rgba(43,122,120,0.2);
+    .btn-main-primary {
+      background: white; color: #09090B;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 4px 20px rgba(255,255,255,0.08);
     }
-    .btn-hero-primary:hover {
+    .btn-main-primary:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 28px rgba(43,122,120,0.35), 0 2px 6px rgba(43,122,120,0.2);
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.2), 0 8px 32px rgba(255,255,255,0.12);
     }
-    .btn-hero-outline {
-      background: white; color: #2B7A78;
-      border: 1.5px solid rgba(43,122,120,0.25);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    .btn-main-ghost {
+      color: rgba(255,255,255,0.7);
+      border: 1px solid rgba(255,255,255,0.12);
     }
-    .btn-hero-outline:hover {
-      border-color: #2B7A78; transform: translateY(-2px);
-      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    .btn-main-ghost:hover {
+      color: white; border-color: rgba(255,255,255,0.3);
+      transform: translateY(-2px);
     }
-    .btn-arrow {
-      transition: transform 0.2s; display: inline-block;
-    }
-    .btn-hero-primary:hover .btn-arrow { transform: translateX(3px); }
-    .hero-proof {
-      margin-top: 3.5rem; font-size: 0.8125rem; color: #9CA3AF;
-      display: flex; align-items: center; gap: 0.75rem; justify-content: center;
-      flex-wrap: wrap;
-    }
-    .hero-proof svg { flex-shrink: 0; }
+    .btn-arrow { transition: transform 0.2s; }
+    .btn-main-primary:hover .btn-arrow { transform: translateX(3px); }
 
-    /* ── Sections shared ── */
-    .section { padding: 6rem 1.5rem; }
+    /* Hero product mockup */
+    .hero-mockup {
+      position: relative; z-index: 1; max-width: 920px; width: 100%; margin: 0 auto;
+    }
+    .mockup-browser {
+      background: #18181B; border-radius: 16px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.05),
+        0 20px 60px rgba(0,0,0,0.5),
+        0 0 120px rgba(52,211,153,0.06);
+    }
+    .mockup-bar {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.75rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.02);
+    }
+    .mockup-dots { display: flex; gap: 6px; }
+    .mockup-dots span {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+    }
+    .mockup-url {
+      flex: 1; text-align: center; font-size: 0.75rem;
+      color: rgba(255,255,255,0.25); font-weight: 500;
+    }
+    .mockup-body { padding: 1.5rem; }
+
+    /* Fake dashboard inside mockup */
+    .dash-mock {
+      display: grid; grid-template-columns: 220px 1fr; gap: 1rem; min-height: 340px;
+    }
+    .dash-sidebar {
+      background: rgba(255,255,255,0.03); border-radius: 10px;
+      padding: 1rem; border: 1px solid rgba(255,255,255,0.05);
+    }
+    .dash-sidebar-logo {
+      font-weight: 800; font-size: 0.875rem; color: #34D399;
+      margin-bottom: 1.25rem; letter-spacing: -0.02em;
+    }
+    .dash-sidebar-item {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.5rem 0.625rem; border-radius: 6px;
+      font-size: 0.75rem; color: rgba(255,255,255,0.35);
+      margin-bottom: 0.25rem; transition: all 0.2s;
+    }
+    .dash-sidebar-item.active {
+      background: rgba(52,211,153,0.1); color: #34D399;
+    }
+    .dash-sidebar-item svg { width: 14px; height: 14px; opacity: 0.6; }
+    .dash-main { display: flex; flex-direction: column; gap: 1rem; }
+    .dash-header {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .dash-header h3 {
+      font-size: 1rem; font-weight: 700; color: white; letter-spacing: -0.02em;
+    }
+    .dash-header-badge {
+      font-size: 0.6875rem; font-weight: 600; padding: 0.25rem 0.625rem;
+      background: rgba(52,211,153,0.12); color: #34D399;
+      border-radius: 999px;
+    }
+    .dash-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+    .dash-card {
+      background: rgba(255,255,255,0.03); border-radius: 10px;
+      padding: 1rem; border: 1px solid rgba(255,255,255,0.05);
+    }
+    .dash-card-label {
+      font-size: 0.6875rem; color: rgba(255,255,255,0.35); font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.375rem;
+    }
+    .dash-card-value {
+      font-size: 1.5rem; font-weight: 800; color: white; letter-spacing: -0.03em;
+    }
+    .dash-card-value.green { color: #34D399; }
+    .dash-patient-list { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+    .dash-patient {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.625rem 0.75rem; border-radius: 8px;
+      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04);
+    }
+    .dash-patient-info { display: flex; align-items: center; gap: 0.625rem; }
+    .dash-patient-avatar {
+      width: 28px; height: 28px; border-radius: 6px;
+      background: rgba(255,255,255,0.06);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.6875rem; font-weight: 700; color: rgba(255,255,255,0.4);
+    }
+    .dash-patient-name { font-size: 0.8125rem; font-weight: 600; color: white; }
+    .dash-patient-detail { font-size: 0.6875rem; color: rgba(255,255,255,0.3); }
+    .dash-patient-status {
+      font-size: 0.625rem; font-weight: 700; padding: 0.2rem 0.5rem;
+      border-radius: 999px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .status-ready { background: rgba(52,211,153,0.12); color: #34D399; }
+    .status-pending { background: rgba(250,204,21,0.12); color: #FACC15; }
+    .status-scheduled { background: rgba(96,165,250,0.12); color: #60A5FA; }
+
+    /* ── Logos / credibility bar ── */
+    .logos-bar {
+      padding: 3rem 1.5rem 1rem; text-align: center;
+      position: relative; z-index: 1;
+    }
+    .logos-bar p {
+      font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.12em; color: rgba(255,255,255,0.2); margin-bottom: 1.5rem;
+    }
+    .logos-row {
+      display: flex; align-items: center; justify-content: center;
+      gap: 3rem; flex-wrap: wrap; opacity: 0.3;
+    }
+    .logos-row span {
+      font-size: 1rem; font-weight: 700; letter-spacing: -0.02em;
+      color: white;
+    }
+
+    /* ── Section shared ── */
+    .section { padding: 7rem 1.5rem; }
     .section-inner { max-width: 1100px; margin: 0 auto; }
     .section-tag {
-      display: inline-block; font-size: 0.75rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.1em; color: #3AAFA9;
+      display: inline-block; font-size: 0.6875rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.12em; color: #34D399;
       margin-bottom: 1rem;
     }
     .section-title {
-      font-size: 2.25rem; font-weight: 800; letter-spacing: -0.03em;
-      line-height: 1.15; margin-bottom: 1rem; color: #1A1A2E;
+      font-size: 2.75rem; font-weight: 900; letter-spacing: -0.04em;
+      line-height: 1.1; margin-bottom: 1rem; color: white;
     }
-    .section-subtitle {
-      font-size: 1.125rem; color: #6B7280; line-height: 1.7;
-      max-width: 560px; font-weight: 400;
+    .section-desc {
+      font-size: 1.125rem; color: rgba(255,255,255,0.45); line-height: 1.75;
+      max-width: 540px;
     }
-    .section-subtitle.centered { margin: 0 auto; text-align: center; }
+    .section-desc.centered { margin: 0 auto; text-align: center; }
+    .section-header-center { text-align: center; }
 
     /* ── Positioning ── */
-    .positioning { background: white; border-top: 1px solid rgba(0,0,0,0.04); }
+    .positioning {
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
     .positioning .section-inner { text-align: center; }
-    .positioning .section-title { max-width: 640px; margin-left: auto; margin-right: auto; }
     .positioning-lead {
-      font-size: 1.25rem; color: #2B7A78; font-weight: 600;
-      margin-bottom: 0.75rem;
+      font-size: 1.25rem; color: #34D399; font-weight: 600; margin-bottom: 0.5rem;
     }
     .positioning-body {
-      font-size: 1.0625rem; color: #6B7280; line-height: 1.7;
+      font-size: 1.0625rem; color: rgba(255,255,255,0.4); line-height: 1.75;
       max-width: 640px; margin: 0 auto 3rem;
     }
-    .positioning-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem;
+    .pos-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
       text-align: left;
     }
     .pos-card {
-      padding: 1.75rem; border-radius: 16px;
-      background: linear-gradient(135deg, #FAFBFC 0%, #F3F4F6 100%);
-      border: 1px solid rgba(0,0,0,0.05);
-      transition: all 0.3s ease;
+      padding: 2rem; border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: all 0.35s ease;
     }
     .pos-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(52,211,153,0.2);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 32px rgba(52,211,153,0.06);
     }
     .pos-icon {
       width: 44px; height: 44px; border-radius: 12px;
-      background: linear-gradient(135deg, #2B7A78, #3AAFA9);
+      background: linear-gradient(135deg, rgba(52,211,153,0.15), rgba(52,211,153,0.05));
+      border: 1px solid rgba(52,211,153,0.15);
       display: flex; align-items: center; justify-content: center;
-      margin-bottom: 1rem;
+      margin-bottom: 1.25rem; color: #34D399;
     }
-    .pos-icon svg { color: white; }
     .pos-card strong {
-      display: block; font-size: 1rem; font-weight: 700;
-      margin-bottom: 0.375rem; color: #1A1A2E;
+      display: block; font-size: 1.0625rem; font-weight: 700;
+      margin-bottom: 0.5rem; color: white;
     }
     .pos-card span {
-      font-size: 0.875rem; color: #6B7280; line-height: 1.6;
+      font-size: 0.875rem; color: rgba(255,255,255,0.4); line-height: 1.65;
     }
 
     /* ── Problem ── */
-    .problem { background: #FAFBFC; }
+    .problem { border-top: 1px solid rgba(255,255,255,0.05); }
     .problem .section-inner { text-align: center; }
-    .problem .section-title { max-width: 560px; margin-left: auto; margin-right: auto; }
     .problem-grid {
-      max-width: 960px; margin: 3rem auto 0;
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;
+      max-width: 960px; margin: 3.5rem auto 0;
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;
     }
     .problem-card {
-      text-align: left; padding: 2rem;
-      background: white; border-radius: 16px;
-      border: 1px solid rgba(0,0,0,0.06);
-      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-      transition: all 0.3s ease; position: relative; overflow: hidden;
+      text-align: left; padding: 2.25rem; border-radius: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: all 0.35s ease; position: relative;
     }
-    .problem-card::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-      background: linear-gradient(90deg, #2B7A78, #3AAFA9);
-      opacity: 0; transition: opacity 0.3s;
-    }
-    .problem-card:hover::before { opacity: 1; }
     .problem-card:hover {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(255,255,255,0.1);
       transform: translateY(-4px);
-      box-shadow: 0 12px 32px rgba(0,0,0,0.08);
     }
     .problem-num {
-      font-size: 2.5rem; font-weight: 800; letter-spacing: -0.03em;
-      background: linear-gradient(135deg, #2B7A78, #3AAFA9);
+      font-size: 3.5rem; font-weight: 900; letter-spacing: -0.04em;
+      line-height: 1; margin-bottom: 0.75rem;
+      background: linear-gradient(135deg, #34D399, #3AAFA9);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text; margin-bottom: 0.5rem;
+      background-clip: text;
     }
     .problem-card h4 {
-      font-size: 1rem; font-weight: 700; margin-bottom: 0.5rem; color: #1A1A2E;
+      font-size: 1rem; font-weight: 700; margin-bottom: 0.625rem;
+      color: white;
     }
     .problem-card p {
-      font-size: 0.875rem; color: #6B7280; line-height: 1.6; margin: 0;
+      font-size: 0.875rem; color: rgba(255,255,255,0.4); line-height: 1.65; margin: 0;
     }
 
-    /* ── Features ── */
-    .features { background: white; border-top: 1px solid rgba(0,0,0,0.04); }
-    .features .section-inner { text-align: center; }
-    .feature-rows { max-width: 900px; margin: 3rem auto 0; text-align: left; }
-    .feature-row {
-      display: flex; gap: 3rem; align-items: center;
-      padding: 2.5rem 0;
+    /* ── Bento Features ── */
+    .features { border-top: 1px solid rgba(255,255,255,0.05); }
+    .bento {
+      max-width: 1100px; margin: 3.5rem auto 0;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: auto auto;
+      gap: 1rem;
     }
-    .feature-row + .feature-row { border-top: 1px solid rgba(0,0,0,0.05); }
-    .feature-visual {
-      width: 200px; height: 150px; flex-shrink: 0;
-      border-radius: 20px; display: flex; align-items: center; justify-content: center;
-      position: relative; overflow: hidden;
+    .bento-card {
+      border-radius: 20px; padding: 2.25rem;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: all 0.35s ease;
+      overflow: hidden; position: relative;
     }
-    .feature-visual::before {
-      content: ''; position: absolute; inset: 0;
-      background: linear-gradient(135deg, rgba(43,122,120,0.08), rgba(58,175,169,0.12));
-      border-radius: 20px;
+    .bento-card:hover {
+      background: rgba(255,255,255,0.05);
+      border-color: rgba(52,211,153,0.15);
+      transform: translateY(-2px);
     }
-    .feature-visual svg { position: relative; z-index: 1; color: #2B7A78; }
-    .feature-text { flex: 1; }
-    .feature-text h3 {
+    .bento-card h3 {
       font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem;
-      letter-spacing: -0.01em;
+      color: white; letter-spacing: -0.02em;
     }
-    .feature-text p {
-      font-size: 0.9375rem; color: #6B7280; line-height: 1.7; margin: 0 0 0.75rem;
+    .bento-card > p {
+      font-size: 0.9375rem; color: rgba(255,255,255,0.4); line-height: 1.7;
+      margin-bottom: 1.5rem;
     }
-    .feature-tag {
+    .bento-tag {
       display: inline-block; font-size: 0.6875rem; font-weight: 700;
       text-transform: uppercase; letter-spacing: 0.08em;
-      color: #3AAFA9; background: rgba(58,175,169,0.08);
+      color: #34D399; background: rgba(52,211,153,0.1);
+      border: 1px solid rgba(52,211,153,0.15);
       padding: 0.25rem 0.75rem; border-radius: 999px;
     }
 
+    /* Bento mini-previews */
+    .bento-preview {
+      margin-top: 1.5rem; border-radius: 12px; overflow: hidden;
+      background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.04);
+    }
+    /* Intake preview */
+    .intake-preview {
+      padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.5rem;
+    }
+    .intake-msg {
+      padding: 0.5rem 0.75rem; border-radius: 10px;
+      font-size: 0.75rem; line-height: 1.5; max-width: 85%;
+    }
+    .intake-msg.bot {
+      background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7);
+      align-self: flex-start; border-bottom-left-radius: 4px;
+    }
+    .intake-msg.user {
+      background: linear-gradient(135deg, #2B7A78, #34D399);
+      color: white; align-self: flex-end; border-bottom-right-radius: 4px;
+    }
+    /* Snapshot preview */
+    .snapshot-preview { padding: 1.25rem; }
+    .snap-section {
+      margin-bottom: 0.875rem;
+    }
+    .snap-section:last-child { margin-bottom: 0; }
+    .snap-label {
+      font-size: 0.625rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: #34D399; margin-bottom: 0.25rem;
+    }
+    .snap-text {
+      font-size: 0.75rem; color: rgba(255,255,255,0.5); line-height: 1.55;
+    }
+    .snap-divider {
+      height: 1px; background: rgba(255,255,255,0.04); margin: 0.75rem 0;
+    }
+    /* Checkin preview */
+    .checkin-preview { padding: 1.25rem; display: flex; flex-direction: column; gap: 0.625rem; }
+    .checkin-item {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.5rem 0.75rem; border-radius: 8px;
+      background: rgba(255,255,255,0.03);
+    }
+    .checkin-urgency {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .checkin-urgency.green { background: #34D399; box-shadow: 0 0 6px rgba(52,211,153,0.4); }
+    .checkin-urgency.yellow { background: #FACC15; box-shadow: 0 0 6px rgba(250,204,21,0.4); }
+    .checkin-urgency.red { background: #F87171; box-shadow: 0 0 6px rgba(248,113,113,0.4); }
+    .checkin-text { font-size: 0.75rem; color: rgba(255,255,255,0.5); }
+    .checkin-time { font-size: 0.625rem; color: rgba(255,255,255,0.2); margin-left: auto; white-space: nowrap; }
+    /* Record preview */
+    .record-preview { padding: 1.25rem; }
+    .record-timeline { display: flex; flex-direction: column; gap: 0.5rem; }
+    .record-entry {
+      display: flex; align-items: flex-start; gap: 0.75rem;
+    }
+    .record-dot-col {
+      display: flex; flex-direction: column; align-items: center; gap: 0;
+      padding-top: 0.25rem;
+    }
+    .record-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+      background: rgba(52,211,153,0.4); border: 1.5px solid #34D399;
+    }
+    .record-line {
+      width: 1px; height: 24px; background: rgba(255,255,255,0.06);
+    }
+    .record-info { flex: 1; }
+    .record-date { font-size: 0.625rem; color: rgba(255,255,255,0.2); margin-bottom: 0.125rem; }
+    .record-title { font-size: 0.75rem; color: rgba(255,255,255,0.6); font-weight: 600; }
+
     /* ── Mira ── */
     .mira {
-      background: linear-gradient(160deg, #0F3D3E 0%, #1A5C5A 40%, #2B7A78 100%);
-      color: white; position: relative; overflow: hidden;
+      position: relative; overflow: hidden;
+      border-top: 1px solid rgba(255,255,255,0.05);
     }
     .mira::before {
       content: ''; position: absolute; inset: 0;
       background:
-        radial-gradient(ellipse 50% 60% at 80% 20%, rgba(58,175,169,0.15) 0%, transparent 70%),
-        radial-gradient(ellipse 40% 40% at 10% 80%, rgba(222,242,241,0.08) 0%, transparent 60%);
+        radial-gradient(ellipse 50% 50% at 80% 30%, rgba(52,211,153,0.06) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 40% at 10% 70%, rgba(58,175,169,0.04) 0%, transparent 60%);
+      pointer-events: none;
     }
     .mira .section-inner {
       position: relative; z-index: 1;
@@ -323,264 +498,275 @@
     .mira-badge {
       display: inline-flex; align-items: center; gap: 0.375rem;
       padding: 0.375rem 0.875rem; border-radius: 999px;
-      background: rgba(255,255,255,0.1); backdrop-filter: blur(8px);
-      font-size: 0.8125rem; font-weight: 600; margin-bottom: 1.25rem;
-      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(52,211,153,0.08);
+      border: 1px solid rgba(52,211,153,0.15);
+      font-size: 0.75rem; font-weight: 700; color: #34D399;
+      margin-bottom: 1.25rem; text-transform: uppercase; letter-spacing: 0.08em;
     }
-    .mira-badge svg { opacity: 0.9; }
     .mira h2 {
-      font-size: 2.25rem; font-weight: 800; color: white;
-      letter-spacing: -0.03em; margin-bottom: 1rem;
+      font-size: 2.75rem; font-weight: 900; color: white;
+      letter-spacing: -0.04em; margin-bottom: 1rem; line-height: 1.1;
     }
     .mira-intro {
-      font-size: 1.0625rem; opacity: 0.8; line-height: 1.7; margin-bottom: 2rem;
+      font-size: 1.0625rem; color: rgba(255,255,255,0.45); line-height: 1.75;
+      margin-bottom: 2rem;
     }
     .mira-examples {
-      display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.75rem;
+      display: flex; flex-direction: column; gap: 0.625rem; margin-bottom: 1.75rem;
     }
     .mira-example {
       padding: 1rem 1.25rem; border-radius: 12px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.08);
-      backdrop-filter: blur(4px);
-      transition: all 0.25s ease;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: all 0.3s ease; cursor: default;
     }
     .mira-example:hover {
-      background: rgba(255,255,255,0.1);
-      transform: translateX(4px);
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(52,211,153,0.2);
+      transform: translateX(6px);
     }
     .mira-q {
       display: block; font-weight: 600; font-size: 0.9375rem;
-      color: #DEF2F1; margin-bottom: 0.25rem;
+      color: #34D399; margin-bottom: 0.25rem;
     }
-    .mira-a { font-size: 0.8125rem; opacity: 0.65; line-height: 1.5; }
+    .mira-a {
+      font-size: 0.8125rem; color: rgba(255,255,255,0.4); line-height: 1.5;
+    }
     .mira-note {
-      font-size: 0.8125rem; opacity: 0.5; line-height: 1.6;
+      font-size: 0.8125rem; color: rgba(255,255,255,0.25); line-height: 1.6;
     }
 
-    /* Mira chat preview */
-    .mira-visual { flex: 0 0 380px; }
+    /* Mira chat mockup */
+    .mira-visual { flex: 0 0 400px; }
     .mira-chat {
-      background: white; border-radius: 20px; overflow: hidden;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.1);
-      color: #1A1A2E;
+      background: #18181B; border-radius: 20px; overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.04),
+        0 24px 64px rgba(0,0,0,0.4),
+        0 0 80px rgba(52,211,153,0.04);
     }
     .mira-chat-header {
       display: flex; align-items: center; gap: 0.75rem;
-      padding: 1rem 1.25rem; border-bottom: 1px solid #E5E7EB;
-      background: #FAFBFC;
+      padding: 1rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.02);
     }
     .mira-avatar {
       width: 36px; height: 36px; border-radius: 10px;
-      background: linear-gradient(135deg, #2B7A78, #3AAFA9);
-      color: white; display: flex; align-items: center; justify-content: center;
-      font-weight: 800; font-size: 0.8125rem;
+      background: linear-gradient(135deg, #34D399, #3AAFA9);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.8125rem; color: #09090B;
     }
-    .mira-chat-header-text strong {
-      font-size: 0.875rem; display: block; font-weight: 700;
+    .mira-chat-info strong {
+      font-size: 0.875rem; display: block; font-weight: 700; color: white;
     }
-    .mira-chat-header-text span {
-      font-size: 0.6875rem; color: #059669; font-weight: 500;
+    .mira-chat-info span {
+      font-size: 0.6875rem; color: #34D399; font-weight: 500;
+      display: flex; align-items: center; gap: 0.25rem;
+    }
+    .mira-chat-info .online-dot {
+      width: 5px; height: 5px; border-radius: 50%; background: #34D399;
     }
     .mira-msgs {
       padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.625rem;
-      min-height: 220px;
+      min-height: 260px;
     }
     .mira-msg {
       padding: 0.625rem 0.875rem; border-radius: 14px;
-      font-size: 0.8125rem; line-height: 1.5; max-width: 88%;
-      animation: msgFadeIn 0.4s ease both;
+      font-size: 0.8125rem; line-height: 1.55; max-width: 90%;
+      animation: msgIn 0.5s cubic-bezier(0.16,1,0.3,1) both;
     }
     .mira-msg.bot {
-      background: #F3F4F6; align-self: flex-start;
-      border-bottom-left-radius: 6px;
+      background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.75);
+      align-self: flex-start; border-bottom-left-radius: 6px;
     }
     .mira-msg.user {
-      background: linear-gradient(135deg, #2B7A78, #3AAFA9);
-      color: white; align-self: flex-end;
-      border-bottom-right-radius: 6px;
+      background: linear-gradient(135deg, #2B7A78, #34D399);
+      color: white; align-self: flex-end; border-bottom-right-radius: 6px;
     }
-    .mira-msg:nth-child(1) { animation-delay: 0.2s; }
-    .mira-msg:nth-child(2) { animation-delay: 0.8s; }
-    .mira-msg:nth-child(3) { animation-delay: 1.4s; }
-    @keyframes msgFadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+    .mira-msg:nth-child(1) { animation-delay: 0.3s; }
+    .mira-msg:nth-child(2) { animation-delay: 1s; }
+    .mira-msg:nth-child(3) { animation-delay: 1.6s; }
+    @keyframes msgIn {
+      from { opacity: 0; transform: translateY(10px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
     .mira-typing {
-      display: flex; gap: 4px; padding: 0.625rem 0.875rem;
-      background: #F3F4F6; border-radius: 14px;
+      display: flex; gap: 5px; padding: 0.625rem 0.875rem;
+      background: rgba(255,255,255,0.05); border-radius: 14px;
       align-self: flex-start; border-bottom-left-radius: 6px;
-      animation: msgFadeIn 0.4s ease 2s both;
+      animation: msgIn 0.5s cubic-bezier(0.16,1,0.3,1) 2.2s both;
     }
     .mira-typing span {
-      width: 6px; height: 6px; border-radius: 50%; background: #9CA3AF;
-      animation: typing-dot 1.4s ease-in-out infinite;
+      width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.25);
+      animation: typing 1.4s ease-in-out infinite;
     }
     .mira-typing span:nth-child(2) { animation-delay: 0.2s; }
     .mira-typing span:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes typing-dot {
-      0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-      30% { transform: translateY(-4px); opacity: 1; }
+    @keyframes typing {
+      0%, 60%, 100% { transform: translateY(0); opacity: 0.3; }
+      30% { transform: translateY(-5px); opacity: 1; }
     }
     .mira-chat-input {
       display: flex; align-items: center; gap: 0.5rem;
-      padding: 0.75rem 1.25rem; border-top: 1px solid #E5E7EB;
-      background: #FAFBFC;
+      padding: 0.875rem 1.25rem; border-top: 1px solid rgba(255,255,255,0.06);
+      background: rgba(255,255,255,0.02);
     }
     .mira-chat-input span {
-      font-size: 0.8125rem; color: #9CA3AF;
+      font-size: 0.8125rem; color: rgba(255,255,255,0.2);
     }
 
-    /* ── How it works ── */
-    .how { background: white; border-top: 1px solid rgba(0,0,0,0.04); }
+    /* ── How ── */
+    .how { border-top: 1px solid rgba(255,255,255,0.05); }
     .how .section-inner { text-align: center; }
     .how-grid {
-      max-width: 960px; margin: 3rem auto 0;
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem;
+      max-width: 960px; margin: 3.5rem auto 0;
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem;
     }
     .how-step { text-align: center; position: relative; }
     .how-step::after {
       content: ''; position: absolute; top: 28px; left: calc(50% + 32px);
-      width: calc(100% - 64px); height: 2px;
-      background: linear-gradient(90deg, #3AAFA9, rgba(58,175,169,0.2));
+      width: calc(100% - 64px); height: 1px;
+      background: linear-gradient(90deg, rgba(52,211,153,0.3), rgba(52,211,153,0.05));
     }
     .how-step:last-child::after { display: none; }
     .how-num {
-      width: 56px; height: 56px; border-radius: 16px;
-      background: linear-gradient(135deg, #2B7A78, #3AAFA9);
-      color: white; display: flex; align-items: center; justify-content: center;
+      width: 56px; height: 56px; border-radius: 14px;
+      background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.2);
+      color: #34D399; display: flex; align-items: center; justify-content: center;
       font-weight: 800; font-size: 1.125rem;
       margin: 0 auto 1.25rem; position: relative; z-index: 1;
-      box-shadow: 0 4px 12px rgba(43,122,120,0.25);
     }
     .how-step h4 {
-      font-size: 1rem; font-weight: 700; margin-bottom: 0.375rem;
+      font-size: 1rem; font-weight: 700; margin-bottom: 0.375rem; color: white;
     }
     .how-step p {
-      font-size: 0.8125rem; color: #6B7280; line-height: 1.6; margin: 0;
+      font-size: 0.8125rem; color: rgba(255,255,255,0.4); line-height: 1.6; margin: 0;
     }
 
     /* ── Trust ── */
-    .trust { background: #FAFBFC; }
+    .trust { border-top: 1px solid rgba(255,255,255,0.05); }
     .trust .section-inner { text-align: center; }
     .trust-grid {
-      max-width: 960px; margin: 3rem auto 0;
-      display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.25rem;
+      max-width: 960px; margin: 3.5rem auto 0;
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;
     }
     .trust-card {
       text-align: left; padding: 2rem; border-radius: 16px;
-      background: white; border: 1px solid rgba(0,0,0,0.06);
-      transition: all 0.3s ease;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: all 0.35s ease;
     }
     .trust-card:hover {
+      background: rgba(255,255,255,0.05);
       transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
     }
     .trust-icon {
-      width: 48px; height: 48px; border-radius: 14px;
+      width: 44px; height: 44px; border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
       margin-bottom: 1rem;
     }
-    .trust-icon-lock { background: linear-gradient(135deg, rgba(43,122,120,0.1), rgba(58,175,169,0.15)); color: #2B7A78; }
-    .trust-icon-shield { background: linear-gradient(135deg, rgba(5,150,105,0.1), rgba(5,150,105,0.15)); color: #059669; }
-    .trust-icon-info { background: linear-gradient(135deg, rgba(217,119,6,0.1), rgba(217,119,6,0.15)); color: #D97706; }
-    .trust-icon-eye { background: linear-gradient(135deg, rgba(99,102,241,0.1), rgba(99,102,241,0.15)); color: #6366F1; }
+    .ti-teal { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.15); color: #34D399; }
+    .ti-green { background: rgba(74,222,128,0.1); border: 1px solid rgba(74,222,128,0.15); color: #4ADE80; }
+    .ti-amber { background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.15); color: #FBBF24; }
+    .ti-purple { background: rgba(167,139,250,0.1); border: 1px solid rgba(167,139,250,0.15); color: #A78BFA; }
     .trust-card h4 {
-      font-size: 1rem; font-weight: 700; margin-bottom: 0.375rem;
+      font-size: 1rem; font-weight: 700; margin-bottom: 0.375rem; color: white;
     }
     .trust-card p {
-      font-size: 0.875rem; color: #6B7280; line-height: 1.6; margin: 0;
+      font-size: 0.875rem; color: rgba(255,255,255,0.4); line-height: 1.65; margin: 0;
     }
 
     /* ── Testimonial ── */
     .testimonial {
-      background: white; border-top: 1px solid rgba(0,0,0,0.04);
-      padding: 5rem 1.5rem;
+      padding: 6rem 1.5rem;
+      border-top: 1px solid rgba(255,255,255,0.05);
     }
     .testimonial-inner {
-      max-width: 680px; margin: 0 auto; text-align: center;
+      max-width: 700px; margin: 0 auto; text-align: center;
     }
-    .testimonial-quote-mark {
-      width: 48px; height: 48px; border-radius: 14px;
-      background: linear-gradient(135deg, rgba(43,122,120,0.08), rgba(58,175,169,0.12));
-      display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 1.5rem; color: #2B7A78;
+    .testimonial-mark {
+      font-size: 4rem; line-height: 1; color: rgba(52,211,153,0.2);
+      margin-bottom: 1.5rem; font-weight: 900;
     }
     .testimonial blockquote {
-      font-size: 1.375rem; line-height: 1.65; font-weight: 500;
-      color: #1A1A2E; margin: 0 0 2rem; padding: 0;
-      border: none; letter-spacing: -0.01em;
-    }
-    .testimonial-author {
-      display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
+      font-size: 1.5rem; line-height: 1.6; font-weight: 500;
+      color: rgba(255,255,255,0.8); margin: 0 0 2rem; padding: 0;
+      border: none; letter-spacing: -0.02em;
     }
     .testimonial-author strong {
-      font-size: 0.9375rem; font-weight: 700; color: #1A1A2E;
+      display: block; font-size: 0.9375rem; font-weight: 700; color: white;
     }
     .testimonial-author span {
-      font-size: 0.8125rem; color: #9CA3AF; font-weight: 500;
+      font-size: 0.8125rem; color: rgba(255,255,255,0.3); font-weight: 500;
     }
 
     /* ── Bottom CTA ── */
-    .doc-cta {
-      padding: 6rem 1.5rem; text-align: center; position: relative; overflow: hidden;
+    .final-cta {
+      padding: 8rem 1.5rem; text-align: center; position: relative; overflow: hidden;
     }
-    .doc-cta::before {
+    .final-cta::before {
       content: ''; position: absolute; inset: 0;
       background:
-        radial-gradient(ellipse 60% 50% at 50% 100%, rgba(222,242,241,0.5) 0%, transparent 60%),
-        radial-gradient(ellipse 40% 40% at 20% 30%, rgba(43,122,120,0.06) 0%, transparent 50%);
+        radial-gradient(ellipse 50% 50% at 50% 80%, rgba(52,211,153,0.1) 0%, transparent 70%);
+      pointer-events: none;
     }
-    .doc-cta-inner { position: relative; z-index: 1; max-width: 560px; margin: 0 auto; }
-    .doc-cta h2 {
-      font-size: 2.25rem; font-weight: 800; letter-spacing: -0.03em;
-      margin-bottom: 1rem;
+    .final-cta-inner { position: relative; z-index: 1; max-width: 560px; margin: 0 auto; }
+    .final-cta h2 {
+      font-size: 3rem; font-weight: 900; letter-spacing: -0.04em;
+      margin-bottom: 1rem; color: white; line-height: 1.1;
     }
-    .doc-cta p {
-      font-size: 1.0625rem; color: #6B7280; line-height: 1.7; margin-bottom: 2rem;
+    .final-cta p {
+      font-size: 1.0625rem; color: rgba(255,255,255,0.4); line-height: 1.75;
+      margin-bottom: 2.5rem;
     }
-    .doc-cta .btn-hero-primary { display: inline-flex; }
 
     /* ── Footer ── */
     .footer {
       padding: 2.5rem 1.5rem; text-align: center;
-      border-top: 1px solid rgba(0,0,0,0.06);
-      background: white;
+      border-top: 1px solid rgba(255,255,255,0.05);
     }
     .footer p {
-      font-size: 0.8125rem; color: #9CA3AF; margin: 0 0 0.5rem;
+      font-size: 0.8125rem; color: rgba(255,255,255,0.2); margin: 0 0 0.5rem;
       font-weight: 500;
     }
     .footer-links a {
-      font-size: 0.8125rem; color: #9CA3AF; text-decoration: none;
+      font-size: 0.8125rem; color: rgba(255,255,255,0.2); text-decoration: none;
       margin: 0 0.75rem; transition: color 0.2s;
     }
-    .footer-links a:hover { color: #2B7A78; }
+    .footer-links a:hover { color: #34D399; }
 
     /* ── Mobile ── */
     @media (max-width: 768px) {
-      .hero { padding: 6rem 1.25rem 4rem; }
-      .hero h1 { font-size: 2.25rem; }
+      .hero { padding: 6.5rem 1.25rem 3rem; }
+      .hero h1 { font-size: 2.5rem; }
       .hero-sub { font-size: 1.0625rem; }
-      .section { padding: 4rem 1.25rem; }
-      .section-title { font-size: 1.75rem; }
-      .positioning-grid,
-      .problem-grid { grid-template-columns: 1fr; }
-      .feature-row { flex-direction: column; gap: 1.25rem; }
-      .feature-visual { width: 100%; height: 120px; }
+      .dash-mock { grid-template-columns: 1fr; }
+      .dash-sidebar { display: none; }
+      .dash-cards { grid-template-columns: 1fr 1fr; }
+      .section { padding: 5rem 1.25rem; }
+      .section-title { font-size: 2rem; }
+      .pos-grid, .problem-grid { grid-template-columns: 1fr; }
+      .bento { grid-template-columns: 1fr; }
       .mira .section-inner { flex-direction: column; }
-      .mira-visual { flex: none; width: 100%; max-width: 380px; }
-      .mira h2 { font-size: 1.75rem; }
+      .mira-visual { flex: none; width: 100%; max-width: 400px; }
+      .mira h2 { font-size: 2rem; }
       .how-grid { grid-template-columns: 1fr 1fr; row-gap: 2.5rem; }
       .how-step::after { display: none; }
       .trust-grid { grid-template-columns: 1fr; }
       .nav-links a.hide-mobile { display: none; }
       .testimonial blockquote { font-size: 1.125rem; }
-      .doc-cta h2 { font-size: 1.75rem; }
+      .final-cta h2 { font-size: 2.25rem; }
+      .final-cta { padding: 5rem 1.25rem; }
+      .logos-row { gap: 2rem; }
     }
     @media (min-width: 769px) {
-      .hero h1 { font-size: 3.75rem; }
+      .hero h1 { font-size: 4.5rem; }
+    }
+    @media (max-width: 480px) {
+      .hero h1 { font-size: 2rem; }
+      .section-title { font-size: 1.625rem; }
+      .dash-cards { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -589,43 +775,137 @@
   <!-- Nav -->
   <nav class="nav" id="nav">
     <div class="nav-inner">
-      <a href="/" class="logo">CatchCare</a>
+      <a href="/" class="logo">Catch<em>Care</em></a>
       <div class="nav-links">
         <a href="#features" class="hide-mobile">Features</a>
         <a href="#mira" class="hide-mobile">Meet Mira</a>
         <a href="#how" class="hide-mobile">How It Works</a>
-        <a href="/patient/" class="nav-cta nav-cta-ghost">Patient Login</a>
-        <a href="/doctor/" class="nav-cta nav-cta-solid">Doctor Login</a>
+        <a href="/patient/" class="nav-btn">Patient Login</a>
+        <a href="/doctor/" class="nav-btn nav-btn-primary">Doctor Login</a>
       </div>
     </div>
   </nav>
 
   <!-- Hero -->
   <section class="hero">
-    <div class="hero-grid"></div>
+    <div class="hero-glow"></div>
+    <div class="hero-grid-bg"></div>
+
     <div class="hero-content reveal">
-      <div class="hero-badge"><span class="pulse"></span> Intelligent clinical intake for modern practices</div>
-      <h1>Your doctor,<br><span class="gradient">already up to speed</span></h1>
+      <div class="hero-badge"><span class="dot"></span> Intelligent clinical intake for modern practices</div>
+      <h1>Your doctor,<br><span class="accent">already up to speed</span></h1>
       <p class="hero-sub">CatchCare replaces the clipboard. Patients complete a structured intake before the visit. Doctors get clinical snapshots and Mira, a practice assistant who knows every patient in the panel.</p>
       <div class="hero-ctas">
-        <a href="/patient/" class="btn-hero btn-hero-primary">Patient Portal <span class="btn-arrow">&rarr;</span></a>
-        <a href="/doctor/onboard.html" class="btn-hero btn-hero-outline">Start Your Practice</a>
+        <a href="/patient/" class="btn-main btn-main-primary">Patient Portal <span class="btn-arrow">&rarr;</span></a>
+        <a href="/doctor/onboard.html" class="btn-main btn-main-ghost">Start Your Practice</a>
       </div>
-      <p class="hero-proof">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        HIPAA-ready architecture. Built for real clinical workflows.
-      </p>
+    </div>
+
+    <!-- Product mockup -->
+    <div class="hero-mockup reveal" style="transition-delay:0.2s">
+      <div class="mockup-browser">
+        <div class="mockup-bar">
+          <div class="mockup-dots"><span></span><span></span><span></span></div>
+          <div class="mockup-url">app.catchcare.com/doctor</div>
+          <div style="width:54px"></div>
+        </div>
+        <div class="mockup-body">
+          <div class="dash-mock">
+            <div class="dash-sidebar">
+              <div class="dash-sidebar-logo">CatchCare</div>
+              <div class="dash-sidebar-item active">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+                Dashboard
+              </div>
+              <div class="dash-sidebar-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                Patients
+              </div>
+              <div class="dash-sidebar-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                Mira
+              </div>
+              <div class="dash-sidebar-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                Check-ins
+              </div>
+              <div class="dash-sidebar-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                Settings
+              </div>
+            </div>
+            <div class="dash-main">
+              <div class="dash-header">
+                <h3>Today's Visits</h3>
+                <span class="dash-header-badge">3 appointments</span>
+              </div>
+              <div class="dash-cards">
+                <div class="dash-card">
+                  <div class="dash-card-label">Snapshots Ready</div>
+                  <div class="dash-card-value green">2</div>
+                </div>
+                <div class="dash-card">
+                  <div class="dash-card-label">Pending Intake</div>
+                  <div class="dash-card-value">1</div>
+                </div>
+              </div>
+              <div class="dash-patient-list">
+                <div class="dash-patient">
+                  <div class="dash-patient-info">
+                    <div class="dash-patient-avatar">ET</div>
+                    <div>
+                      <div class="dash-patient-name">Eric Thompson</div>
+                      <div class="dash-patient-detail">Follow-up, 9:00 AM</div>
+                    </div>
+                  </div>
+                  <span class="dash-patient-status status-ready">Snapshot Ready</span>
+                </div>
+                <div class="dash-patient">
+                  <div class="dash-patient-info">
+                    <div class="dash-patient-avatar">SM</div>
+                    <div>
+                      <div class="dash-patient-name">Sarah Mitchell</div>
+                      <div class="dash-patient-detail">New patient, 10:30 AM</div>
+                    </div>
+                  </div>
+                  <span class="dash-patient-status status-ready">Snapshot Ready</span>
+                </div>
+                <div class="dash-patient">
+                  <div class="dash-patient-info">
+                    <div class="dash-patient-avatar">JR</div>
+                    <div>
+                      <div class="dash-patient-name">James Rodriguez</div>
+                      <div class="dash-patient-detail">Follow-up, 2:00 PM</div>
+                    </div>
+                  </div>
+                  <span class="dash-patient-status status-pending">Intake Pending</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
+
+  <!-- Credibility bar -->
+  <div class="logos-bar">
+    <p>Built with</p>
+    <div class="logos-row">
+      <span>Anthropic</span>
+      <span>Supabase</span>
+      <span>Netlify</span>
+    </div>
+  </div>
 
   <!-- Positioning -->
   <section class="section positioning">
     <div class="section-inner">
       <span class="section-tag reveal">How it fits</span>
-      <h2 class="section-title reveal">CatchCare sits in front of your EHR</h2>
+      <h2 class="section-title reveal">CatchCare sits in front<br>of your EHR</h2>
       <p class="positioning-lead reveal">By the time you open the chart, you already know what's going on.</p>
       <p class="positioning-body reveal">CatchCare is the intake and intelligence layer for your practice. It fills the gap between "patient books appointment" and "doctor walks into the room." You don't replace your EHR. You don't change your workflow. You just walk in prepared.</p>
-      <div class="positioning-grid">
+      <div class="pos-grid">
         <div class="pos-card reveal">
           <div class="pos-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
@@ -633,14 +913,14 @@
           <strong>Nothing to rip out</strong>
           <span>Works alongside any EHR. Epic, Elation, Athena, paper charts. CatchCare doesn't care what you use.</span>
         </div>
-        <div class="pos-card reveal reveal-delay-1">
+        <div class="pos-card reveal reveal-d1">
           <div class="pos-icon">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           </div>
           <strong>Nothing to install</strong>
           <span>Web-based. Your patients use their phone. You use your browser. That's it.</span>
         </div>
-        <div class="pos-card reveal reveal-delay-2">
+        <div class="pos-card reveal reveal-d2">
           <div class="pos-icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
           </div>
@@ -655,20 +935,20 @@
   <section class="section problem">
     <div class="section-inner">
       <span class="section-tag reveal">The problem</span>
-      <h2 class="section-title reveal">Visits are broken. Here's why.</h2>
-      <p class="section-subtitle centered reveal">Patients repeat themselves. Doctors start cold. Critical details get missed in a 15-minute window. CatchCare fixes all three.</p>
+      <h2 class="section-title reveal">Visits are broken</h2>
+      <p class="section-desc centered reveal">Patients repeat themselves. Doctors start cold. Critical details get missed in a 15-minute window.</p>
       <div class="problem-grid">
         <div class="problem-card reveal">
           <div class="problem-num">60%</div>
           <h4>of visit time is spent gathering info</h4>
           <p>Doctors spend more time asking basic questions than actually treating. The intake process hasn't changed in decades.</p>
         </div>
-        <div class="problem-card reveal reveal-delay-1">
+        <div class="problem-card reveal reveal-d1">
           <div class="problem-num">3x</div>
           <h4>patients repeat the same story</h4>
           <p>Front desk, nurse, doctor. Every patient tells their story three times before anyone makes a plan.</p>
         </div>
-        <div class="problem-card reveal reveal-delay-2">
+        <div class="problem-card reveal reveal-d2">
           <div class="problem-num">0</div>
           <h4>continuity between visits</h4>
           <p>What happened between appointments? Symptoms that changed, meds that didn't work, questions that came up at 2am. All lost.</p>
@@ -677,51 +957,117 @@
     </div>
   </section>
 
-  <!-- Features -->
+  <!-- Features - Bento Grid -->
   <section class="section features" id="features">
-    <div class="section-inner">
+    <div class="section-inner section-header-center">
       <span class="section-tag reveal">Features</span>
       <h2 class="section-title reveal">Everything your practice needs</h2>
-      <p class="section-subtitle centered reveal">One platform that handles intake, documentation, and patient communication.</p>
-      <div class="feature-rows">
-        <div class="feature-row reveal">
-          <div class="feature-visual">
-            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-          </div>
-          <div class="feature-text">
-            <h3>Adaptive Pre-Visit Intake</h3>
-            <p>Patients have a structured conversation with the intake assistant before their appointment. It covers chief complaint, symptom timeline, medications, history, and goals. The assistant asks one question at a time, never rushes, and knows when it has enough.</p>
-            <span class="feature-tag">Replaces the PA interview</span>
-          </div>
-        </div>
-        <div class="feature-row reveal">
-          <div class="feature-visual">
-            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          </div>
-          <div class="feature-text">
-            <h3>60-Second Clinical Snapshots</h3>
-            <p>The conversation becomes a structured document: chief complaint, timeline, current protocol, what's been tried, relevant history, and considerations for physician review. Your doctor reads it in under a minute and walks in with a plan.</p>
-            <span class="feature-tag">Decision support, not a diagnosis</span>
+      <p class="section-desc centered reveal">One platform for intake, documentation, and patient communication.</p>
+
+      <div class="bento">
+        <!-- Intake -->
+        <div class="bento-card reveal">
+          <h3>Adaptive Pre-Visit Intake</h3>
+          <p>Patients have a structured conversation before their appointment. Chief complaint, symptom timeline, medications, history, and goals. One question at a time.</p>
+          <span class="bento-tag">Replaces the PA interview</span>
+          <div class="bento-preview">
+            <div class="intake-preview">
+              <div class="intake-msg bot">Hi Sarah. I'm here to help your doctor prepare for your visit. What's the main reason you're coming in today?</div>
+              <div class="intake-msg user">I've been getting bad headaches for about two weeks. They start behind my eyes and get worse in the afternoon.</div>
+              <div class="intake-msg bot">Thank you. On a scale of 1 to 10, how would you rate the pain at its worst?</div>
+            </div>
           </div>
         </div>
-        <div class="feature-row reveal">
-          <div class="feature-visual">
-            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          </div>
-          <div class="feature-text">
-            <h3>Between-Visit Check-ins</h3>
-            <p>Patients log symptoms, side effects, or questions anytime from their portal. Each check-in gets classified by urgency: routine entries are logged, notable changes go to the doctor's digest, and urgent flags get immediate attention.</p>
-            <span class="feature-tag">Nothing falls through the cracks</span>
+
+        <!-- Snapshot -->
+        <div class="bento-card reveal reveal-d1">
+          <h3>60-Second Clinical Snapshots</h3>
+          <p>The intake conversation becomes a structured clinical document. Your doctor reads it in under a minute and walks in with a plan.</p>
+          <span class="bento-tag">Decision support, not a diagnosis</span>
+          <div class="bento-preview">
+            <div class="snapshot-preview">
+              <div class="snap-section">
+                <div class="snap-label">Chief Complaint</div>
+                <div class="snap-text">Bilateral frontal headaches x 2 weeks, retro-orbital onset, progressive afternoon worsening</div>
+              </div>
+              <div class="snap-divider"></div>
+              <div class="snap-section">
+                <div class="snap-label">Current Protocol</div>
+                <div class="snap-text">Ibuprofen 400mg PRN (limited relief), no preventive therapy initiated</div>
+              </div>
+              <div class="snap-divider"></div>
+              <div class="snap-section">
+                <div class="snap-label">Considerations for Review</div>
+                <div class="snap-text">Screen for tension-type vs. migraine features. Recent screen time increase noted. No red flag symptoms reported.</div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="feature-row reveal">
-          <div class="feature-visual">
-            <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+
+        <!-- Check-ins -->
+        <div class="bento-card reveal">
+          <h3>Between-Visit Check-ins</h3>
+          <p>Patients log symptoms anytime. Each check-in gets classified by urgency. Nothing falls through the cracks.</p>
+          <span class="bento-tag">Triaged by urgency</span>
+          <div class="bento-preview">
+            <div class="checkin-preview">
+              <div class="checkin-item">
+                <span class="checkin-urgency red"></span>
+                <span class="checkin-text">Headache severity increased to 9/10, new nausea</span>
+                <span class="checkin-time">2h ago</span>
+              </div>
+              <div class="checkin-item">
+                <span class="checkin-urgency yellow"></span>
+                <span class="checkin-text">Ibuprofen stopped working after day 3</span>
+                <span class="checkin-time">2 days ago</span>
+              </div>
+              <div class="checkin-item">
+                <span class="checkin-urgency green"></span>
+                <span class="checkin-text">Started tracking triggers in a journal</span>
+                <span class="checkin-time">4 days ago</span>
+              </div>
+            </div>
           </div>
-          <div class="feature-text">
-            <h3>Full Patient Record</h3>
-            <p>Every visit, every check-in, every lab result, every message. All in one place, searchable, with a complete timeline. Set protocols, add notes, and schedule follow-ups right from the patient's profile.</p>
-            <span class="feature-tag">Longitudinal memory across years</span>
+        </div>
+
+        <!-- Record -->
+        <div class="bento-card reveal reveal-d1">
+          <h3>Full Patient Record</h3>
+          <p>Every visit, check-in, lab, and message. Searchable, with a complete timeline. Set protocols and schedule follow-ups.</p>
+          <span class="bento-tag">Longitudinal memory</span>
+          <div class="bento-preview">
+            <div class="record-preview">
+              <div class="record-timeline">
+                <div class="record-entry">
+                  <div class="record-dot-col"><div class="record-dot"></div><div class="record-line"></div></div>
+                  <div class="record-info">
+                    <div class="record-date">Apr 28, 2026</div>
+                    <div class="record-title">Clinical Snapshot Generated</div>
+                  </div>
+                </div>
+                <div class="record-entry">
+                  <div class="record-dot-col"><div class="record-dot"></div><div class="record-line"></div></div>
+                  <div class="record-info">
+                    <div class="record-date">Apr 25, 2026</div>
+                    <div class="record-title">Check-in: Headache severity update</div>
+                  </div>
+                </div>
+                <div class="record-entry">
+                  <div class="record-dot-col"><div class="record-dot"></div><div class="record-line"></div></div>
+                  <div class="record-info">
+                    <div class="record-date">Apr 20, 2026</div>
+                    <div class="record-title">Lab Results: CBC, CMP uploaded</div>
+                  </div>
+                </div>
+                <div class="record-entry">
+                  <div class="record-dot-col"><div class="record-dot"></div></div>
+                  <div class="record-info">
+                    <div class="record-date">Apr 14, 2026</div>
+                    <div class="record-title">Pre-visit intake completed</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -732,11 +1078,8 @@
   <section class="section mira" id="mira">
     <div class="section-inner">
       <div class="mira-text">
-        <div class="mira-badge reveal">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-          Meet Mira
-        </div>
-        <h2 class="reveal">Your clinical chief of staff</h2>
+        <div class="mira-badge reveal">Meet Mira</div>
+        <h2 class="reveal">Your clinical<br>chief of staff</h2>
         <p class="mira-intro reveal">Mira sits on top of your entire patient panel. Instead of clicking through dashboards, just ask.</p>
         <div class="mira-examples reveal">
           <div class="mira-example">
@@ -762,9 +1105,9 @@
         <div class="mira-chat">
           <div class="mira-chat-header">
             <div class="mira-avatar">M</div>
-            <div class="mira-chat-header-text">
+            <div class="mira-chat-info">
               <strong>Mira</strong>
-              <span>Online</span>
+              <span><span class="online-dot"></span> Online</span>
             </div>
           </div>
           <div class="mira-msgs">
@@ -776,7 +1119,7 @@
             </div>
           </div>
           <div class="mira-chat-input">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
             <span>Ask Mira anything...</span>
           </div>
         </div>
@@ -795,17 +1138,17 @@
           <h4>Invite your patient</h4>
           <p>Send a secure link from your dashboard. They create an account in 30 seconds.</p>
         </div>
-        <div class="how-step reveal reveal-delay-1">
+        <div class="how-step reveal reveal-d1">
           <div class="how-num">2</div>
           <h4>Patient completes intake</h4>
           <p>A 15-minute guided conversation before the visit. On their phone, on their time.</p>
         </div>
-        <div class="how-step reveal reveal-delay-2">
+        <div class="how-step reveal reveal-d2">
           <div class="how-num">3</div>
           <h4>Snapshot is ready</h4>
           <p>A structured clinical document is waiting on your dashboard when you need it.</p>
         </div>
-        <div class="how-step reveal reveal-delay-3">
+        <div class="how-step reveal reveal-d3">
           <div class="how-num">4</div>
           <h4>Stay connected</h4>
           <p>Patients check in between visits. You see everything in your digest, triaged by urgency.</p>
@@ -819,35 +1162,35 @@
     <div class="section-inner">
       <span class="section-tag reveal">Security</span>
       <h2 class="section-title reveal">Built for trust</h2>
-      <p class="section-subtitle centered reveal">Healthcare data demands the highest standard of care. Here's how CatchCare protects it.</p>
+      <p class="section-desc centered reveal">Healthcare data demands the highest standard. Here's how CatchCare protects it.</p>
       <div class="trust-grid">
         <div class="trust-card reveal">
-          <div class="trust-icon trust-icon-lock">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          <div class="trust-icon ti-teal">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
           </div>
           <h4>HIPAA-ready architecture</h4>
-          <p>Row-level security on every table. Data scoped to each doctor's panel. No patient can see another patient's data. No doctor can see another doctor's patients.</p>
+          <p>Row-level security on every table. Data scoped to each doctor's panel. No patient can see another patient's data.</p>
         </div>
-        <div class="trust-card reveal reveal-delay-1">
-          <div class="trust-icon trust-icon-shield">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <div class="trust-card reveal reveal-d1">
+          <div class="trust-icon ti-green">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           </div>
           <h4>No data sharing. Ever.</h4>
-          <p>Your patient data is never used to train models. It is never shared with third parties. It is never sold. It stays in your database, period.</p>
+          <p>Patient data is never used to train models, shared with third parties, or sold. It stays in your database, period.</p>
         </div>
-        <div class="trust-card reveal reveal-delay-1">
-          <div class="trust-icon trust-icon-info">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div class="trust-card reveal reveal-d1">
+          <div class="trust-icon ti-amber">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           </div>
           <h4>Technology that knows its limits</h4>
-          <p>CatchCare never diagnoses, never prescribes, never gives clinical advice. It gathers information and surfaces patterns. Every clinical decision stays with the physician.</p>
+          <p>CatchCare never diagnoses, prescribes, or gives clinical advice. Every clinical decision stays with the physician.</p>
         </div>
-        <div class="trust-card reveal reveal-delay-2">
-          <div class="trust-icon trust-icon-eye">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        <div class="trust-card reveal reveal-d2">
+          <div class="trust-icon ti-purple">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </div>
           <h4>Full transparency</h4>
-          <p>Patients see exactly what information was captured. Doctors see exactly what the system generated. Clinical considerations are doctor-facing only, structurally separated at the database level.</p>
+          <p>Patients see exactly what was captured. Doctors see exactly what the system generated. Clinical considerations are structurally separated.</p>
         </div>
       </div>
     </div>
@@ -856,10 +1199,8 @@
   <!-- Testimonial -->
   <section class="testimonial">
     <div class="testimonial-inner reveal">
-      <div class="testimonial-quote-mark">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M11 7H7a4 4 0 00-4 4v1a3 3 0 003 3h1a2 2 0 002-2v-1a2 2 0 00-2-2H6a2 2 0 014-2V7zm10 0h-4a4 4 0 00-4 4v1a3 3 0 003 3h1a2 2 0 002-2v-1a2 2 0 00-2-2h-1a2 2 0 014-2V7z"/></svg>
-      </div>
-      <blockquote>"I used to spend the first ten minutes of every visit catching up on what happened since the last one. Now I walk in and I already know. CatchCare changed how I practice."</blockquote>
+      <div class="testimonial-mark">"</div>
+      <blockquote>I used to spend the first ten minutes of every visit catching up on what happened since the last one. Now I walk in and I already know. CatchCare changed how I practice.</blockquote>
       <div class="testimonial-author">
         <strong>Functional Medicine Physician</strong>
         <span>CatchCare Early Access</span>
@@ -867,12 +1208,12 @@
     </div>
   </section>
 
-  <!-- Bottom CTA -->
-  <section class="doc-cta">
-    <div class="doc-cta-inner reveal">
+  <!-- Final CTA -->
+  <section class="final-cta">
+    <div class="final-cta-inner reveal">
       <h2>Ready to meet Mira?</h2>
       <p>Set up your practice in minutes. Invite your first patient today. Mira starts learning your panel immediately. No contracts, no integration required.</p>
-      <a href="/doctor/onboard.html" class="btn-hero btn-hero-primary">Get Started Free <span class="btn-arrow">&rarr;</span></a>
+      <a href="/doctor/onboard.html" class="btn-main btn-main-primary">Get Started Free <span class="btn-arrow">&rarr;</span></a>
     </div>
   </section>
 
@@ -888,7 +1229,7 @@
   </footer>
 
   <script>
-    // Nav scroll effect
+    // Nav scroll
     const nav = document.getElementById('nav');
     window.addEventListener('scroll', () => {
       nav.classList.toggle('scrolled', window.scrollY > 20);
@@ -896,23 +1237,16 @@
 
     // Scroll reveal
     const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
-      });
-    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
-
+      entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+    }, { threshold: 0.08, rootMargin: '0px 0px -60px 0px' });
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 
-    // Smooth scroll for anchor links
+    // Smooth scroll
     document.querySelectorAll('a[href^="#"]').forEach(a => {
       a.addEventListener('click', e => {
         e.preventDefault();
-        const target = document.querySelector(a.getAttribute('href'));
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        const t = document.querySelector(a.getAttribute('href'));
+        if (t) t.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     });
   </script>

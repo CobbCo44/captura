@@ -228,6 +228,44 @@
       .testimonial blockquote { font-size: 1.0625rem; }
     }
 
+    /* Positioning */
+    .positioning {
+      padding: 5rem 1.5rem;
+      background: var(--surface);
+      text-align: center;
+    }
+    .positioning-content { max-width: 760px; margin: 0 auto; }
+    .positioning h2 {
+      font-size: 2rem; margin-bottom: 0.75rem; line-height: 1.2;
+    }
+    .positioning-lead {
+      font-size: 1.25rem; color: var(--primary); font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    .positioning-body {
+      font-size: 1.0625rem; color: var(--text-secondary); line-height: 1.7;
+      margin-bottom: 2.5rem;
+    }
+    .positioning-points {
+      display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem;
+      text-align: left;
+    }
+    .pos-point {
+      padding: 1.25rem; background: var(--bg);
+      border-radius: var(--radius); border: 1px solid var(--border);
+    }
+    .pos-point strong {
+      display: block; margin-bottom: 0.375rem; font-size: 0.9375rem;
+      color: var(--text);
+    }
+    .pos-point span {
+      font-size: 0.8125rem; color: var(--text-secondary); line-height: 1.5;
+    }
+    @media (max-width: 768px) {
+      .positioning h2 { font-size: 1.5rem; }
+      .positioning-points { grid-template-columns: 1fr; }
+    }
+
     /* How it works */
     .how {
       padding: 5rem 1.5rem;
@@ -303,6 +341,29 @@
       <a href="/doctor/onboard.html" class="btn btn-outline">Start Your Practice</a>
     </div>
     <p class="hero-proof">Secure. HIPAA-ready architecture. Built for real clinical workflows.</p>
+  </section>
+
+  <!-- Positioning -->
+  <section class="positioning">
+    <div class="positioning-content">
+      <h2>CatchCare sits in front of your EHR</h2>
+      <p class="positioning-lead">By the time you open the chart, you already know what's going on.</p>
+      <p class="positioning-body">CatchCare is the intake and intelligence layer for your practice. It fills the gap between "patient books appointment" and "doctor walks into the room." You don't replace your EHR. You don't change your workflow. You just walk in prepared.</p>
+      <div class="positioning-points">
+        <div class="pos-point">
+          <strong>Nothing to rip out</strong>
+          <span>Works alongside any EHR. Epic, Elation, Athena, paper charts. CatchCare doesn't care what you use.</span>
+        </div>
+        <div class="pos-point">
+          <strong>Nothing to install</strong>
+          <span>Web-based. Your patients use their phone. You use your browser. That's it.</span>
+        </div>
+        <div class="pos-point">
+          <strong>Nothing to learn</strong>
+          <span>Ask Mira a question, read the snapshot, see your patients. If you can read and talk, you can use CatchCare.</span>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section class="problem">

@@ -208,6 +208,7 @@
       background: var(--accent); color: var(--primary-dark); transition: all 0.15s;
     }
     .demo-card button:hover { background: var(--primary-light); color: white; }
+    .demo-card button + button { margin-left: 0.5rem; }
 
     /* Check-in rows */
     .checkin-row {
@@ -429,6 +430,14 @@
             <span class="text-sm" id="demo-feedback" style="margin-left:0.75rem;"></span>
           </div>
 
+          <!-- Seed snapshots card (shown when there are pending visits without snapshots) -->
+          <div class="demo-card" id="seed-card" style="display:none;">
+            <h3>Generate Demo Snapshots</h3>
+            <p>Create pre-filled clinical snapshots for all visits that are waiting on intake.</p>
+            <button onclick="seedSnapshots()" id="seed-btn">Generate Snapshots</button>
+            <span class="text-sm" id="seed-feedback" style="margin-left:0.75rem;"></span>
+          </div>
+
           <!-- Recent check-ins -->
           <div class="section-card">
             <div class="section-card-header">
@@ -622,6 +631,12 @@
           document.getElementById('demo-card').style.display = '';
         }
 
+        // Show seed card if there are visits without snapshots
+        const pendingVisits = upcomingVisits.filter(v => !v.snapshot_ready && v.status !== 'intake_complete');
+        if (pendingVisits.length > 0) {
+          document.getElementById('seed-card').style.display = '';
+        }
+
         // Show pagination if needed
         if (data.pagination && data.pagination.total_pages > 1) {
           const pagEl = document.getElementById('pagination');
@@ -695,6 +710,27 @@
         feedback.style.color = 'var(--danger)';
         btn.disabled = false;
         btn.textContent = 'Load Demo Data';
+      }
+    }
+
+    async function seedSnapshots() {
+      const btn = document.getElementById('seed-btn');
+      const feedback = document.getElementById('seed-feedback');
+      btn.disabled = true;
+      btn.textContent = 'Generating...';
+
+      try {
+        const user = await getUser();
+        const feedData = await callFunction('doctor-feed', { doctor_email: user.email });
+        const result = await callFunction('seed-snapshots', { doctor_id: feedData.doctor.id });
+        feedback.textContent = result.message;
+        feedback.style.color = 'var(--success)';
+        setTimeout(() => window.location.reload(), 1500);
+      } catch (err) {
+        feedback.textContent = err.message || 'Failed to generate snapshots.';
+        feedback.style.color = 'var(--danger)';
+        btn.disabled = false;
+        btn.textContent = 'Generate Snapshots';
       }
     }
 

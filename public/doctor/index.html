@@ -581,9 +581,10 @@
           document.getElementById('doc-greeting').textContent = `Welcome, ${data.doctor.name}`;
         }
 
-        // Filter to only upcoming visits (future dates)
+        // Show upcoming visits and recent past visits (last 30 days) so demo snapshots stay visible
         const now = new Date();
-        const upcomingVisits = (data.visits || []).filter(v => new Date(v.scheduled_for) > now);
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
+        const upcomingVisits = (data.visits || []).filter(v => new Date(v.scheduled_for) > thirtyDaysAgo);
 
         // Stat cards
         const snapshotsReady = upcomingVisits.filter(v => v.snapshot_ready).length;
@@ -626,8 +627,9 @@
           visitsEl.innerHTML = '<div style="padding:2rem;text-align:center;"><p class="text-sm text-secondary" style="margin:0;">No upcoming visits.</p></div>';
         }
 
-        // Show demo card for new doctors
-        if (!data.visits || data.visits.length <= 3 || upcomingVisits.length === 0) {
+        // Show demo card when there are few visits or none with snapshots
+        const hasSnapshots = upcomingVisits.some(v => v.snapshot_ready);
+        if (!data.visits || data.visits.length <= 3 || !hasSnapshots) {
           document.getElementById('demo-card').style.display = '';
         }
 

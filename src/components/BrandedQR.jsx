@@ -1,21 +1,15 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
-import { QR } from '@qrgrid/core'
+import { useState, useEffect, useRef } from 'react'
+import QRCode from 'qr.js'
 
-const DEFAULT_MODULE_SIZE = 8
 const FINDER_SIZE = 7
 
-// Check if a module is part of a finder pattern (the 3 big corner squares)
 function isFinderPattern(x, y, gridSize) {
-  // Top-left
   if (x < FINDER_SIZE + 1 && y < FINDER_SIZE + 1) return true
-  // Top-right
   if (x >= gridSize - FINDER_SIZE - 1 && y < FINDER_SIZE + 1) return true
-  // Bottom-left
   if (x < FINDER_SIZE + 1 && y >= gridSize - FINDER_SIZE - 1) return true
   return false
 }
 
-// Check if module is part of the inner finder dot (3x3 center of finder)
 function isFinderCenter(x, y, gridSize) {
   const centers = [
     [3, 3],
@@ -29,71 +23,70 @@ function isFinderCenter(x, y, gridSize) {
 
 export default function BrandedQR({
   url = 'https://captura44.netlify.app',
-  iconSrc = null,        // URL or data URL of the brand icon image
-  iconSvgPath = null,    // SVG path data for the brand icon
+  iconSrc = null,
+  iconSvgPath = null,
   iconViewBox = '0 0 24 24',
   fgColor = '#6C2BD9',
   bgColor = 'transparent',
-  finderColor = null,    // defaults to fgColor
-  moduleSize = DEFAULT_MODULE_SIZE,
+  finderColor = null,
   size = 300,
-  showLogo = false,      // show logo in center
+  showLogo = false,
   logoSrc = null,
 }) {
   const canvasRef = useRef(null)
   const [svgContent, setSvgContent] = useState(null)
   const actualFinderColor = finderColor || fgColor
 
+  // SVG-based rendering (for SVG path icons or default circles)
   useEffect(() => {
+    if (iconSrc && !iconSvgPath) return // use canvas path instead
+
     try {
-      const qr = new QR(url, { errorCorrection: 'H' })
-      const gridSize = qr.gridSize
-      const calculatedModuleSize = size / gridSize
+      const qr = new QRCode(url, { errorCorrectLevel: 'H' })
+      const matrix = qr.modules
+      const gridSize = matrix.length
+      const modSize = size / gridSize
       const modules = []
 
       for (let y = 0; y < gridSize; y++) {
         for (let x = 0; x < gridSize; x++) {
-          const index = y * gridSize + x
-          if (!qr.data[index]) continue
+          if (!matrix[y][x]) continue
 
-          const px = x * calculatedModuleSize
-          const py = y * calculatedModuleSize
+          const px = x * modSize
+          const py = y * modSize
 
           if (isFinderPattern(x, y, gridSize)) {
-            // Render finder patterns as standard rounded squares
             modules.push(
               <rect
                 key={`${x}-${y}`}
-                x={px + calculatedModuleSize * 0.05}
-                y={py + calculatedModuleSize * 0.05}
-                width={calculatedModuleSize * 0.9}
-                height={calculatedModuleSize * 0.9}
-                rx={isFinderCenter(x, y, gridSize) ? calculatedModuleSize * 0.2 : calculatedModuleSize * 0.1}
+                x={px + modSize * 0.05}
+                y={py + modSize * 0.05}
+                width={modSize * 0.9}
+                height={modSize * 0.9}
+                rx={isFinderCenter(x, y, gridSize) ? modSize * 0.2 : modSize * 0.1}
                 fill={actualFinderColor}
               />
             )
           } else if (iconSvgPath) {
-            // Render data modules as the brand icon (SVG path)
             modules.push(
               <svg
                 key={`${x}-${y}`}
                 x={px}
                 y={py}
-                width={calculatedModuleSize}
-                height={calculatedModuleSize}
+                width={modSize}
+                height={modSize}
                 viewBox={iconViewBox}
               >
                 <path d={iconSvgPath} fill={fgColor} />
               </svg>
             )
           } else {
-            // Default: render as circles (cleaner than squares)
             modules.push(
               <circle
                 key={`${x}-${y}`}
-                cx={px + calculatedModuleSize / 2}
-                cy={py + calculatedModuleSize / 2}
-                r={calculatedModuleSize * 0.38}
+                cx={px + modSize / 2}
+                cy={py + modSize / 2}
+                r={modSize * 0.38}
                 fill={fgColor}
               />
             )
@@ -101,7 +94,6 @@ export default function BrandedQR({
         }
       }
 
-      // Center logo overlay
       if (showLogo && logoSrc) {
         const logoSize = size * 0.22
         const logoPos = (size - logoSize) / 2
@@ -140,7 +132,7 @@ export default function BrandedQR({
     } catch (err) {
       console.error('QR generation failed:', err)
     }
-  }, [url, iconSvgPath, iconViewBox, fgColor, bgColor, finderColor, size, showLogo, logoSrc])
+  }, [url, iconSvgPath, iconViewBox, fgColor, bgColor, finderColor, size, showLogo, logoSrc, iconSrc])
 
   // Canvas-based rendering for raster icon images
   useEffect(() => {
@@ -148,9 +140,10 @@ export default function BrandedQR({
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const qr = new QR(url, { errorCorrection: 'H' })
-    const gridSize = qr.gridSize
-    const calculatedModuleSize = size / gridSize
+    const qr = new QRCode(url, { errorCorrectLevel: 'H' })
+    const matrix = qr.modules
+    const gridSize = matrix.length
+    const modSize = size / gridSize
     canvas.width = size
     canvas.height = size
     const ctx = canvas.getContext('2d')
@@ -167,25 +160,23 @@ export default function BrandedQR({
 
       for (let y = 0; y < gridSize; y++) {
         for (let x = 0; x < gridSize; x++) {
-          const index = y * gridSize + x
-          if (!qr.data[index]) continue
+          if (!matrix[y][x]) continue
 
-          const px = x * calculatedModuleSize
-          const py = y * calculatedModuleSize
+          const px = x * modSize
+          const py = y * modSize
 
           if (isFinderPattern(x, y, gridSize)) {
             ctx.fillStyle = actualFinderColor
-            const r = isFinderCenter(x, y, gridSize) ? calculatedModuleSize * 0.2 : calculatedModuleSize * 0.1
-            roundRect(ctx, px + calculatedModuleSize * 0.05, py + calculatedModuleSize * 0.05,
-              calculatedModuleSize * 0.9, calculatedModuleSize * 0.9, r)
+            const r = isFinderCenter(x, y, gridSize) ? modSize * 0.2 : modSize * 0.1
+            roundRect(ctx, px + modSize * 0.05, py + modSize * 0.05,
+              modSize * 0.9, modSize * 0.9, r)
             ctx.fill()
           } else {
-            ctx.drawImage(icon, px, py, calculatedModuleSize, calculatedModuleSize)
+            ctx.drawImage(icon, px, py, modSize, modSize)
           }
         }
       }
 
-      // Center logo
       if (showLogo && logoSrc) {
         const logoImg = new Image()
         logoImg.crossOrigin = 'anonymous'
@@ -203,7 +194,6 @@ export default function BrandedQR({
     icon.src = iconSrc
   }, [url, iconSrc, iconSvgPath, fgColor, bgColor, finderColor, size, showLogo, logoSrc])
 
-  // If using raster icon, show canvas
   if (iconSrc && !iconSvgPath) {
     return <canvas ref={canvasRef} style={{ width: size, height: size }} />
   }

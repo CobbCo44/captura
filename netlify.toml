@@ -1,17 +1,8 @@
 [build]
-  publish = "public"
-  functions = "netlify/functions"
-  environment = { SECRETS_SCAN_OMIT_PATHS = "public/shared/app.js" }
-
-[functions]
-  node_bundler = "esbuild"
+  command = "npm run build"
+  publish = "dist"
 
 [[redirects]]
-  from = "/patient/*"
-  to = "/patient/:splat"
-  status = 200
-
-[[redirects]]
-  from = "/doctor/*"
-  to = "/doctor/:splat"
+  from = "/*"
+  to = "/index.html"
   status = 200

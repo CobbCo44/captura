@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import QRCode from 'qr.js'
+import generateQR from 'qr.js'
 
 const FINDER_SIZE = 7
 
@@ -42,7 +42,7 @@ export default function BrandedQR({
     if (iconSrc && !iconSvgPath) return // use canvas path instead
 
     try {
-      const qr = new QRCode(url, { errorCorrectLevel: 'H' })
+      const qr = generateQR(url)
       const matrix = qr.modules
       const gridSize = matrix.length
       const modSize = size / gridSize
@@ -140,7 +140,7 @@ export default function BrandedQR({
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const qr = new QRCode(url, { errorCorrectLevel: 'H' })
+    const qr = generateQR(url)
     const matrix = qr.modules
     const gridSize = matrix.length
     const modSize = size / gridSize

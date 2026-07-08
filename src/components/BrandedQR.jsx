@@ -162,70 +162,34 @@ export default function BrandedQR({
 
         const activeMask = mask || svgMask
 
-        // Draw finder patterns (always visible)
-        const finderCenters = [
-          [3.5, 3.5],
-          [gridSize - 3.5, 3.5],
-          [3.5, gridSize - 3.5],
+        // Draw standard finder patterns (must stay square for scanners)
+        // Each finder is a 7x7 grid: outer border, white gap, inner 3x3 block
+        const finderOrigins = [
+          [0, 0],                          // top-left
+          [gridSize - 7, 0],               // top-right
+          [0, gridSize - 7],               // bottom-left
         ]
 
-        for (const [fcx, fcy] of finderCenters) {
-          const px = fcx * modSize
-          const py = fcy * modSize
+        for (const [ox, oy] of finderOrigins) {
+          for (let fy = 0; fy < 7; fy++) {
+            for (let fx = 0; fx < 7; fx++) {
+              const gx = ox + fx
+              const gy = oy + fy
+              if (!matrix[gy] || !matrix[gy][gx]) continue
 
-          if (finderStyle === 'circle') {
-            elements.push(
-              <circle key={`fo-${fcx}-${fcy}`} cx={px} cy={py} r={modSize * 3.4}
-                fill="none" stroke={actualFinderColor} strokeWidth={modSize * 0.9} />
-            )
-            elements.push(
-              <circle key={`fi-${fcx}-${fcy}`} cx={px} cy={py} r={modSize * 1.4}
-                fill={actualFinderColor} />
-            )
-          } else if (finderStyle === 'diamond') {
-            const s = modSize * 3.5
-            const si = modSize * 1.5
-            elements.push(
-              <polygon key={`fo-${fcx}-${fcy}`}
-                points={`${px},${py - s} ${px + s},${py} ${px},${py + s} ${px - s},${py}`}
-                fill="none" stroke={actualFinderColor} strokeWidth={modSize * 0.8} />
-            )
-            elements.push(
-              <polygon key={`fi-${fcx}-${fcy}`}
-                points={`${px},${py - si} ${px + si},${py} ${px},${py + si} ${px - si},${py}`}
-                fill={actualFinderColor} />
-            )
-          } else if (finderStyle === 'rounded') {
-            const outerSize = modSize * 7
-            const innerSize = modSize * 3
-            elements.push(
-              <rect key={`fo-${fcx}-${fcy}`}
-                x={px - outerSize / 2} y={py - outerSize / 2}
-                width={outerSize} height={outerSize}
-                rx={modSize * 2} fill="none"
-                stroke={actualFinderColor} strokeWidth={modSize * 0.85} />
-            )
-            elements.push(
-              <rect key={`fi-${fcx}-${fcy}`}
-                x={px - innerSize / 2} y={py - innerSize / 2}
-                width={innerSize} height={innerSize}
-                rx={modSize * 0.8} fill={actualFinderColor} />
-            )
-          } else {
-            const outerSize = modSize * 7
-            const innerSize = modSize * 3
-            elements.push(
-              <rect key={`fo-${fcx}-${fcy}`}
-                x={px - outerSize / 2} y={py - outerSize / 2}
-                width={outerSize} height={outerSize}
-                fill="none" stroke={actualFinderColor} strokeWidth={modSize * 0.85} />
-            )
-            elements.push(
-              <rect key={`fi-${fcx}-${fcy}`}
-                x={px - innerSize / 2} y={py - innerSize / 2}
-                width={innerSize} height={innerSize}
-                fill={actualFinderColor} />
-            )
+              const px = gx * modSize
+              const py = gy * modSize
+              elements.push(
+                <rect
+                  key={`finder-${gx}-${gy}`}
+                  x={px}
+                  y={py}
+                  width={modSize}
+                  height={modSize}
+                  fill={actualFinderColor}
+                />
+              )
+            }
           }
         }
 
@@ -445,34 +409,22 @@ export default function BrandedQR({
           ctx.clearRect(0, 0, size, size)
         }
 
-        // Draw finder patterns
+        // Draw standard finder patterns
         ctx.fillStyle = actualFinderColor
-        ctx.strokeStyle = actualFinderColor
-        ctx.lineWidth = modSize * 0.85
-
-        const finderCenters = [
-          [3.5 * modSize, 3.5 * modSize],
-          [(gridSize - 3.5) * modSize, 3.5 * modSize],
-          [3.5 * modSize, (gridSize - 3.5) * modSize],
+        const finderOrigins = [
+          [0, 0],
+          [gridSize - 7, 0],
+          [0, gridSize - 7],
         ]
 
-        for (const [fcx, fcy] of finderCenters) {
-          if (finderStyle === 'circle') {
-            ctx.beginPath()
-            ctx.arc(fcx, fcy, modSize * 3.4, 0, Math.PI * 2)
-            ctx.stroke()
-            ctx.beginPath()
-            ctx.arc(fcx, fcy, modSize * 1.4, 0, Math.PI * 2)
-            ctx.fill()
-          } else {
-            const os = modSize * 7
-            const is2 = modSize * 3
-            const r = finderStyle === 'rounded' ? modSize * 2 : 0
-            const ri = finderStyle === 'rounded' ? modSize * 0.8 : 0
-            roundRect(ctx, fcx - os / 2, fcy - os / 2, os, os, r)
-            ctx.stroke()
-            roundRect(ctx, fcx - is2 / 2, fcy - is2 / 2, is2, is2, ri)
-            ctx.fill()
+        for (const [ox, oy] of finderOrigins) {
+          for (let fy = 0; fy < 7; fy++) {
+            for (let fx = 0; fx < 7; fx++) {
+              const gx = ox + fx
+              const gy = oy + fy
+              if (!matrix[gy] || !matrix[gy][gx]) continue
+              ctx.fillRect(gx * modSize, gy * modSize, modSize, modSize)
+            }
           }
         }
 

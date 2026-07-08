@@ -299,21 +299,6 @@ export default function QRCodes() {
                     </div>
                   </div>
 
-                  {/* Corner Style */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 8 }}>
-                      Corner Style
-                    </label>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      {['circle', 'rounded', 'diamond', 'square'].map(s => (
-                        <button type="button" key={s} onClick={() => setForm({ ...form, finderStyle: s })}
-                          style={toggleStyle(form.finderStyle === s)}>
-                          {s.charAt(0).toUpperCase() + s.slice(1)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
                   {/* Style Toggles */}
                   <div>
                     <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 8 }}>

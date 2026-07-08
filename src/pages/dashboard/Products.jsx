@@ -1,75 +1,17 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 
-const DRAFT_KEY = 'captura_product_draft'
-
-function saveDraft(form, editing) {
-  try {
-    // Can't save File objects to localStorage, save text fields only
-    const draft = {
-      name: form.name,
-      sku: form.sku,
-      description: form.description,
-      contentTitle: form.contentTitle,
-      contentBody: form.contentBody,
-      contentUrl: form.contentUrl,
-      existingImages: form.existingImages,
-      editingId: editing?.id || null,
-    }
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
-  } catch (e) {}
-}
-
-function loadDraft() {
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY)
-    if (!raw) return null
-    return JSON.parse(raw)
-  } catch (e) { return null }
-}
-
-function clearDraft() {
-  localStorage.removeItem(DRAFT_KEY)
-}
-
 export default function Products({ brand }) {
   const [products, setProducts] = useState([])
-  const [showModal, setShowModal] = useState(false)
+  const [view, setView] = useState('list') // 'list' or 'form'
   const [editingProduct, setEditingProduct] = useState(null)
   const [form, setForm] = useState({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', images: [], existingImages: [] })
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
-  const [draftRestored, setDraftRestored] = useState(false)
 
   useEffect(() => {
     loadProducts()
   }, [brand])
-
-  // Restore draft on mount
-  useEffect(() => {
-    const draft = loadDraft()
-    if (draft && draft.name) {
-      setForm({
-        name: draft.name,
-        sku: draft.sku || '',
-        description: draft.description || '',
-        contentTitle: draft.contentTitle || '',
-        contentBody: draft.contentBody || '',
-        contentUrl: draft.contentUrl || '',
-        images: [],
-        existingImages: draft.existingImages || [],
-      })
-      setShowModal(true)
-      setDraftRestored(true)
-    }
-  }, [])
-
-  // Auto-save draft when form changes while modal is open
-  useEffect(() => {
-    if (showModal && form.name) {
-      saveDraft(form, editingProduct)
-    }
-  }, [form, showModal, editingProduct])
 
   async function loadProducts() {
     if (!supabase || !brand?.id || brand.id === 'demo') {
@@ -89,7 +31,7 @@ export default function Products({ brand }) {
   const openAdd = () => {
     setEditingProduct(null)
     setForm({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', images: [], existingImages: [] })
-    setShowModal(true)
+    setView('form')
   }
 
   const openEdit = (p) => {
@@ -104,7 +46,12 @@ export default function Products({ brand }) {
       images: [],
       existingImages: p.image_urls || [],
     })
-    setShowModal(true)
+    setView('form')
+  }
+
+  const goBack = () => {
+    setView('list')
+    setEditingProduct(null)
   }
 
   const handleImageSelect = (e) => {
@@ -135,7 +82,6 @@ export default function Products({ brand }) {
     e.preventDefault()
     setUploading(true)
 
-    // Upload new images
     let newImageUrls = []
     if (form.images.length > 0 && supabase && brand?.id && brand.id !== 'demo') {
       for (const img of form.images) {
@@ -170,27 +116,21 @@ export default function Products({ brand }) {
       }
 
       if (editingProduct) {
-        // Update existing product
         const { data, error } = await supabase.from('products')
           .update(productData)
           .eq('id', editingProduct.id)
           .select().single()
-
         if (error) {
-          console.error('Product update error:', error)
           alert(`Error updating product: ${error.message}`)
         } else if (data) {
           setProducts(products.map(p => p.id === data.id ? data : p))
         }
       } else {
-        // Insert new product
         const { data, error } = await supabase.from('products').insert({
           brand_id: brand.id,
           ...productData,
         }).select().single()
-
         if (error) {
-          console.error('Product insert error:', error)
           alert(`Error saving product: ${error.message}`)
         } else if (data) {
           setProducts([data, ...products])
@@ -200,9 +140,8 @@ export default function Products({ brand }) {
 
     setForm({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', images: [], existingImages: [] })
     setEditingProduct(null)
-    setShowModal(false)
+    setView('list')
     setUploading(false)
-    clearDraft()
   }
 
   const handleDelete = async (id) => {
@@ -218,6 +157,116 @@ export default function Products({ brand }) {
     return null
   }
 
+  // ========== FORM VIEW ==========
+  if (view === 'form') {
+    return (
+      <div>
+        <button onClick={goBack} style={{
+          background: 'none', border: 'none', color: 'var(--text-muted)',
+          fontSize: '0.9rem', cursor: 'pointer', marginBottom: 20, padding: 0,
+          display: 'flex', alignItems: 'center', gap: 6,
+        }}>
+          ← Back to Products
+        </button>
+
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: 28 }}>
+          {editingProduct ? 'Edit Product' : 'Add Product'}
+        </h1>
+
+        <div style={{ maxWidth: 560 }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+            {/* Image Upload */}
+            <div className="card">
+              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 10 }}>
+                Product Images
+              </label>
+
+              {(form.existingImages.length > 0 || form.images.length > 0) && (
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+                  {form.existingImages.map((url, i) => (
+                    <div key={`existing-${i}`} style={{ position: 'relative' }}>
+                      <img src={url} alt={`Image ${i + 1}`}
+                        style={{ width: 90, height: 90, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
+                      <button type="button" onClick={() => removeExistingImage(i)}
+                        style={{
+                          position: 'absolute', top: -6, right: -6,
+                          background: '#EF4444', color: 'white', border: 'none',
+                          borderRadius: '50%', width: 22, height: 22, fontSize: '0.75rem',
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>x</button>
+                    </div>
+                  ))}
+                  {form.images.map((img, i) => (
+                    <div key={`new-${i}`} style={{ position: 'relative' }}>
+                      <img src={img.preview} alt={`New ${i + 1}`}
+                        style={{ width: 90, height: 90, borderRadius: 8, objectFit: 'cover', border: '2px solid var(--success)' }} />
+                      <button type="button" onClick={() => removeNewImage(i)}
+                        style={{
+                          position: 'absolute', top: -6, right: -6,
+                          background: '#EF4444', color: 'white', border: 'none',
+                          borderRadius: '50%', width: 22, height: 22, fontSize: '0.75rem',
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>x</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <label style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: '100%', height: (form.existingImages.length + form.images.length) > 0 ? 50 : 100, borderRadius: 8,
+                border: '2px dashed var(--border)', cursor: 'pointer',
+                color: 'var(--text-muted)', fontSize: '0.9rem',
+              }}>
+                <span>+ {(form.existingImages.length + form.images.length) > 0 ? 'Add more images' : 'Click to upload images'}</span>
+                <input type="file" accept="image/*" multiple onChange={handleImageSelect}
+                  style={{ display: 'none' }} />
+              </label>
+            </div>
+
+            {/* Details */}
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Details</label>
+              <input className="input" placeholder="Product Name" value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })} required />
+              <input className="input" placeholder="SKU (optional)" value={form.sku}
+                onChange={e => setForm({ ...form, sku: e.target.value })} />
+              <textarea className="input" placeholder="Product Description" value={form.description}
+                onChange={e => setForm({ ...form, description: e.target.value })}
+                style={{ minHeight: 100, resize: 'vertical' }} />
+            </div>
+
+            {/* Scan Page Content */}
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Scan Page Content</label>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: -8 }}>
+                This content shows when a consumer scans the QR code.
+              </p>
+              <input className="input" placeholder="Heading (e.g. Setup Guide, How to Use)" value={form.contentTitle}
+                onChange={e => setForm({ ...form, contentTitle: e.target.value })} />
+              <textarea className="input" placeholder="Content body" value={form.contentBody}
+                onChange={e => setForm({ ...form, contentBody: e.target.value })}
+                style={{ minHeight: 80, resize: 'vertical' }} />
+              <input className="input" placeholder="Link URL (video, tutorial, etc.)" value={form.contentUrl}
+                onChange={e => setForm({ ...form, contentUrl: e.target.value })} />
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
+                onClick={goBack}>Cancel</button>
+              <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={uploading}>
+                {uploading ? 'Saving...' : editingProduct ? 'Save Changes' : 'Add Product'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
+  // ========== LIST VIEW ==========
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
@@ -295,93 +344,6 @@ export default function Products({ brand }) {
               })}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {showModal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50
-        }} onClick={() => { setShowModal(false); setEditingProduct(null); clearDraft() }}>
-          <div className="card" style={{ width: 480, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20 }}>
-              {editingProduct ? 'Edit Product' : 'Add Product'}
-            </h2>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-              {/* Image Upload */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  Product Images
-                </label>
-
-                {/* Existing + new image previews */}
-                {(form.existingImages.length > 0 || form.images.length > 0) && (
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-                    {form.existingImages.map((url, i) => (
-                      <div key={`existing-${i}`} style={{ position: 'relative' }}>
-                        <img src={url} alt={`Image ${i + 1}`}
-                          style={{ width: 80, height: 80, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
-                        <button type="button" onClick={() => removeExistingImage(i)}
-                          style={{
-                            position: 'absolute', top: -6, right: -6,
-                            background: '#EF4444', color: 'white', border: 'none',
-                            borderRadius: '50%', width: 20, height: 20, fontSize: '0.7rem',
-                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}>x</button>
-                      </div>
-                    ))}
-                    {form.images.map((img, i) => (
-                      <div key={`new-${i}`} style={{ position: 'relative' }}>
-                        <img src={img.preview} alt={`New ${i + 1}`}
-                          style={{ width: 80, height: 80, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--success)' }} />
-                        <button type="button" onClick={() => removeNewImage(i)}
-                          style={{
-                            position: 'absolute', top: -6, right: -6,
-                            background: '#EF4444', color: 'white', border: 'none',
-                            borderRadius: '50%', width: 20, height: 20, fontSize: '0.7rem',
-                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}>x</button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <label style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: '100%', height: (form.existingImages.length + form.images.length) > 0 ? 50 : 100, borderRadius: 8,
-                  border: '2px dashed var(--border)', cursor: 'pointer',
-                  color: 'var(--text-muted)', fontSize: '0.9rem',
-                }}>
-                  <span>+ {(form.existingImages.length + form.images.length) > 0 ? 'Add more images' : 'Click to upload images'}</span>
-                  <input type="file" accept="image/*" multiple onChange={handleImageSelect}
-                    style={{ display: 'none' }} />
-                </label>
-              </div>
-
-              <input className="input" placeholder="Product Name" value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })} required />
-              <input className="input" placeholder="SKU (optional)" value={form.sku}
-                onChange={e => setForm({ ...form, sku: e.target.value })} />
-              <textarea className="input" placeholder="Product Description" value={form.description}
-                onChange={e => setForm({ ...form, description: e.target.value })}
-                style={{ minHeight: 80, resize: 'vertical' }} />
-              <input className="input" placeholder="Scan Page Heading (e.g. Setup Guide)" value={form.contentTitle}
-                onChange={e => setForm({ ...form, contentTitle: e.target.value })} />
-              <textarea className="input" placeholder="Scan Page Content" value={form.contentBody}
-                onChange={e => setForm({ ...form, contentBody: e.target.value })}
-                style={{ minHeight: 60, resize: 'vertical' }} />
-              <input className="input" placeholder="Content URL (video, tutorial link)" value={form.contentUrl}
-                onChange={e => setForm({ ...form, contentUrl: e.target.value })} />
-              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-                <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
-                  onClick={() => { setShowModal(false); setEditingProduct(null); clearDraft() }}>Cancel</button>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={uploading}>
-                  {uploading ? 'Saving...' : editingProduct ? 'Save Changes' : 'Add Product'}
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
       )}
     </div>

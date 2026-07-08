@@ -38,13 +38,13 @@ export default function Landing() {
             marginBottom: 28,
           }}>
             You know the demographics.<br />
-            We give you the names.
+            Now meet the people.
           </h1>
           <p style={{
             fontSize: '1.15rem', color: '#71717A', lineHeight: 1.7,
             maxWidth: 480, marginBottom: 20,
           }}>
-            You have market research. Retail sell-through reports. Demographic profiles. What you don't have is a direct line to the individual consumer holding your product right now. Captura bridges that gap. One scan turns a demographic data point into a real person you can reach.
+            You have market research. Retail sell-through reports. Demographic profiles. What you don't have is a direct line to the individual consumer holding your product right now. Captura bridges that gap. One scan turns an anonymous buyer into a relationship you own.
           </p>
           <p style={{
             fontSize: '1rem', color: '#52525B', lineHeight: 1.7,
@@ -203,8 +203,8 @@ export default function Landing() {
             },
             {
               num: '03',
-              title: 'Harvest',
-              desc: 'Every scan logs geographic location and device data. Consumers see your content and voluntarily submit contact info. You build a first-party database of real buyers.',
+              title: 'Connect',
+              desc: 'Every scan surfaces geographic and device data. Consumers engage with your content and voluntarily opt in, and you build a first-party database of real, reachable buyers.',
             },
           ].map((item, i) => (
             <div key={item.num} style={{
@@ -216,6 +216,71 @@ export default function Landing() {
               <p style={{ color: '#52525B', lineHeight: 1.7, fontSize: '0.9rem' }}>{item.desc}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* The Value Exchange */}
+      <section style={{
+        padding: '100px 40px', maxWidth: 1200, margin: '0 auto',
+        borderTop: '1px solid #1C1C21',
+      }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
+          {/* Phone mockup - left side */}
+          <div style={{
+            background: '#131316', border: '1px solid #1C1C21', borderRadius: 32,
+            padding: '16px', maxWidth: 320, margin: '0 auto',
+          }}>
+            <div style={{
+              background: '#09090B', borderRadius: 22, padding: '28px 20px',
+              minHeight: 420,
+            }}>
+              {/* Brand header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid #1C1C21' }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#1C1C21', border: '1px solid #27272A' }} />
+                <div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#FAFAFA' }}>Performance Bat 34"</div>
+                  <div style={{ fontSize: '0.6rem', color: '#3F3F46', textTransform: 'uppercase', letterSpacing: '1px' }}>44 Pro</div>
+                </div>
+              </div>
+
+              {/* Scan page rows */}
+              {[
+                { label: 'Register your warranty', sub: 'Covered in 10 seconds. No receipt needed.' },
+                { label: 'Reorder in one tap', sub: 'Running low? Restock instantly.' },
+                { label: 'Enter to win', sub: 'Exclusive giveaways for owners.' },
+                { label: 'Unlock VIP access', sub: 'Early drops, member-only deals.' },
+                { label: 'Watch how-to content', sub: 'Get more from your gear.' },
+              ].map((row, i) => (
+                <div key={i} style={{
+                  padding: '14px 0',
+                  borderBottom: i < 4 ? '1px solid #1C1C21' : 'none',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                }}>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 500, color: '#FAFAFA', marginBottom: 2 }}>{row.label}</div>
+                    <div style={{ fontSize: '0.7rem', color: '#3F3F46' }}>{row.sub}</div>
+                  </div>
+                  <div style={{ color: '#27272A', fontSize: '0.9rem' }}>&#8250;</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Text - right side */}
+          <div>
+            <div style={{ fontSize: '0.75rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 16 }}>
+              The value exchange
+            </div>
+            <h2 style={{ fontSize: '2.2rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-1px', color: '#FAFAFA', marginBottom: 24 }}>
+              Consumers don't scan for you. They scan for themselves.
+            </h2>
+            <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8, marginBottom: 16 }}>
+              Nobody hands over their phone number for nothing. They scan because they get something real in return, and you get the relationship as a result.
+            </p>
+            <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8 }}>
+              The value exchange is what drives an average 18% opt-in. Give people a reason, and they come to you.
+            </p>
+          </div>
         </div>
       </section>
 

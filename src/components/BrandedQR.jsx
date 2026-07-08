@@ -194,19 +194,21 @@ export default function BrandedQR({
         }
 
         // Draw data modules
+        // With shape mask: dots INSIDE logo are big/bright, dots OUTSIDE are small/faded
+        // All dots stay so QR always scans
         for (let y = 0; y < gridSize; y++) {
           for (let x = 0; x < gridSize; x++) {
             if (!matrix[y][x]) continue
             if (isFinderPattern(x, y, gridSize)) continue
 
-            // Shape mask: skip dots outside the logo silhouette
-            if (activeMask && !activeMask[y][x]) continue
-
             const rVal = rand()
             const rVal2 = rand()
             const rVal3 = rand()
 
-            // Circular fade
+            // Is this dot inside the logo shape?
+            const insideMask = activeMask ? activeMask[y][x] : true
+
+            // Circular fade (only when no mask)
             const dx = x - center
             const dy = y - center
             const dist = Math.sqrt(dx * dx + dy * dy)
@@ -214,6 +216,11 @@ export default function BrandedQR({
             if (circularFade && !activeMask) {
               opacity = Math.max(0, 1 - (dist / maxDist) * 0.6)
               if (dist > maxDist * 1.15) continue
+            }
+
+            // Shape mask: inside = full size/opacity, outside = small/faded
+            if (activeMask) {
+              opacity = insideMask ? 1 : 0.15
             }
 
             // Gradient color
@@ -226,20 +233,23 @@ export default function BrandedQR({
             // Position
             let px = x * modSize + modSize / 2
             let py = y * modSize + modSize / 2
-            if (jitter) {
+            if (jitter && insideMask) {
               px += (rVal - 0.5) * modSize * 0.3
               py += (rVal2 - 0.5) * modSize * 0.3
             }
 
-            // Size
+            // Size: inside mask = big, outside = tiny
             let scale = dotScale
-            if (randomSize) {
-              scale *= 0.6 + rVal * 0.8
+            if (activeMask) {
+              scale = insideMask ? dotScale * 1.3 : dotScale * 0.4
+            }
+            if (randomSize && insideMask) {
+              scale *= 0.7 + rVal * 0.6
             }
 
             if (iconSvgPath) {
               const iconSize = modSize * scale
-              const rotation = rotateIcons ? rVal3 * 360 : 0
+              const rotation = rotateIcons && insideMask ? rVal3 * 360 : 0
               elements.push(
                 <g key={`${x}-${y}`}
                   transform={`translate(${px}, ${py}) rotate(${rotation})`}
@@ -267,71 +277,6 @@ export default function BrandedQR({
                   opacity={opacity}
                 />
               )
-            }
-          }
-        }
-
-        // Also fill non-QR positions inside the mask with decorative dots
-        // This makes the logo shape more visible
-        if (activeMask) {
-          for (let y = 0; y < gridSize; y++) {
-            for (let x = 0; x < gridSize; x++) {
-              if (matrix[y][x]) continue // already drawn as QR dot
-              if (isFinderPattern(x, y, gridSize)) continue
-              if (!activeMask[y][x]) continue
-
-              const rVal = rand()
-              const rVal2 = rand()
-
-              // Gradient color (lighter for fill dots)
-              let dotColor = fgColor
-              if (fgColor2) {
-                const t = (x + y) / (gridSize * 2)
-                dotColor = lerpColor(fgColor, fgColor2, t)
-              }
-
-              let px = x * modSize + modSize / 2
-              let py = y * modSize + modSize / 2
-              if (jitter) {
-                px += (rVal - 0.5) * modSize * 0.25
-                py += (rVal2 - 0.5) * modSize * 0.25
-              }
-
-              let scale = dotScale * 0.55 // decorative dots are smaller
-              if (randomSize) {
-                scale *= 0.5 + rVal * 0.6
-              }
-
-              if (iconSvgPath) {
-                const iconSize = modSize * scale
-                elements.push(
-                  <g key={`fill-${x}-${y}`}
-                    transform={`translate(${px}, ${py})`}
-                    opacity={0.3}
-                  >
-                    <svg
-                      x={-iconSize / 2}
-                      y={-iconSize / 2}
-                      width={iconSize}
-                      height={iconSize}
-                      viewBox={iconViewBox}
-                    >
-                      <path d={iconSvgPath} fill={dotColor} />
-                    </svg>
-                  </g>
-                )
-              } else {
-                elements.push(
-                  <circle
-                    key={`fill-${x}-${y}`}
-                    cx={px}
-                    cy={py}
-                    r={modSize * 0.25 * scale}
-                    fill={dotColor}
-                    opacity={0.3}
-                  />
-                )
-              }
             }
           }
         }
@@ -429,14 +374,16 @@ export default function BrandedQR({
         }
 
         // Draw data modules
+        // With mask: inside logo = big/bright, outside = small/faded. All dots stay.
         for (let y = 0; y < gridSize; y++) {
           for (let x = 0; x < gridSize; x++) {
             if (!matrix[y][x]) continue
             if (isFinderPattern(x, y, gridSize)) continue
-            if (activeMask && !activeMask[y][x]) continue
 
             const rVal = rand()
             const rVal2 = rand()
+
+            const insideMask = activeMask ? activeMask[y][x] : true
 
             const dx = x - center
             const dy = y - center
@@ -447,52 +394,28 @@ export default function BrandedQR({
             if (circularFade && !activeMask) {
               alpha = Math.max(0, 1 - (dist / maxDist) * 0.6)
             }
+            if (activeMask) {
+              alpha = insideMask ? 1 : 0.15
+            }
 
             let px = x * modSize
             let py = y * modSize
-            if (jitter) {
+            if (jitter && insideMask) {
               px += (rVal - 0.5) * modSize * 0.3
               py += (rVal2 - 0.5) * modSize * 0.3
             }
 
             let scale = dotScale
-            if (randomSize) {
-              scale *= 0.6 + rVal * 0.8
+            if (activeMask) {
+              scale = insideMask ? dotScale * 1.3 : dotScale * 0.4
+            }
+            if (randomSize && insideMask) {
+              scale *= 0.7 + rVal * 0.6
             }
 
             ctx.globalAlpha = alpha
             const drawSize = modSize * scale
             ctx.drawImage(icon, px + (modSize - drawSize) / 2, py + (modSize - drawSize) / 2, drawSize, drawSize)
-          }
-        }
-
-        // Decorative fill dots inside mask
-        if (activeMask) {
-          for (let y = 0; y < gridSize; y++) {
-            for (let x = 0; x < gridSize; x++) {
-              if (matrix[y][x]) continue
-              if (isFinderPattern(x, y, gridSize)) continue
-              if (!activeMask[y][x]) continue
-
-              const rVal = rand()
-              const rVal2 = rand()
-
-              let px = x * modSize
-              let py = y * modSize
-              if (jitter) {
-                px += (rVal - 0.5) * modSize * 0.25
-                py += (rVal2 - 0.5) * modSize * 0.25
-              }
-
-              let scale = dotScale * 0.5
-              if (randomSize) {
-                scale *= 0.5 + rVal * 0.6
-              }
-
-              ctx.globalAlpha = 0.25
-              const drawSize = modSize * scale
-              ctx.drawImage(icon, px + (modSize - drawSize) / 2, py + (modSize - drawSize) / 2, drawSize, drawSize)
-            }
           }
         }
 

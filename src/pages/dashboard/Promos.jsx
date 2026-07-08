@@ -118,6 +118,25 @@ export default function Promos({ brand }) {
     await loadEntries(promo.id)
   }
 
+  const exportEntries = () => {
+    if (entries.length === 0) return
+    const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Product', 'City', 'Date']
+    const rows = entries.map(e => [
+      e.first_name, e.last_name, e.email || '', e.phone,
+      e.products?.name || '', e.city || '',
+      new Date(e.entered_at).toLocaleDateString(),
+    ])
+    const csv = [headers, ...rows].map(row =>
+      row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+    ).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const link = document.createElement('a')
+    link.download = `${viewingEntries.title}-entries-${new Date().toISOString().split('T')[0]}.csv`
+    link.href = URL.createObjectURL(blob)
+    link.click()
+    URL.revokeObjectURL(link.href)
+  }
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
@@ -258,8 +277,14 @@ export default function Promos({ brand }) {
                 <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>{viewingEntries.title}</h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{entries.length} entries</p>
               </div>
-              <button className="btn btn-secondary" style={{ fontSize: '0.8rem' }}
-                onClick={() => setViewingEntries(null)}>Close</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {entries.length > 0 && (
+                  <button className="btn btn-primary" style={{ fontSize: '0.8rem' }}
+                    onClick={exportEntries}>Export CSV</button>
+                )}
+                <button className="btn btn-secondary" style={{ fontSize: '0.8rem' }}
+                  onClick={() => setViewingEntries(null)}>Close</button>
+              </div>
             </div>
 
             {entries.length === 0 ? (

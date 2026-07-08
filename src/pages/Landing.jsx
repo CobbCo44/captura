@@ -296,6 +296,70 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Intelligence section */}
+      <section style={{
+        padding: '100px 40px', maxWidth: 1200, margin: '0 auto',
+        borderTop: '1px solid #1C1C21',
+      }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: '0.75rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 16 }}>
+              Built-in intelligence
+            </div>
+            <h2 style={{ fontSize: '2.2rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-1px', color: '#FAFAFA', marginBottom: 24 }}>
+              Your data works while you don't
+            </h2>
+            <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8, marginBottom: 16 }}>
+              Captura continuously analyzes your scan data and surfaces what matters. Which products are gaining traction. Which regions are heating up. Where your VIP conversion is strong and where it needs attention. No digging through dashboards or building reports manually.
+            </p>
+            <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8, marginBottom: 16 }}>
+              On-demand intelligence reports break down product performance, geographic trends, and consumer behavior patterns. You get clear recommendations on where to double down and what to adjust.
+            </p>
+            <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8 }}>
+              The data you collect today informs the decisions you make tomorrow. Captura makes sure you never fall behind on what your consumers are telling you.
+            </p>
+          </div>
+
+          {/* Sample report preview */}
+          <div style={{
+            background: '#131316', border: '1px solid #1C1C21', borderRadius: 16,
+            padding: '32px',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div style={{ fontSize: '0.7rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase' }}>
+                Weekly insights report
+              </div>
+              <div style={{ fontSize: '0.65rem', color: '#27272A' }}>Auto-generated</div>
+            </div>
+
+            {[
+              { label: 'Top performing SKU', value: 'Performance Bat 34"', detail: 'Up 32% week over week' },
+              { label: 'Fastest growing region', value: 'Southeast US', detail: 'Houston, Miami, Atlanta leading' },
+              { label: 'VIP conversion trend', value: '18.2% → 21.4%', detail: 'Promo campaign driving signups' },
+            ].map((item, i) => (
+              <div key={i} style={{
+                padding: '16px 0',
+                borderBottom: i < 2 ? '1px solid #1C1C21' : 'none',
+              }}>
+                <div style={{ fontSize: '0.7rem', color: '#3F3F46', marginBottom: 4 }}>{item.label}</div>
+                <div style={{ fontSize: '1rem', fontWeight: 600, color: '#FAFAFA', marginBottom: 2 }}>{item.value}</div>
+                <div style={{ fontSize: '0.75rem', color: '#52525B' }}>{item.detail}</div>
+              </div>
+            ))}
+
+            <div style={{
+              marginTop: 20, padding: '14px 16px', borderRadius: 8,
+              background: 'rgba(255,255,255,0.02)', border: '1px solid #1C1C21',
+            }}>
+              <div style={{ fontSize: '0.7rem', color: '#3F3F46', marginBottom: 6, fontWeight: 600 }}>RECOMMENDATION</div>
+              <div style={{ fontSize: '0.85rem', color: '#A1A1AA', lineHeight: 1.6 }}>
+                Increase QR placement on the 34" bat packaging. Southeast retailers are seeing high engagement. Consider a regional promo targeting Houston and Miami.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Double down section */}
       <section style={{
         padding: '100px 40px', maxWidth: 1200, margin: '0 auto',

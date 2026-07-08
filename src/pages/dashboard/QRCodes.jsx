@@ -18,6 +18,7 @@ export default function QRCodes({ brand }) {
     logoRawFile: null,
     existingLogoUrl: null,
     logoScale: 0.25,
+    ctaText: '',
   })
 
   const scanUrl = typeof window !== 'undefined' ? window.location.origin : ''
@@ -44,7 +45,7 @@ export default function QRCodes({ brand }) {
 
   const openCreate = () => {
     setEditingQR(null)
-    setForm({ productId: '', fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoRawFile: null, existingLogoUrl: null, logoScale: 0.25 })
+    setForm({ productId: '', fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoRawFile: null, existingLogoUrl: null, logoScale: 0.25, ctaText: '' })
     setShowModal(true)
   }
 
@@ -58,6 +59,7 @@ export default function QRCodes({ brand }) {
       logoRawFile: null,
       existingLogoUrl: qr.logo_url || null,
       logoScale: qr.logo_scale || 0.25,
+      ctaText: qr.cta_text || '',
     })
     setShowModal(true)
   }
@@ -113,6 +115,7 @@ export default function QRCodes({ brand }) {
       bg_color: form.bgColor,
       logo_url: logoUrl,
       logo_scale: form.logoScale,
+      cta_text: form.ctaText || null,
     }
 
     if (editingQR) {
@@ -144,7 +147,7 @@ export default function QRCodes({ brand }) {
       }
     }
 
-    setForm({ productId: '', fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoRawFile: null, existingLogoUrl: null, logoScale: 0.25 })
+    setForm({ productId: '', fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoRawFile: null, existingLogoUrl: null, logoScale: 0.25, ctaText: '' })
     setEditingQR(null)
     setShowModal(false)
     setSaving(false)
@@ -246,6 +249,7 @@ export default function QRCodes({ brand }) {
                   logoScale={qr.logo_scale || 0.25}
                   size={200}
                   canvasId={`qr-${qr.short_id}`}
+                  ctaText={qr.cta_text || ''}
                 />
               </div>
               <h3 style={{ fontWeight: 600, marginBottom: 4 }}>{qr.products?.name || 'Product'}</h3>
@@ -349,6 +353,14 @@ export default function QRCodes({ brand }) {
 
                     <div>
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                        Call to Action Text
+                      </label>
+                      <input className="input" placeholder="e.g. Members Only, Scan for Deals"
+                        value={form.ctaText} onChange={e => setForm({ ...form, ctaText: e.target.value })} />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
                         Background Color
                       </label>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -377,6 +389,7 @@ export default function QRCodes({ brand }) {
                         logoSrc={previewLogo}
                         logoScale={form.logoScale}
                         size={240}
+                        ctaText={form.ctaText}
                       />
                     </div>
                     <p style={{

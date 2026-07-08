@@ -12,12 +12,13 @@ function isFinderPattern(x, y, gridSize) {
 
 export default function BrandedQR({
   url = 'https://captura44.netlify.app',
-  fgColor = '#6C2BD9',
+  fgColor = '#18181B',
   bgColor = '#FFFFFF',
   size = 300,
   logoSrc = null,
   logoScale = 0.25,
   canvasId = null,
+  ctaText = '',
 }) {
   const canvasRef = useRef(null)
 
@@ -28,15 +29,18 @@ export default function BrandedQR({
     const code = generateQR(url)
     const matrix = code.modules
     const gridSize = matrix.length
+
+    const bannerHeight = ctaText ? size * 0.12 : 0
+    const totalHeight = size + bannerHeight
     const modSize = size / gridSize
 
     canvas.width = size
-    canvas.height = size
+    canvas.height = totalHeight
     const ctx = canvas.getContext('2d')
 
     // Background
     ctx.fillStyle = bgColor
-    ctx.fillRect(0, 0, size, size)
+    ctx.fillRect(0, 0, size, totalHeight)
 
     // Draw all QR modules
     ctx.fillStyle = fgColor
@@ -47,7 +51,19 @@ export default function BrandedQR({
       }
     }
 
-    // Draw center logo
+    // Draw CTA banner below QR code
+    if (ctaText) {
+      ctx.fillStyle = fgColor
+      ctx.fillRect(0, size, size, bannerHeight)
+
+      ctx.fillStyle = bgColor
+      ctx.font = `bold ${bannerHeight * 0.5}px Inter, -apple-system, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(ctaText.toUpperCase(), size / 2, size + bannerHeight / 2)
+    }
+
+    // Draw center logo (after banner so it layers correctly)
     if (logoSrc) {
       const img = new Image()
       img.crossOrigin = 'anonymous'
@@ -56,20 +72,19 @@ export default function BrandedQR({
         const logoPos = (size - logoSize) / 2
         const padding = logoSize * 0.12
 
-        // White background behind logo
         ctx.fillStyle = bgColor
         roundRect(ctx, logoPos - padding, logoPos - padding,
           logoSize + padding * 2, logoSize + padding * 2, 8)
         ctx.fill()
 
-        // Draw logo
         ctx.drawImage(img, logoPos, logoPos, logoSize, logoSize)
       }
       img.src = logoSrc
     }
-  }, [url, fgColor, bgColor, size, logoSrc, logoScale])
+  }, [url, fgColor, bgColor, size, logoSrc, logoScale, ctaText])
 
-  return <canvas ref={canvasRef} id={canvasId} style={{ width: size, height: size }} />
+  const bannerHeight = ctaText ? size * 0.12 : 0
+  return <canvas ref={canvasRef} id={canvasId} style={{ width: size, height: size + bannerHeight }} />
 }
 
 function roundRect(ctx, x, y, w, h, r) {

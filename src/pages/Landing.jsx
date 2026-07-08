@@ -37,14 +37,14 @@ export default function Landing() {
             lineHeight: 1.05, letterSpacing: '-2px', color: '#FAFAFA',
             marginBottom: 28,
           }}>
-            You manufacture the product.<br />
-            We capture the customer.
+            You know the demographics.<br />
+            We give you the names.
           </h1>
           <p style={{
             fontSize: '1.15rem', color: '#71717A', lineHeight: 1.7,
             maxWidth: 480, marginBottom: 20,
           }}>
-            Your products are in stores, on shelves, in consumers' hands. But you have no idea who's buying them. Captura changes that. One scan turns an anonymous purchase into a named, locatable, reachable customer.
+            You have market research. Retail sell-through reports. Demographic profiles. What you don't have is a direct line to the individual consumer holding your product right now. Captura bridges that gap. One scan turns a demographic data point into a real person you can reach.
           </p>
           <p style={{
             fontSize: '1rem', color: '#52525B', lineHeight: 1.7,
@@ -113,13 +113,13 @@ export default function Landing() {
               The problem
             </div>
             <h2 style={{ fontSize: '2.2rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-1px', color: '#FAFAFA', marginBottom: 24 }}>
-              $0 spent on data. Millions spent on product.
+              You know the "who." You're missing the "each."
             </h2>
             <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8, marginBottom: 16 }}>
-              Manufacturers pour resources into R&D, production, and distribution. The product ships, hits a shelf, gets purchased, and disappears into the consumer's life.
+              You know your buyer is 28, male, lives in the Sun Belt, and shops at Dick's. That's useful for ad targeting. It's useless for building a relationship.
             </p>
             <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8 }}>
-              The brand never knows who bought it. Never gets a name, a phone number, a location. The retailer owns that relationship. The brand is blind.
+              You can't text a demographic. You can't send a product drop alert to a market segment. You need individual contact data from the people actually using your product.
             </p>
           </div>
           <div>
@@ -127,13 +127,13 @@ export default function Landing() {
               The shift
             </div>
             <h2 style={{ fontSize: '2.2rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-1px', color: '#FAFAFA', marginBottom: 24 }}>
-              Own the post-purchase relationship
+              Go from aggregate data to individual relationships
             </h2>
             <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8, marginBottom: 16 }}>
-              Captura gives manufacturers a direct line to the end consumer. Every product becomes a data collection point. Every scan is a named contact with a verified location and a phone number you can text.
+              Captura layers on top of what you already know. Your demographic research tells you the market. Captura gives you each person in it. Name, phone, email, location, and which specific product they're holding.
             </p>
             <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8 }}>
-              That is not a marketing gimmick. That is a first-party data asset that compounds over time.
+              That is the difference between knowing your audience and owning the relationship with them.
             </p>
           </div>
         </div>
@@ -306,13 +306,13 @@ export default function Landing() {
             The compounding effect
           </div>
           <h2 style={{ fontSize: '2.5rem', fontWeight: 800, lineHeight: 1.15, letterSpacing: '-1px', color: '#FAFAFA', marginBottom: 28 }}>
-            Consumer engagement is not a campaign. It is infrastructure.
+            Demographic data tells you the market. Consumer data lets you own it.
           </h2>
           <p style={{ color: '#52525B', fontSize: '1.05rem', lineHeight: 1.8, marginBottom: 20 }}>
-            Every product you sell with a Captura QR code adds another consumer to your database. That database does not depreciate. It compounds. More contacts mean better targeting. Better targeting means higher conversion. Higher conversion means more revenue per product shipped.
+            You already spend on retail data, market research, and ad platforms to understand your buyer. That gives you insight. What it does not give you is a contact list. Every product you sell with a Captura QR code turns insight into a named, reachable person. That database compounds with every unit shipped.
           </p>
           <p style={{ color: '#52525B', fontSize: '1.05rem', lineHeight: 1.8 }}>
-            Brands that invest in first-party consumer data today will own their market in two years. The ones that don't will still be renting access to their own customers through retailers and ad platforms.
+            Brands that layer individual consumer data on top of their existing market intelligence will outpace competitors still relying on third-party reports and retailer POS summaries.
           </p>
         </div>
       </section>
@@ -342,7 +342,7 @@ export default function Landing() {
           lineHeight: 1.1, letterSpacing: '-1.5px', color: '#FAFAFA',
           maxWidth: 650, margin: '0 auto 20px',
         }}>
-          Your competitors are still guessing who buys their product. You don't have to.
+          You know the market. It's time to know the customer.
         </h2>
         <p style={{
           color: '#52525B', fontSize: '1.05rem',

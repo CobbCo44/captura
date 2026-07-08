@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase'
 export default function Products({ brand }) {
   const [products, setProducts] = useState([])
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', imageFile: null, imagePreview: null })
+  const [form, setForm] = useState({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', images: [] })
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
 
@@ -28,34 +28,50 @@ export default function Products({ brand }) {
   }
 
   const handleImageSelect = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      setForm({ ...form, imageFile: file, imagePreview: ev.target.result })
-    }
-    reader.readAsDataURL(file)
+    const files = Array.from(e.target.files)
+    if (!files.length) return
+
+    files.forEach(file => {
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        setForm(prev => ({
+          ...prev,
+          images: [...prev.images, { file, preview: ev.target.result }]
+        }))
+      }
+      reader.readAsDataURL(file)
+    })
+    e.target.value = ''
+  }
+
+  const removeImage = (index) => {
+    setForm(prev => ({
+      ...prev,
+      images: prev.images.filter((_, i) => i !== index)
+    }))
   }
 
   const handleAdd = async (e) => {
     e.preventDefault()
     setUploading(true)
 
-    let imageUrl = null
+    let imageUrls = []
 
-    // Upload image if selected
-    if (form.imageFile && supabase && brand?.id && brand.id !== 'demo') {
-      const fileExt = form.imageFile.name.split('.').pop()
-      const fileName = `${brand.id}/${Date.now()}.${fileExt}`
-      const { error: uploadError } = await supabase.storage
-        .from('product-images')
-        .upload(fileName, form.imageFile)
-
-      if (!uploadError) {
-        const { data: urlData } = supabase.storage
+    // Upload all images
+    if (form.images.length > 0 && supabase && brand?.id && brand.id !== 'demo') {
+      for (const img of form.images) {
+        const fileExt = img.file.name.split('.').pop()
+        const fileName = `${brand.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
+        const { error: uploadError } = await supabase.storage
           .from('product-images')
-          .getPublicUrl(fileName)
-        imageUrl = urlData.publicUrl
+          .upload(fileName, img.file)
+
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from('product-images')
+            .getPublicUrl(fileName)
+          imageUrls.push(urlData.publicUrl)
+        }
       }
     }
 
@@ -68,7 +84,7 @@ export default function Products({ brand }) {
         content_title: form.contentTitle,
         content_body: form.contentBody,
         content_url: form.contentUrl,
-        image_url: imageUrl,
+        image_urls: imageUrls,
       }).select().single()
 
       if (error) {
@@ -79,7 +95,7 @@ export default function Products({ brand }) {
       }
     }
 
-    setForm({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', imageFile: null, imagePreview: null })
+    setForm({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', images: [] })
     setShowModal(false)
     setUploading(false)
   }
@@ -89,6 +105,11 @@ export default function Products({ brand }) {
       await supabase.from('products').delete().eq('id', id)
     }
     setProducts(products.filter(p => p.id !== id))
+  }
+
+  const getFirstImage = (p) => {
+    if (p.image_urls && p.image_urls.length > 0) return p.image_urls[0]
+    return null
   }
 
   return (
@@ -111,7 +132,7 @@ export default function Products({ brand }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['', 'Product', 'SKU', 'Status', ''].map((h, i) => (
+                {['', 'Product', 'SKU', 'Images', 'Status', ''].map((h, i) => (
                   <th key={i} style={{
                     padding: '14px 20px', textAlign: 'left',
                     fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)',
@@ -122,38 +143,45 @@ export default function Products({ brand }) {
               </tr>
             </thead>
             <tbody>
-              {products.map(p => (
-                <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '10px 20px', width: 60 }}>
-                    {p.image_url ? (
-                      <img src={p.image_url} alt={p.name}
-                        style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} />
-                    ) : (
-                      <div style={{
-                        width: 40, height: 40, borderRadius: 6,
-                        background: 'var(--bg)', border: '1px solid var(--border)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: 'var(--text-muted)', fontSize: '0.7rem'
-                      }}>IMG</div>
-                    )}
-                  </td>
-                  <td style={{ padding: '14px 20px', fontWeight: 500 }}>{p.name}</td>
-                  <td style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>{p.sku || '-'}</td>
-                  <td style={{ padding: '14px 20px' }}>
-                    <span style={{
-                      padding: '4px 10px', borderRadius: 6, fontSize: '0.8rem', fontWeight: 500,
-                      background: p.status === 'active' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(161, 161, 170, 0.1)',
-                      color: p.status === 'active' ? 'var(--success)' : 'var(--text-muted)'
-                    }}>{p.status || 'active'}</span>
-                  </td>
-                  <td style={{ padding: '14px 20px', textAlign: 'right' }}>
-                    <button onClick={() => handleDelete(p.id)}
-                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer' }}>
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {products.map(p => {
+                const firstImg = getFirstImage(p)
+                const imgCount = p.image_urls?.length || 0
+                return (
+                  <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '10px 20px', width: 60 }}>
+                      {firstImg ? (
+                        <img src={firstImg} alt={p.name}
+                          style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{
+                          width: 40, height: 40, borderRadius: 6,
+                          background: 'var(--bg)', border: '1px solid var(--border)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          color: 'var(--text-muted)', fontSize: '0.7rem'
+                        }}>IMG</div>
+                      )}
+                    </td>
+                    <td style={{ padding: '14px 20px', fontWeight: 500 }}>{p.name}</td>
+                    <td style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>{p.sku || '-'}</td>
+                    <td style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                      {imgCount > 0 ? `${imgCount} image${imgCount > 1 ? 's' : ''}` : '-'}
+                    </td>
+                    <td style={{ padding: '14px 20px' }}>
+                      <span style={{
+                        padding: '4px 10px', borderRadius: 6, fontSize: '0.8rem', fontWeight: 500,
+                        background: p.status === 'active' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(161, 161, 170, 0.1)',
+                        color: p.status === 'active' ? 'var(--success)' : 'var(--text-muted)'
+                      }}>{p.status || 'active'}</span>
+                    </td>
+                    <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                      <button onClick={() => handleDelete(p.id)}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer' }}>
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -171,33 +199,40 @@ export default function Products({ brand }) {
               {/* Image Upload */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  Product Image
+                  Product Images
                 </label>
-                {form.imagePreview ? (
-                  <div style={{ position: 'relative', marginBottom: 8 }}>
-                    <img src={form.imagePreview} alt="Preview"
-                      style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
-                    <button type="button" onClick={() => setForm({ ...form, imageFile: null, imagePreview: null })}
-                      style={{
-                        position: 'absolute', top: 8, right: 8,
-                        background: 'rgba(0,0,0,0.7)', color: 'white', border: 'none',
-                        borderRadius: 6, padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer'
-                      }}>Remove</button>
+
+                {/* Image previews */}
+                {form.images.length > 0 && (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                    {form.images.map((img, i) => (
+                      <div key={i} style={{ position: 'relative' }}>
+                        <img src={img.preview} alt={`Preview ${i + 1}`}
+                          style={{ width: 80, height: 80, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
+                        <button type="button" onClick={() => removeImage(i)}
+                          style={{
+                            position: 'absolute', top: -6, right: -6,
+                            background: '#EF4444', color: 'white', border: 'none',
+                            borderRadius: '50%', width: 20, height: 20, fontSize: '0.7rem',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>x</button>
+                      </div>
+                    ))}
                   </div>
-                ) : (
-                  <label style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: '100%', height: 120, borderRadius: 8,
-                    border: '2px dashed var(--border)', cursor: 'pointer',
-                    color: 'var(--text-muted)', fontSize: '0.9rem',
-                    flexDirection: 'column', gap: 4,
-                  }}>
-                    <span style={{ fontSize: '1.5rem' }}>+</span>
-                    <span>Click to upload image</span>
-                    <input type="file" accept="image/*" onChange={handleImageSelect}
-                      style={{ display: 'none' }} />
-                  </label>
                 )}
+
+                {/* Upload button */}
+                <label style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '100%', height: form.images.length > 0 ? 60 : 100, borderRadius: 8,
+                  border: '2px dashed var(--border)', cursor: 'pointer',
+                  color: 'var(--text-muted)', fontSize: '0.9rem',
+                  flexDirection: 'column', gap: 4,
+                }}>
+                  <span>+ {form.images.length > 0 ? 'Add more images' : 'Click to upload images'}</span>
+                  <input type="file" accept="image/*" multiple onChange={handleImageSelect}
+                    style={{ display: 'none' }} />
+                </label>
               </div>
 
               <input className="input" placeholder="Product Name" value={form.name}

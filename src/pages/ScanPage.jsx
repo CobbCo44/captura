@@ -158,11 +158,20 @@ export default function ScanPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', padding: '0 0 40px' }}>
-      {/* Product Hero */}
-      {product?.image_url && (
-        <div style={{ width: '100%', height: 240, overflow: 'hidden', background: 'var(--bg-card)' }}>
-          <img src={product.image_url} alt={product.name}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      {/* Product Images */}
+      {product?.image_urls?.length > 0 && (
+        <div style={{
+          width: '100%', overflow: 'auto', background: 'var(--bg-card)',
+          display: 'flex', scrollSnapType: 'x mandatory',
+        }}>
+          {product.image_urls.map((url, i) => (
+            <div key={i} style={{
+              minWidth: '100%', height: 260, scrollSnapAlign: 'start',
+            }}>
+              <img src={url} alt={`${product.name} ${i + 1}`}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
+          ))}
         </div>
       )}
       <div style={{

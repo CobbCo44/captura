@@ -227,14 +227,18 @@ export default function ScanPage() {
           </div>
         )}
 
-        {product?.content_title && (
+        {(product?.content_title || product?.content_body || product?.content_url) && (
           <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border)' }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12 }}>
-              {product.content_title}
-            </h2>
-            <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.95rem' }}>
-              {product.content_body}
-            </p>
+            {product.content_title && (
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12 }}>
+                {product.content_title}
+              </h2>
+            )}
+            {product.content_body && (
+              <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.95rem' }}>
+                {product.content_body}
+              </p>
+            )}
             {product.content_url && getYouTubeId(product.content_url) && (
               <div style={{
                 marginTop: 16, borderRadius: 8, overflow: 'hidden',

@@ -5,69 +5,52 @@ import { supabase } from '../lib/supabase'
 const tiers = [
   {
     name: 'Starter',
-    price: '499',
-    annual: '4,990',
+    price: '299',
+    perContact: '$1',
     desc: 'For brands launching their first consumer capture program.',
     features: [
-      'Up to 1,000 scans/month',
-      '5 products',
+      'Core dashboard',
+      'Up to 5 products',
       '3 QR codes',
-      'VIP member capture',
       'Scan analytics + map',
+      'VIP member capture',
       'CSV exports',
+      'Unlimited scans',
     ],
-    roi: {
-      scans: '1,000',
-      captures: '180',
-      ltv: '$8,460',
-      multiple: '17x',
-    },
     highlight: false,
   },
   {
     name: 'Growth',
-    price: '999',
-    annual: '9,990',
+    price: '499',
+    perContact: '$1',
     desc: 'For brands scaling consumer engagement across product lines.',
     features: [
-      'Up to 10,000 scans/month',
-      '25 products',
+      'Everything in Starter',
+      'Unlimited products',
       'Unlimited QR codes',
+      'AI insights reports',
+      'Warranty registration',
+      'Reorder links',
       'Promotional campaigns',
       'Social media links',
-      'Reorder links',
-      'AI insights reports',
       'Consumer data dashboard',
     ],
-    roi: {
-      scans: '10,000',
-      captures: '1,800',
-      ltv: '$84,600',
-      multiple: '85x',
-    },
     highlight: true,
   },
   {
     name: 'Enterprise',
-    price: '2,499',
-    annual: '24,990',
+    price: 'Custom',
+    perContact: 'Volume pricing',
     desc: 'For large manufacturers with high-volume product lines.',
     features: [
-      'Unlimited scans',
-      'Unlimited products',
-      'Unlimited QR codes',
+      'Custom platform fee',
+      'Volume per-contact pricing',
       'Everything in Growth',
-      'Custom onboarding',
+      'Dedicated onboarding',
       'Priority support',
+      'Admin controls',
       'Dedicated account manager',
-      'API access (coming soon)',
     ],
-    roi: {
-      scans: '50,000+',
-      captures: '9,000+',
-      ltv: '$423,000+',
-      multiple: '169x',
-    },
     highlight: false,
   },
 ]
@@ -108,7 +91,7 @@ export default function Pricing() {
           Choose your plan
         </h1>
         <p style={{ color: '#52525B', fontSize: '1.1rem', maxWidth: 520, margin: '0 auto' }}>
-          Every tier pays for itself. At 18% average VIP conversion and $47 consumer LTV, the math speaks for itself.
+          A platform fee plus $1 per consumer captured. You only pay for real contacts you own.
         </p>
       </div>
 
@@ -131,39 +114,17 @@ export default function Pricing() {
                 {tier.name}
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
-                <span style={{ fontSize: '3rem', fontWeight: 800, color: '#FAFAFA', letterSpacing: '-2px' }}>${tier.price}</span>
-                <span style={{ color: '#3F3F46', fontSize: '0.9rem' }}>/month</span>
+                {tier.price === 'Custom' ? (
+                  <span style={{ fontSize: '3rem', fontWeight: 800, color: '#FAFAFA', letterSpacing: '-2px' }}>Custom</span>
+                ) : (
+                  <>
+                    <span style={{ fontSize: '3rem', fontWeight: 800, color: '#FAFAFA', letterSpacing: '-2px' }}>${tier.price}</span>
+                    <span style={{ color: '#3F3F46', fontSize: '0.9rem' }}>/month</span>
+                  </>
+                )}
               </div>
-              <div style={{ color: '#27272A', fontSize: '0.8rem' }}>${tier.annual}/year billed annually</div>
+              <div style={{ color: '#A1A1AA', fontSize: '0.85rem', fontWeight: 600, marginTop: 4 }}>+ {tier.perContact} per captured contact</div>
               <p style={{ color: '#52525B', fontSize: '0.85rem', lineHeight: 1.5, marginTop: 12 }}>{tier.desc}</p>
-            </div>
-
-            {/* ROI box */}
-            <div style={{
-              background: '#09090B', borderRadius: 8, padding: '16px',
-              marginBottom: 24, border: '1px solid #1C1C21',
-            }}>
-              <div style={{ fontSize: '0.65rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 10 }}>
-                Monthly ROI at 18% conversion
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <div>
-                  <div style={{ fontSize: '0.65rem', color: '#3F3F46' }}>Scans</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 700, color: '#A1A1AA' }}>{tier.roi.scans}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.65rem', color: '#3F3F46' }}>Consumers captured</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 700, color: '#A1A1AA' }}>{tier.roi.captures}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.65rem', color: '#3F3F46' }}>Consumer LTV value</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 700, color: '#22C55E' }}>{tier.roi.ltv}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.65rem', color: '#3F3F46' }}>Return on investment</div>
-                  <div style={{ fontSize: '1rem', fontWeight: 700, color: '#22C55E' }}>{tier.roi.multiple}</div>
-                </div>
-              </div>
             </div>
 
             <div style={{ flex: 1, marginBottom: 28 }}>
@@ -190,6 +151,10 @@ export default function Pricing() {
             </button>
           </div>
         ))}
+      </div>
+
+      <div style={{ textAlign: 'center', color: '#52525B', fontSize: '0.9rem', marginBottom: 40, maxWidth: 560, margin: '0 auto 40px', lineHeight: 1.6 }}>
+        You pay for results. $1 per opted-in consumer you actually capture. The platform fee covers your dashboard, analytics, and unlimited scans.
       </div>
 
       <div style={{ textAlign: 'center', color: '#3F3F46', fontSize: '0.85rem', paddingBottom: 40 }}>

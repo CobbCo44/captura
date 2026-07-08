@@ -127,7 +127,7 @@ export default function Insights({ brand }) {
           <div style={{ fontSize: '1.5rem', marginBottom: 12 }}>🔍</div>
           <div style={{ fontWeight: 600, marginBottom: 8 }}>Analyzing your data...</div>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Claude is reviewing your scans, VIP signups, and engagement patterns.
+            Analyzing your scans, VIP signups, and engagement patterns.
           </p>
         </div>
       )}

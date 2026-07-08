@@ -136,9 +136,21 @@ export default function Insights({ brand }) {
         <div className="card" style={{ maxWidth: 720 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Weekly Insights Report</h2>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              </span>
+              <button className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '6px 14px' }}
+                onClick={() => {
+                  navigator.clipboard.writeText(report)
+                  const btn = document.activeElement
+                  const orig = btn.textContent
+                  btn.textContent = 'Copied!'
+                  setTimeout(() => { btn.textContent = orig }, 1500)
+                }}>
+                Copy
+              </button>
+            </div>
           </div>
           <div>{renderReport(report)}</div>
         </div>

@@ -38,7 +38,7 @@ export default function ScanPage() {
 
     const { data: qr, error } = await supabase
       .from('qr_codes')
-      .select('*, products(*), brands:brand_id(name, logo_url)')
+      .select('*, products(*), brands:brand_id(name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
       .eq('short_id', qrId)
       .single()
 
@@ -383,6 +383,40 @@ export default function ScanPage() {
             </div>
           )}
         </div>
+
+        {/* Social Links */}
+        {brand && (() => {
+          const socials = [
+            { key: 'social_instagram', label: 'Instagram', icon: '📸' },
+            { key: 'social_tiktok', label: 'TikTok', icon: '🎵' },
+            { key: 'social_twitter', label: 'X', icon: '𝕏' },
+            { key: 'social_facebook', label: 'Facebook', icon: '📘' },
+            { key: 'social_youtube', label: 'YouTube', icon: '▶️' },
+            { key: 'social_website', label: 'Website', icon: '🌐' },
+          ].filter(s => brand[s.key])
+          if (socials.length === 0) return null
+          return (
+            <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>
+                Follow {brand.name}
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                {socials.map(s => (
+                  <a key={s.key} href={brand[s.key]} target="_blank" rel="noopener noreferrer"
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '10px 16px', borderRadius: 8,
+                      background: 'var(--bg-card)', border: '1px solid var(--border)',
+                      color: '#FAFAFA', fontSize: '0.85rem', fontWeight: 500,
+                      textDecoration: 'none',
+                    }}>
+                    <span>{s.icon}</span> {s.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
 
         <div style={{
           textAlign: 'center', padding: '20px 0',

@@ -152,6 +152,22 @@ export default function Login() {
             {loading ? 'Please wait...' : isSignup ? 'Create Account' : 'Log In'}
           </button>
 
+          {!isSignup && (
+            <p style={{ textAlign: 'center', marginTop: -8 }}>
+              <span onClick={async () => {
+                if (!email) { setError('Enter your email first'); return }
+                const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                  redirectTo: window.location.origin + '/login',
+                })
+                if (error) setError(error.message)
+                else alert('Check your email for a password reset link.')
+              }}
+                style={{ color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem' }}>
+                Forgot password?
+              </span>
+            </p>
+          )}
+
           <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
             {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
             <span

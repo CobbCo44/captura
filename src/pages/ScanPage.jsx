@@ -71,6 +71,12 @@ export default function ScanPage() {
     if (scanLogged.current) return
     scanLogged.current = true
 
+    // Throttle: don't log duplicate scans within 5 minutes
+    const throttleKey = `scan_${qr.short_id}`
+    const lastScan = localStorage.getItem(throttleKey)
+    if (lastScan && Date.now() - parseInt(lastScan) < 300000) return
+    localStorage.setItem(throttleKey, String(Date.now()))
+
     let scanData = {
       qr_code_id: qr.id,
       product_id: qr.product_id,
@@ -210,10 +216,18 @@ export default function ScanPage() {
         background: 'var(--bg-card)', borderBottom: '1px solid var(--border)'
       }}>
         {brand && (
-          <div style={{
-            fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
-            textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 8
-          }}>{brand.name}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            {brand.logo_url && (
+              <img src={brand.logo_url} alt="" style={{
+                width: 24, height: 24, borderRadius: 4, objectFit: 'contain',
+                background: '#fff', padding: 2,
+              }} />
+            )}
+            <div style={{
+              fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
+              textTransform: 'uppercase', letterSpacing: '1px',
+            }}>{brand.name}</div>
+          </div>
         )}
         <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>{product?.name || 'Product'}</h1>
       </div>

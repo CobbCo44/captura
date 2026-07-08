@@ -18,7 +18,7 @@ export default function Overview({ brand }) {
     }
 
     const [scansRes, vipRes, productsRes, recentRes] = await Promise.all([
-      supabase.from('scans').select('id, city').eq('brand_id', brand.id),
+      supabase.from('scans').select('id, city, scanned_at').eq('brand_id', brand.id),
       supabase.from('vip_members').select('id').eq('brand_id', brand.id),
       supabase.from('products').select('id').eq('brand_id', brand.id),
       supabase.from('scans').select('*, products(name)').eq('brand_id', brand.id).order('scanned_at', { ascending: false }).limit(10),
@@ -27,11 +27,26 @@ export default function Overview({ brand }) {
     const scans = scansRes.data || []
     const cities = new Set(scans.map(s => s.city).filter(Boolean))
 
+    // Scans by day (last 7 days)
+    const dayMap = {}
+    const now = new Date()
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now)
+      d.setDate(d.getDate() - i)
+      const key = d.toISOString().split('T')[0]
+      dayMap[key] = 0
+    }
+    scans.forEach(s => {
+      const day = s.scanned_at?.split('T')[0]
+      if (day && dayMap[day] !== undefined) dayMap[day]++
+    })
+
     setStats({
       totalScans: scans.length,
       uniqueCities: cities.size,
       vipMembers: (vipRes.data || []).length,
       products: (productsRes.data || []).length,
+      scansByDay: Object.entries(dayMap),
     })
     setRecentScans(recentRes.data || [])
     setLoading(false)
@@ -58,6 +73,33 @@ export default function Overview({ brand }) {
           </div>
         ))}
       </div>
+
+      {/* Scan Trend */}
+      {stats.scansByDay && stats.scansByDay.some(([, count]) => count > 0) && (
+        <div className="card" style={{ marginBottom: 24 }}>
+          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 16 }}>Scans (Last 7 Days)</h3>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120 }}>
+            {(() => {
+              const max = Math.max(...stats.scansByDay.map(([, c]) => c), 1)
+              return stats.scansByDay.map(([day, count]) => (
+                <div key={day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: '0.7rem', color: '#FAFAFA', fontWeight: 600 }}>{count || ''}</span>
+                  <div style={{
+                    width: '100%', borderRadius: 4,
+                    background: count > 0 ? '#FAFAFA' : 'var(--border)',
+                    height: `${Math.max((count / max) * 90, 4)}%`,
+                    minHeight: 4,
+                    transition: 'height 0.3s',
+                  }} />
+                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                    {new Date(day + 'T12:00:00').toLocaleDateString('en', { weekday: 'short' })}
+                  </span>
+                </div>
+              ))
+            })()}
+          </div>
+        </div>
+      )}
 
       {recentScans.length > 0 && (
         <div className="card">

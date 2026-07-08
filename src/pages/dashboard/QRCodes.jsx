@@ -34,11 +34,20 @@ export default function QRCodes({ brand }) {
       setLoading(false)
       return
     }
-    const [qrRes, prodRes] = await Promise.all([
+    const [qrRes, prodRes, scansRes] = await Promise.all([
       supabase.from('qr_codes').select('*, products(name, sku)').eq('brand_id', brand.id).order('created_at', { ascending: false }),
       supabase.from('products').select('id, name, sku').eq('brand_id', brand.id).order('name'),
+      supabase.from('scans').select('qr_code_id').eq('brand_id', brand.id),
     ])
-    setQrCodes(qrRes.data || [])
+    // Count scans per QR code
+    const scanCounts = {}
+    ;(scansRes.data || []).forEach(s => {
+      scanCounts[s.qr_code_id] = (scanCounts[s.qr_code_id] || 0) + 1
+    })
+    const qrWithCounts = (qrRes.data || []).map(qr => ({
+      ...qr, scan_count: scanCounts[qr.id] || 0
+    }))
+    setQrCodes(qrWithCounts)
     setProducts(prodRes.data || [])
     setLoading(false)
   }
@@ -257,7 +266,7 @@ export default function QRCodes({ brand }) {
                 {qr.products?.sku || ''}
               </div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 12 }}>
-                ID: {qr.short_id}
+                {qr.scan_count} scan{qr.scan_count !== 1 ? 's' : ''} &middot; {qr.short_id}
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 <button className="btn btn-primary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}

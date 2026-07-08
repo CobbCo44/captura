@@ -10,6 +10,7 @@ import Promos from './dashboard/Promos'
 import Socials from './dashboard/Socials'
 import Insights from './dashboard/Insights'
 import Consumers from './dashboard/Consumers'
+import Settings from './dashboard/Settings'
 
 const navItems = [
   { path: '', label: 'Overview', icon: '◎' },
@@ -20,14 +21,14 @@ const navItems = [
   { path: 'scans', label: 'Scans', icon: '📍' },
   { path: 'consumers', label: 'Consumers', icon: '👥' },
   { path: 'insights', label: 'Insights', icon: '📊' },
+  { path: 'settings', label: 'Settings', icon: '⚙' },
 ]
-
-// Keep VIP route for backwards compat but remove from nav
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const [brand, setBrand] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [mobileNav, setMobileNav] = useState(false)
 
   useEffect(() => {
     async function loadBrand() {
@@ -43,7 +44,6 @@ export default function Dashboard() {
       }
       let b = await getCurrentBrand()
       if (!b) {
-        // Brand record missing — create one
         const { data: newBrand } = await supabase.from('brands').insert({
           user_id: user.id,
           name: user.user_metadata?.brand_name || 'My Brand',
@@ -72,37 +72,65 @@ export default function Dashboard() {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
+      {/* Mobile nav toggle */}
+      <button onClick={() => setMobileNav(!mobileNav)} style={{
+        display: 'none', position: 'fixed', top: 12, left: 12, zIndex: 20,
+        background: 'var(--bg-card)', border: '1px solid var(--border)',
+        borderRadius: 8, padding: '8px 12px', color: '#FAFAFA', fontSize: '1.2rem',
+        cursor: 'pointer',
+      }} className="mobile-nav-toggle">
+        {mobileNav ? '✕' : '☰'}
+      </button>
+
+      {/* Overlay */}
+      {mobileNav && (
+        <div onClick={() => setMobileNav(false)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9,
+        }} className="mobile-overlay" />
+      )}
+
       {/* Sidebar */}
       <aside style={{
         width: 240, background: 'var(--bg-card)', borderRight: '1px solid var(--border)',
         padding: '24px 0', display: 'flex', flexDirection: 'column',
         position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 10,
-      }}>
+        transform: mobileNav ? 'translateX(0)' : undefined,
+        transition: 'transform 0.2s',
+      }} className="sidebar">
         <div style={{ padding: '0 20px', marginBottom: 32 }}>
-          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#FAFAFA' }}>
-            Captura
-          </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-            {brand?.name || 'Brand Dashboard'}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            {brand?.logo_url && (
+              <img src={brand.logo_url} alt="" style={{
+                width: 28, height: 28, borderRadius: 6, objectFit: 'contain',
+                background: '#fff', padding: 2,
+              }} />
+            )}
+            <div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#FAFAFA' }}>Captura</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                {brand?.name || 'Brand Dashboard'}
+              </div>
+            </div>
           </div>
         </div>
 
-        <nav style={{ flex: 1 }}>
+        <nav style={{ flex: 1, overflow: 'auto' }}>
           {navItems.map(item => (
             <NavLink
               key={item.path}
               to={`/dashboard/${item.path}`}
               end={item.path === ''}
+              onClick={() => setMobileNav(false)}
               style={({ isActive }) => ({
                 display: 'flex', alignItems: 'center', gap: 10,
-                padding: '12px 20px', fontSize: '0.9rem', fontWeight: 500,
+                padding: '11px 20px', fontSize: '0.88rem', fontWeight: 500,
                 color: isActive ? '#FAFAFA' : 'var(--text-muted)',
                 background: isActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
                 borderRight: isActive ? '3px solid #FAFAFA' : '3px solid transparent',
                 transition: 'all 0.15s',
               })}
             >
-              <span style={{ fontSize: '1.1rem' }}>{item.icon}</span>
+              <span style={{ fontSize: '1rem' }}>{item.icon}</span>
               {item.label}
             </NavLink>
           ))}
@@ -120,22 +148,29 @@ export default function Dashboard() {
       </aside>
 
       {/* Main Content */}
-      <main style={{
-        flex: 1, marginLeft: 240, padding: '32px 40px',
-        maxWidth: 1100
-      }}>
+      <main style={{ flex: 1, marginLeft: 240, padding: '32px 40px', minWidth: 0 }}
+        className="main-content">
         <Routes>
           <Route index element={<Overview brand={brand} />} />
           <Route path="products" element={<Products brand={brand} />} />
           <Route path="qr-codes" element={<QRCodes brand={brand} />} />
           <Route path="promos" element={<Promos brand={brand} />} />
           <Route path="socials" element={<Socials brand={brand} />} />
-          <Route path="consumers" element={<Consumers brand={brand} />} />
-          <Route path="insights" element={<Insights brand={brand} />} />
           <Route path="scans" element={<Scans brand={brand} />} />
           <Route path="vip" element={<VIPMembers brand={brand} />} />
+          <Route path="consumers" element={<Consumers brand={brand} />} />
+          <Route path="insights" element={<Insights brand={brand} />} />
+          <Route path="settings" element={<Settings brand={brand} onBrandUpdate={setBrand} />} />
         </Routes>
       </main>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .mobile-nav-toggle { display: block !important; }
+          .sidebar { transform: translateX(-100%); }
+          .main-content { margin-left: 0 !important; padding: 60px 16px 32px !important; }
+        }
+      `}</style>
     </div>
   )
 }

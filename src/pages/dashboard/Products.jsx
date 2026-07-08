@@ -4,7 +4,8 @@ import { supabase } from '../../lib/supabase'
 export default function Products({ brand }) {
   const [products, setProducts] = useState([])
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', images: [] })
+  const [editingProduct, setEditingProduct] = useState(null)
+  const [form, setForm] = useState({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', images: [], existingImages: [] })
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
 
@@ -27,10 +28,30 @@ export default function Products({ brand }) {
     setLoading(false)
   }
 
+  const openAdd = () => {
+    setEditingProduct(null)
+    setForm({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', images: [], existingImages: [] })
+    setShowModal(true)
+  }
+
+  const openEdit = (p) => {
+    setEditingProduct(p)
+    setForm({
+      name: p.name || '',
+      sku: p.sku || '',
+      description: p.description || '',
+      contentTitle: p.content_title || '',
+      contentBody: p.content_body || '',
+      contentUrl: p.content_url || '',
+      images: [],
+      existingImages: p.image_urls || [],
+    })
+    setShowModal(true)
+  }
+
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files)
     if (!files.length) return
-
     files.forEach(file => {
       const reader = new FileReader()
       reader.onload = (ev) => {
@@ -44,20 +65,20 @@ export default function Products({ brand }) {
     e.target.value = ''
   }
 
-  const removeImage = (index) => {
-    setForm(prev => ({
-      ...prev,
-      images: prev.images.filter((_, i) => i !== index)
-    }))
+  const removeNewImage = (index) => {
+    setForm(prev => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }))
   }
 
-  const handleAdd = async (e) => {
+  const removeExistingImage = (index) => {
+    setForm(prev => ({ ...prev, existingImages: prev.existingImages.filter((_, i) => i !== index) }))
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setUploading(true)
 
-    let imageUrls = []
-
-    // Upload all images
+    // Upload new images
+    let newImageUrls = []
     if (form.images.length > 0 && supabase && brand?.id && brand.id !== 'demo') {
       for (const img of form.images) {
         const fileExt = img.file.name.split('.').pop()
@@ -66,41 +87,67 @@ export default function Products({ brand }) {
           .from('product-images')
           .upload(fileName, img.file)
 
-        if (!uploadError) {
+        if (uploadError) {
+          console.error('Image upload error:', uploadError)
+        } else {
           const { data: urlData } = supabase.storage
             .from('product-images')
             .getPublicUrl(fileName)
-          imageUrls.push(urlData.publicUrl)
+          newImageUrls.push(urlData.publicUrl)
         }
       }
     }
 
+    const allImageUrls = [...form.existingImages, ...newImageUrls]
+
     if (supabase && brand?.id && brand.id !== 'demo') {
-      const { data, error } = await supabase.from('products').insert({
-        brand_id: brand.id,
+      const productData = {
         name: form.name,
         sku: form.sku,
         description: form.description,
         content_title: form.contentTitle,
         content_body: form.contentBody,
         content_url: form.contentUrl,
-        image_urls: imageUrls,
-      }).select().single()
+        image_urls: allImageUrls,
+      }
 
-      if (error) {
-        console.error('Product insert error:', error)
-        alert(`Error saving product: ${error.message}`)
-      } else if (data) {
-        setProducts([data, ...products])
+      if (editingProduct) {
+        // Update existing product
+        const { data, error } = await supabase.from('products')
+          .update(productData)
+          .eq('id', editingProduct.id)
+          .select().single()
+
+        if (error) {
+          console.error('Product update error:', error)
+          alert(`Error updating product: ${error.message}`)
+        } else if (data) {
+          setProducts(products.map(p => p.id === data.id ? data : p))
+        }
+      } else {
+        // Insert new product
+        const { data, error } = await supabase.from('products').insert({
+          brand_id: brand.id,
+          ...productData,
+        }).select().single()
+
+        if (error) {
+          console.error('Product insert error:', error)
+          alert(`Error saving product: ${error.message}`)
+        } else if (data) {
+          setProducts([data, ...products])
+        }
       }
     }
 
-    setForm({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', images: [] })
+    setForm({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', images: [], existingImages: [] })
+    setEditingProduct(null)
     setShowModal(false)
     setUploading(false)
   }
 
   const handleDelete = async (id) => {
+    if (!confirm('Delete this product?')) return
     if (supabase && brand?.id && brand.id !== 'demo') {
       await supabase.from('products').delete().eq('id', id)
     }
@@ -116,7 +163,7 @@ export default function Products({ brand }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Products</h1>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Add Product</button>
+        <button className="btn btn-primary" onClick={openAdd}>+ Add Product</button>
       </div>
 
       {loading ? (
@@ -125,7 +172,7 @@ export default function Products({ brand }) {
         <div className="card" style={{ textAlign: 'center', padding: 60 }}>
           <div style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 8 }}>No products yet</div>
           <p style={{ color: 'var(--text-muted)', marginBottom: 20 }}>Add your first product to start creating QR codes.</p>
-          <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ Add Product</button>
+          <button className="btn btn-primary" onClick={openAdd}>+ Add Product</button>
         </div>
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -147,7 +194,8 @@ export default function Products({ brand }) {
                 const firstImg = getFirstImage(p)
                 const imgCount = p.image_urls?.length || 0
                 return (
-                  <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <tr key={p.id} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
+                    onClick={() => openEdit(p)}>
                     <td style={{ padding: '10px 20px', width: 60 }}>
                       {firstImg ? (
                         <img src={firstImg} alt={p.name}
@@ -174,8 +222,12 @@ export default function Products({ brand }) {
                       }}>{p.status || 'active'}</span>
                     </td>
                     <td style={{ padding: '14px 20px', textAlign: 'right' }}>
-                      <button onClick={() => handleDelete(p.id)}
-                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer' }}>
+                      <button onClick={(e) => { e.stopPropagation(); openEdit(p) }}
+                        style={{ background: 'none', border: 'none', color: '#FAFAFA', fontSize: '0.8rem', cursor: 'pointer', marginRight: 12 }}>
+                        Edit
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); handleDelete(p.id) }}
+                        style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.8rem', cursor: 'pointer' }}>
                         Delete
                       </button>
                     </td>
@@ -191,10 +243,12 @@ export default function Products({ brand }) {
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50
-        }} onClick={() => setShowModal(false)}>
+        }} onClick={() => { setShowModal(false); setEditingProduct(null) }}>
           <div className="card" style={{ width: 480, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20 }}>Add Product</h2>
-            <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20 }}>
+              {editingProduct ? 'Edit Product' : 'Add Product'}
+            </h2>
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
               {/* Image Upload */}
               <div>
@@ -202,14 +256,27 @@ export default function Products({ brand }) {
                   Product Images
                 </label>
 
-                {/* Image previews */}
-                {form.images.length > 0 && (
+                {/* Existing + new image previews */}
+                {(form.existingImages.length > 0 || form.images.length > 0) && (
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-                    {form.images.map((img, i) => (
-                      <div key={i} style={{ position: 'relative' }}>
-                        <img src={img.preview} alt={`Preview ${i + 1}`}
+                    {form.existingImages.map((url, i) => (
+                      <div key={`existing-${i}`} style={{ position: 'relative' }}>
+                        <img src={url} alt={`Image ${i + 1}`}
                           style={{ width: 80, height: 80, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
-                        <button type="button" onClick={() => removeImage(i)}
+                        <button type="button" onClick={() => removeExistingImage(i)}
+                          style={{
+                            position: 'absolute', top: -6, right: -6,
+                            background: '#EF4444', color: 'white', border: 'none',
+                            borderRadius: '50%', width: 20, height: 20, fontSize: '0.7rem',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>x</button>
+                      </div>
+                    ))}
+                    {form.images.map((img, i) => (
+                      <div key={`new-${i}`} style={{ position: 'relative' }}>
+                        <img src={img.preview} alt={`New ${i + 1}`}
+                          style={{ width: 80, height: 80, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--success)' }} />
+                        <button type="button" onClick={() => removeNewImage(i)}
                           style={{
                             position: 'absolute', top: -6, right: -6,
                             background: '#EF4444', color: 'white', border: 'none',
@@ -221,15 +288,13 @@ export default function Products({ brand }) {
                   </div>
                 )}
 
-                {/* Upload button */}
                 <label style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: '100%', height: form.images.length > 0 ? 60 : 100, borderRadius: 8,
+                  width: '100%', height: (form.existingImages.length + form.images.length) > 0 ? 50 : 100, borderRadius: 8,
                   border: '2px dashed var(--border)', cursor: 'pointer',
                   color: 'var(--text-muted)', fontSize: '0.9rem',
-                  flexDirection: 'column', gap: 4,
                 }}>
-                  <span>+ {form.images.length > 0 ? 'Add more images' : 'Click to upload images'}</span>
+                  <span>+ {(form.existingImages.length + form.images.length) > 0 ? 'Add more images' : 'Click to upload images'}</span>
                   <input type="file" accept="image/*" multiple onChange={handleImageSelect}
                     style={{ display: 'none' }} />
                 </label>
@@ -242,18 +307,18 @@ export default function Products({ brand }) {
               <textarea className="input" placeholder="Product Description" value={form.description}
                 onChange={e => setForm({ ...form, description: e.target.value })}
                 style={{ minHeight: 80, resize: 'vertical' }} />
-              <input className="input" placeholder="Content Title (e.g. Setup Guide)" value={form.contentTitle}
+              <input className="input" placeholder="Scan Page Heading (e.g. Setup Guide)" value={form.contentTitle}
                 onChange={e => setForm({ ...form, contentTitle: e.target.value })} />
-              <textarea className="input" placeholder="Content Body" value={form.contentBody}
+              <textarea className="input" placeholder="Scan Page Content" value={form.contentBody}
                 onChange={e => setForm({ ...form, contentBody: e.target.value })}
                 style={{ minHeight: 60, resize: 'vertical' }} />
               <input className="input" placeholder="Content URL (video, tutorial link)" value={form.contentUrl}
                 onChange={e => setForm({ ...form, contentUrl: e.target.value })} />
               <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
                 <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
-                  onClick={() => setShowModal(false)}>Cancel</button>
+                  onClick={() => { setShowModal(false); setEditingProduct(null) }}>Cancel</button>
                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={uploading}>
-                  {uploading ? 'Uploading...' : 'Add Product'}
+                  {uploading ? 'Saving...' : editingProduct ? 'Save Changes' : 'Add Product'}
                 </button>
               </div>
             </form>

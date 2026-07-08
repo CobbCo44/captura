@@ -25,6 +25,29 @@ export default function VIPMembers({ brand }) {
     setLoading(false)
   }
 
+  const exportCSV = () => {
+    if (members.length === 0) return
+    const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Product', 'City', 'Joined']
+    const rows = members.map(m => [
+      m.first_name,
+      m.last_name,
+      m.email || '',
+      m.phone,
+      m.products?.name || '',
+      m.city || '',
+      new Date(m.joined_at).toLocaleDateString(),
+    ])
+    const csv = [headers, ...rows].map(row =>
+      row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+    ).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const link = document.createElement('a')
+    link.download = `vip-members-${new Date().toISOString().split('T')[0]}.csv`
+    link.href = URL.createObjectURL(blob)
+    link.click()
+    URL.revokeObjectURL(link.href)
+  }
+
   const filtered = members.filter(m =>
     `${m.first_name} ${m.last_name}`.toLowerCase().includes(search.toLowerCase()) ||
     (m.email || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -41,7 +64,7 @@ export default function VIPMembers({ brand }) {
             {members.length} member{members.length !== 1 ? 's' : ''} collected via product scans
           </p>
         </div>
-        <button className="btn btn-primary">Export CSV</button>
+        <button className="btn btn-primary" onClick={exportCSV}>Export CSV</button>
       </div>
 
       {loading ? (

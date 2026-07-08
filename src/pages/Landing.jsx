@@ -113,7 +113,7 @@ export default function Landing() {
               The problem
             </div>
             <h2 style={{ fontSize: '2.2rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-1px', color: '#FAFAFA', marginBottom: 24 }}>
-              You know the "who." You're missing the "each."
+              You know the market. You're missing the individual.
             </h2>
             <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8, marginBottom: 16 }}>
               You know your buyer is 28, male, lives in the Sun Belt, and shops at Dick's. That's useful for ad targeting. It's useless for building a relationship.

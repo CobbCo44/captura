@@ -12,6 +12,7 @@ const tabStyle = (active) => ({
 
 export default function Scans({ brand }) {
   const [scans, setScans] = useState([])
+  const [vipMembers, setVipMembers] = useState([])
   const [tab, setTab] = useState('globe')
   const [loading, setLoading] = useState(true)
   const globeRef = useRef()
@@ -32,13 +33,12 @@ export default function Scans({ brand }) {
       setLoading(false)
       return
     }
-    const { data } = await supabase
-      .from('scans')
-      .select('*, products(name, sku)')
-      .eq('brand_id', brand.id)
-      .order('scanned_at', { ascending: false })
-      .limit(500)
-    setScans(data || [])
+    const [scansRes, vipRes] = await Promise.all([
+      supabase.from('scans').select('*, products(name, sku)').eq('brand_id', brand.id).order('scanned_at', { ascending: false }).limit(500),
+      supabase.from('vip_members').select('product_id').eq('brand_id', brand.id),
+    ])
+    setScans(scansRes.data || [])
+    setVipMembers(vipRes.data || [])
     setLoading(false)
   }
 
@@ -52,17 +52,26 @@ export default function Scans({ brand }) {
       size: 0.5,
     }))
 
-  // SKU breakdown
+  // SKU breakdown with VIP conversion
+  const vipByProduct = {}
+  vipMembers.forEach(v => {
+    if (v.product_id) vipByProduct[v.product_id] = (vipByProduct[v.product_id] || 0) + 1
+  })
+
   const skuMap = {}
   scans.forEach(s => {
     const sku = s.products?.sku || 'N/A'
     if (!skuMap[sku]) {
-      skuMap[sku] = { sku, product: s.products?.name || 'Unknown', totalScans: 0, cities: new Set() }
+      skuMap[sku] = { sku, product: s.products?.name || 'Unknown', productId: s.product_id, totalScans: 0, cities: new Set() }
     }
     skuMap[sku].totalScans++
     if (s.city) skuMap[sku].cities.add(s.city)
   })
-  const skuData = Object.values(skuMap).sort((a, b) => b.totalScans - a.totalScans)
+  const skuData = Object.values(skuMap).map(item => ({
+    ...item,
+    vipSignups: vipByProduct[item.productId] || 0,
+    conversion: item.totalScans > 0 ? Math.round(((vipByProduct[item.productId] || 0) / item.totalScans) * 100) : 0,
+  })).sort((a, b) => b.totalScans - a.totalScans)
 
   // City breakdown
   const cityMap = {}
@@ -163,8 +172,19 @@ export default function Scans({ brand }) {
                     </div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 800, color: '#FAFAFA' }}>{item.totalScans}</div>
                   </div>
-                  <div style={{ marginBottom: 12 }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Cities: {item.cities.size}</span>
+                  <div style={{ display: 'flex', gap: 20, marginBottom: 12 }}>
+                    <div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>VIP Signups</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--success)' }}>{item.vipSignups}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Conversion</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: '#D4D4D8' }}>{item.conversion}%</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Cities</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700 }}>{item.cities.size}</div>
+                    </div>
                   </div>
                   <div style={{ height: 6, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }}>
                     <div style={{

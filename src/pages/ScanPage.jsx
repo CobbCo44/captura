@@ -13,6 +13,10 @@ export default function ScanPage() {
   const [vipSubmitted, setVipSubmitted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [activePromo, setActivePromo] = useState(null)
+  const [showPromoEntry, setShowPromoEntry] = useState(false)
+  const [promoForm, setPromoForm] = useState({ firstName: '', lastName: '', email: '', phone: '' })
+  const [promoEntered, setPromoEntered] = useState(false)
   const scanLogged = useRef(false)
 
   useEffect(() => {
@@ -42,6 +46,16 @@ export default function ScanPage() {
     setProduct(qr.products)
     setBrand(qr.brands)
     setLoading(false)
+
+    // Check for active promo
+    const { data: promoData } = await supabase
+      .from('promos')
+      .select('*')
+      .eq('brand_id', qr.brand_id)
+      .eq('active', true)
+      .limit(1)
+      .single()
+    if (promoData) setActivePromo(promoData)
 
     // Get location, then log scan with it
     getLocationAndLogScan(qr)
@@ -130,6 +144,24 @@ export default function ScanPage() {
     setVipSubmitted(true)
   }
 
+  const handlePromoEntry = async (e) => {
+    e.preventDefault()
+    if (supabase && activePromo && qrCode) {
+      await supabase.from('promo_entries').insert({
+        promo_id: activePromo.id,
+        brand_id: qrCode.brand_id,
+        qr_code_id: qrCode.id,
+        product_id: qrCode.product_id,
+        first_name: promoForm.firstName,
+        last_name: promoForm.lastName,
+        email: promoForm.email,
+        phone: promoForm.phone,
+        city: location?.city ? `${location.city}, ${location.region}` : null,
+      })
+    }
+    setPromoEntered(true)
+  }
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -201,6 +233,72 @@ export default function ScanPage() {
                 className="btn btn-secondary" style={{ marginTop: 16, display: 'inline-flex' }}>
                 View More
               </a>
+            )}
+          </div>
+        )}
+
+        {/* Active Promo */}
+        {activePromo && (
+          <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border)' }}>
+            {!showPromoEntry && !promoEntered && (
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(245, 158, 11, 0.1))',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 'var(--radius)', padding: '28px 20px', textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>🎉</div>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: 8 }}>
+                  {activePromo.title}
+                </h3>
+                {activePromo.description && (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 8, lineHeight: 1.5 }}>
+                    {activePromo.description}
+                  </p>
+                )}
+                {activePromo.prize && (
+                  <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#FAFAFA', marginBottom: 20 }}>
+                    Prize: {activePromo.prize}
+                  </p>
+                )}
+                <button className="btn btn-primary" style={{ padding: '14px 32px' }}
+                  onClick={() => setShowPromoEntry(true)}>
+                  Enter to Win
+                </button>
+              </div>
+            )}
+
+            {showPromoEntry && !promoEntered && (
+              <form onSubmit={handlePromoEntry} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Enter to Win</h3>
+                <input className="input" placeholder="First Name" value={promoForm.firstName}
+                  onChange={e => setPromoForm({ ...promoForm, firstName: e.target.value })} required />
+                <input className="input" placeholder="Last Name" value={promoForm.lastName}
+                  onChange={e => setPromoForm({ ...promoForm, lastName: e.target.value })} required />
+                <input className="input" type="email" placeholder="Email" value={promoForm.email}
+                  onChange={e => setPromoForm({ ...promoForm, email: e.target.value })} />
+                <input className="input" type="tel" placeholder="Phone Number" value={promoForm.phone}
+                  onChange={e => setPromoForm({ ...promoForm, phone: e.target.value })} required />
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 14 }}>
+                  Submit Entry
+                </button>
+              </form>
+            )}
+
+            {promoEntered && (
+              <div style={{
+                textAlign: 'center', padding: 28,
+                background: 'rgba(34, 197, 94, 0.1)',
+                border: '1px solid var(--success)',
+                borderRadius: 'var(--radius)'
+              }}>
+                <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>🎉</div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>
+                  You're Entered!
+                </h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  Good luck, {promoForm.firstName}! We'll contact winners directly.
+                </p>
+              </div>
             )}
           </div>
         )}

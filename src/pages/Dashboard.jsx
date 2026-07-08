@@ -6,11 +6,13 @@ import QRCodes from './dashboard/QRCodes'
 import Scans from './dashboard/Scans'
 import VIPMembers from './dashboard/VIPMembers'
 import Overview from './dashboard/Overview'
+import Promos from './dashboard/Promos'
 
 const navItems = [
   { path: '', label: 'Overview', icon: '◎' },
   { path: 'products', label: 'Products', icon: '▦' },
   { path: 'qr-codes', label: 'QR Codes', icon: '⊞' },
+  { path: 'promos', label: 'Promos', icon: '🎁' },
   { path: 'scans', label: 'Scans', icon: '📍' },
   { path: 'vip', label: 'VIP Members', icon: '👑' },
 ]
@@ -119,6 +121,7 @@ export default function Dashboard() {
           <Route index element={<Overview brand={brand} />} />
           <Route path="products" element={<Products brand={brand} />} />
           <Route path="qr-codes" element={<QRCodes brand={brand} />} />
+          <Route path="promos" element={<Promos brand={brand} />} />
           <Route path="scans" element={<Scans brand={brand} />} />
           <Route path="vip" element={<VIPMembers brand={brand} />} />
         </Routes>

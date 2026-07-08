@@ -15,13 +15,13 @@ export default function ScanPage() {
   const [brand, setBrand] = useState(null)
   const [location, setLocation] = useState(null)
   const [showVIP, setShowVIP] = useState(false)
-  const [vipForm, setVipForm] = useState({ firstName: '', lastName: '', email: '', phone: '' })
+  const [vipForm, setVipForm] = useState({ firstName: '', lastName: '', email: '', phone: '', consent: false })
   const [vipSubmitted, setVipSubmitted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [activePromo, setActivePromo] = useState(null)
   const [showPromoEntry, setShowPromoEntry] = useState(false)
-  const [promoForm, setPromoForm] = useState({ firstName: '', lastName: '', email: '', phone: '' })
+  const [promoForm, setPromoForm] = useState({ firstName: '', lastName: '', email: '', phone: '', consent: false })
   const [promoEntered, setPromoEntered] = useState(false)
   const scanLogged = useRef(false)
 
@@ -303,6 +303,14 @@ export default function ScanPage() {
                   onChange={e => setPromoForm({ ...promoForm, email: e.target.value })} />
                 <input className="input" type="tel" placeholder="Phone Number" value={promoForm.phone}
                   onChange={e => setPromoForm({ ...promoForm, phone: e.target.value })} required />
+                <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={promoForm.consent} required
+                    onChange={e => setPromoForm({ ...promoForm, consent: e.target.checked })}
+                    style={{ marginTop: 3, accentColor: '#FAFAFA' }} />
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', lineHeight: 1.5 }}>
+                    I am 18 years or older and agree to receive communications from this brand via text, email, or phone. I understand my data will be used in accordance with the <a href="/privacy" target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Privacy Policy</a>. Message and data rates may apply. Reply STOP to opt out.
+                  </span>
+                </label>
                 <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 14 }}>
                   Submit Entry
                 </button>
@@ -362,6 +370,14 @@ export default function ScanPage() {
                 onChange={e => setVipForm({ ...vipForm, email: e.target.value })} />
               <input className="input" type="tel" placeholder="Phone Number" value={vipForm.phone}
                 onChange={e => setVipForm({ ...vipForm, phone: e.target.value })} required />
+              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                <input type="checkbox" checked={vipForm.consent} required
+                  onChange={e => setVipForm({ ...vipForm, consent: e.target.checked })}
+                  style={{ marginTop: 3, accentColor: '#FAFAFA' }} />
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', lineHeight: 1.5 }}>
+                  I am 18 years or older and agree to receive communications from this brand via text, email, or phone. I understand my data will be used in accordance with the <a href="/privacy" target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Privacy Policy</a>. Message and data rates may apply. Reply STOP to opt out.
+                </span>
+              </label>
               <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 14 }}>
                 Join VIP List
               </button>
@@ -420,9 +436,15 @@ export default function ScanPage() {
 
         <div style={{
           textAlign: 'center', padding: '20px 0',
-          color: 'var(--text-muted)', fontSize: '0.75rem'
+          color: 'var(--text-muted)', fontSize: '0.75rem',
         }}>
-          Powered by <span style={{ color: '#FAFAFA', fontWeight: 600 }}>Captura</span>
+          <div style={{ marginBottom: 8 }}>
+            Powered by <span style={{ color: '#FAFAFA', fontWeight: 600 }}>Captura</span>
+          </div>
+          <div style={{ fontSize: '0.65rem', color: '#3F3F46', lineHeight: 1.5 }}>
+            By scanning this code, approximate location data may be collected to improve your experience.{' '}
+            <a href="/privacy" target="_blank" style={{ color: '#52525B', textDecoration: 'underline' }}>Privacy Policy</a>
+          </div>
         </div>
       </div>
     </div>

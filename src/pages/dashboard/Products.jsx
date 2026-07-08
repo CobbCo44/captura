@@ -1,6 +1,37 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 
+const DRAFT_KEY = 'captura_product_draft'
+
+function saveDraft(form, editing) {
+  try {
+    // Can't save File objects to localStorage, save text fields only
+    const draft = {
+      name: form.name,
+      sku: form.sku,
+      description: form.description,
+      contentTitle: form.contentTitle,
+      contentBody: form.contentBody,
+      contentUrl: form.contentUrl,
+      existingImages: form.existingImages,
+      editingId: editing?.id || null,
+    }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+  } catch (e) {}
+}
+
+function loadDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch (e) { return null }
+}
+
+function clearDraft() {
+  localStorage.removeItem(DRAFT_KEY)
+}
+
 export default function Products({ brand }) {
   const [products, setProducts] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -8,10 +39,37 @@ export default function Products({ brand }) {
   const [form, setForm] = useState({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', images: [], existingImages: [] })
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [draftRestored, setDraftRestored] = useState(false)
 
   useEffect(() => {
     loadProducts()
   }, [brand])
+
+  // Restore draft on mount
+  useEffect(() => {
+    const draft = loadDraft()
+    if (draft && draft.name) {
+      setForm({
+        name: draft.name,
+        sku: draft.sku || '',
+        description: draft.description || '',
+        contentTitle: draft.contentTitle || '',
+        contentBody: draft.contentBody || '',
+        contentUrl: draft.contentUrl || '',
+        images: [],
+        existingImages: draft.existingImages || [],
+      })
+      setShowModal(true)
+      setDraftRestored(true)
+    }
+  }, [])
+
+  // Auto-save draft when form changes while modal is open
+  useEffect(() => {
+    if (showModal && form.name) {
+      saveDraft(form, editingProduct)
+    }
+  }, [form, showModal, editingProduct])
 
   async function loadProducts() {
     if (!supabase || !brand?.id || brand.id === 'demo') {
@@ -144,6 +202,7 @@ export default function Products({ brand }) {
     setEditingProduct(null)
     setShowModal(false)
     setUploading(false)
+    clearDraft()
   }
 
   const handleDelete = async (id) => {
@@ -243,7 +302,7 @@ export default function Products({ brand }) {
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50
-        }} onClick={() => { setShowModal(false); setEditingProduct(null) }}>
+        }} onClick={() => { setShowModal(false); setEditingProduct(null); clearDraft() }}>
           <div className="card" style={{ width: 480, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
             <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20 }}>
               {editingProduct ? 'Edit Product' : 'Add Product'}
@@ -316,7 +375,7 @@ export default function Products({ brand }) {
                 onChange={e => setForm({ ...form, contentUrl: e.target.value })} />
               <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
                 <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
-                  onClick={() => { setShowModal(false); setEditingProduct(null) }}>Cancel</button>
+                  onClick={() => { setShowModal(false); setEditingProduct(null); clearDraft() }}>Cancel</button>
                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={uploading}>
                   {uploading ? 'Saving...' : editingProduct ? 'Save Changes' : 'Add Product'}
                 </button>

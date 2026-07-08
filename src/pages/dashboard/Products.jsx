@@ -71,7 +71,10 @@ export default function Products({ brand }) {
         image_url: imageUrl,
       }).select().single()
 
-      if (!error && data) {
+      if (error) {
+        console.error('Product insert error:', error)
+        alert(`Error saving product: ${error.message}`)
+      } else if (data) {
         setProducts([data, ...products])
       }
     }

@@ -32,12 +32,17 @@ export default function Dashboard() {
         navigate('/login')
         return
       }
-      const b = await getCurrentBrand()
-      if (b) {
-        setBrand(b)
-      } else {
-        setBrand({ id: 'new', name: 'My Brand' })
+      let b = await getCurrentBrand()
+      if (!b) {
+        // Brand record missing — create one
+        const { data: newBrand } = await supabase.from('brands').insert({
+          user_id: user.id,
+          name: user.user_metadata?.brand_name || 'My Brand',
+          email: user.email,
+        }).select().single()
+        b = newBrand
       }
+      setBrand(b || { id: 'demo', name: 'My Brand' })
       setLoading(false)
     }
     loadBrand()

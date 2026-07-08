@@ -159,8 +159,14 @@ export default function ScanPage() {
   return (
     <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', padding: '0 0 40px' }}>
       {/* Product Hero */}
+      {product?.image_url && (
+        <div style={{ width: '100%', height: 240, overflow: 'hidden', background: 'var(--bg-card)' }}>
+          <img src={product.image_url} alt={product.name}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        </div>
+      )}
       <div style={{
-        width: '100%', padding: '40px 20px 20px',
+        width: '100%', padding: '20px 20px 16px',
         background: 'var(--bg-card)', borderBottom: '1px solid var(--border)'
       }}>
         {brand && (

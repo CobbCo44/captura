@@ -4,8 +4,9 @@ import { supabase } from '../../lib/supabase'
 export default function Products({ brand }) {
   const [products, setProducts] = useState([])
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '' })
+  const [form, setForm] = useState({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', imageFile: null, imagePreview: null })
   const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     loadProducts()
@@ -13,10 +14,7 @@ export default function Products({ brand }) {
 
   async function loadProducts() {
     if (!supabase || !brand?.id || brand.id === 'demo') {
-      setProducts([
-        { id: '1', name: 'Pro Wireless Earbuds', sku: 'PWE-001', status: 'active', scan_count: 0 },
-        { id: '2', name: 'Running Shoes V2', sku: 'RSV2-003', status: 'active', scan_count: 0 },
-      ])
+      setProducts([])
       setLoading(false)
       return
     }
@@ -29,8 +27,38 @@ export default function Products({ brand }) {
     setLoading(false)
   }
 
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setForm({ ...form, imageFile: file, imagePreview: ev.target.result })
+    }
+    reader.readAsDataURL(file)
+  }
+
   const handleAdd = async (e) => {
     e.preventDefault()
+    setUploading(true)
+
+    let imageUrl = null
+
+    // Upload image if selected
+    if (form.imageFile && supabase && brand?.id && brand.id !== 'demo') {
+      const fileExt = form.imageFile.name.split('.').pop()
+      const fileName = `${brand.id}/${Date.now()}.${fileExt}`
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(fileName, form.imageFile)
+
+      if (!uploadError) {
+        const { data: urlData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(fileName)
+        imageUrl = urlData.publicUrl
+      }
+    }
+
     if (supabase && brand?.id && brand.id !== 'demo') {
       const { data, error } = await supabase.from('products').insert({
         brand_id: brand.id,
@@ -40,22 +68,17 @@ export default function Products({ brand }) {
         content_title: form.contentTitle,
         content_body: form.contentBody,
         content_url: form.contentUrl,
+        image_url: imageUrl,
       }).select().single()
 
       if (!error && data) {
         setProducts([data, ...products])
       }
-    } else {
-      setProducts([{
-        id: String(Date.now()),
-        name: form.name,
-        sku: form.sku,
-        status: 'active',
-        scan_count: 0,
-      }, ...products])
     }
-    setForm({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '' })
+
+    setForm({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', imageFile: null, imagePreview: null })
     setShowModal(false)
+    setUploading(false)
   }
 
   const handleDelete = async (id) => {
@@ -85,11 +108,12 @@ export default function Products({ brand }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Product', 'SKU', 'Status', ''].map(h => (
-                  <th key={h} style={{
+                {['', 'Product', 'SKU', 'Status', ''].map((h, i) => (
+                  <th key={i} style={{
                     padding: '14px 20px', textAlign: 'left',
                     fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)',
-                    textTransform: 'uppercase', letterSpacing: '0.5px'
+                    textTransform: 'uppercase', letterSpacing: '0.5px',
+                    width: i === 0 ? 60 : 'auto',
                   }}>{h}</th>
                 ))}
               </tr>
@@ -97,6 +121,19 @@ export default function Products({ brand }) {
             <tbody>
               {products.map(p => (
                 <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <td style={{ padding: '10px 20px', width: 60 }}>
+                    {p.image_url ? (
+                      <img src={p.image_url} alt={p.name}
+                        style={{ width: 40, height: 40, borderRadius: 6, objectFit: 'cover' }} />
+                    ) : (
+                      <div style={{
+                        width: 40, height: 40, borderRadius: 6,
+                        background: 'var(--bg)', border: '1px solid var(--border)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: 'var(--text-muted)', fontSize: '0.7rem'
+                      }}>IMG</div>
+                    )}
+                  </td>
                   <td style={{ padding: '14px 20px', fontWeight: 500 }}>{p.name}</td>
                   <td style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>{p.sku || '-'}</td>
                   <td style={{ padding: '14px 20px' }}>
@@ -124,9 +161,42 @@ export default function Products({ brand }) {
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50
         }} onClick={() => setShowModal(false)}>
-          <div className="card" style={{ width: 480, maxWidth: '90vw' }} onClick={e => e.stopPropagation()}>
+          <div className="card" style={{ width: 480, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
             <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20 }}>Add Product</h2>
             <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+              {/* Image Upload */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                  Product Image
+                </label>
+                {form.imagePreview ? (
+                  <div style={{ position: 'relative', marginBottom: 8 }}>
+                    <img src={form.imagePreview} alt="Preview"
+                      style={{ width: '100%', height: 160, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
+                    <button type="button" onClick={() => setForm({ ...form, imageFile: null, imagePreview: null })}
+                      style={{
+                        position: 'absolute', top: 8, right: 8,
+                        background: 'rgba(0,0,0,0.7)', color: 'white', border: 'none',
+                        borderRadius: 6, padding: '4px 10px', fontSize: '0.75rem', cursor: 'pointer'
+                      }}>Remove</button>
+                  </div>
+                ) : (
+                  <label style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    width: '100%', height: 120, borderRadius: 8,
+                    border: '2px dashed var(--border)', cursor: 'pointer',
+                    color: 'var(--text-muted)', fontSize: '0.9rem',
+                    flexDirection: 'column', gap: 4,
+                  }}>
+                    <span style={{ fontSize: '1.5rem' }}>+</span>
+                    <span>Click to upload image</span>
+                    <input type="file" accept="image/*" onChange={handleImageSelect}
+                      style={{ display: 'none' }} />
+                  </label>
+                )}
+              </div>
+
               <input className="input" placeholder="Product Name" value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })} required />
               <input className="input" placeholder="SKU (optional)" value={form.sku}
@@ -144,7 +214,9 @@ export default function Products({ brand }) {
               <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
                 <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
                   onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Add Product</button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={uploading}>
+                  {uploading ? 'Uploading...' : 'Add Product'}
+                </button>
               </div>
             </form>
           </div>

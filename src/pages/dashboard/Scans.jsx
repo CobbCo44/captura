@@ -109,12 +109,17 @@ export default function Scans({ brand }) {
                 <MapContainer
                   center={[35, -98]}
                   zoom={4}
+                  minZoom={2}
+                  maxBounds={[[-85, -180], [85, 180]]}
+                  maxBoundsViscosity={1.0}
+                  worldCopyJump={false}
                   style={{ height: '100%', width: '100%', background: '#09090B' }}
                   zoomControl={true}
                 >
                   <TileLayer
-                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                    url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
                     attribution='&copy; CARTO'
+                    noWrap={true}
                   />
                   {mapPoints.map((s, i) => (
                     <CircleMarker

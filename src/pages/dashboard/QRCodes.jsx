@@ -21,7 +21,7 @@ export default function QRCodes({ brand }) {
     ctaText: '',
   })
 
-  const scanUrl = typeof window !== 'undefined' ? window.location.origin : ''
+  const scanUrl = 'https://meetcaptura.com'
 
   useEffect(() => {
     loadData()

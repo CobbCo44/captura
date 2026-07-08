@@ -93,7 +93,7 @@ export default function ScanPage() {
       <div style={{
         minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center'
       }}>
-        <div style={{ color: 'var(--primary-light)', fontSize: '1.2rem' }}>Loading...</div>
+        <div style={{ color: '#A1A1AA', fontSize: '1.2rem' }}>Loading...</div>
       </div>
     )
   }
@@ -129,7 +129,7 @@ export default function ScanPage() {
           padding: '40px 20px 16px'
         }}>
           <div style={{
-            fontSize: '0.75rem', fontWeight: 600, color: 'var(--primary-light)',
+            fontSize: '0.75rem', fontWeight: 600, color: '#A1A1AA',
             textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 4
           }}>{product.brand}</div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>{product.name}</h1>
@@ -161,8 +161,8 @@ export default function ScanPage() {
           {!showVIP && !vipSubmitted && (
             <div style={{ textAlign: 'center' }}>
               <div style={{
-                background: 'linear-gradient(135deg, rgba(108, 43, 217, 0.1), rgba(245, 158, 11, 0.1))',
-                border: '1px solid var(--primary)',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.03))',
+                border: '1px solid #3F3F46',
                 borderRadius: 'var(--radius)', padding: '28px 20px'
               }}>
                 <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>👑</div>
@@ -238,7 +238,7 @@ export default function ScanPage() {
           textAlign: 'center', padding: '20px 0',
           color: 'var(--text-muted)', fontSize: '0.75rem'
         }}>
-          Powered by <span style={{ color: 'var(--primary-light)', fontWeight: 600 }}>Captura</span>
+          Powered by <span style={{ color: '#A1A1AA', fontWeight: 600 }}>Captura</span>
         </div>
       </div>
     </div>

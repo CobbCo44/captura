@@ -5,19 +5,19 @@
 }
 
 :root {
-  --primary: #6C2BD9;
-  --primary-light: #8B5CF6;
-  --primary-dark: #5521B5;
-  --accent: #F59E0B;
-  --bg: #0F0F14;
-  --bg-card: #1A1A24;
-  --bg-card-hover: #22222F;
-  --text: #F1F1F4;
-  --text-muted: #9CA3AF;
-  --border: #2D2D3A;
-  --success: #10B981;
+  --primary: #FFFFFF;
+  --primary-light: #E5E5E5;
+  --primary-dark: #CCCCCC;
+  --accent: #FFFFFF;
+  --bg: #09090B;
+  --bg-card: #131316;
+  --bg-card-hover: #1C1C21;
+  --text: #FAFAFA;
+  --text-muted: #71717A;
+  --border: #27272A;
+  --success: #22C55E;
   --danger: #EF4444;
-  --radius: 12px;
+  --radius: 10px;
 }
 
 body {
@@ -58,12 +58,12 @@ input, textarea, select {
 }
 
 .btn-primary {
-  background: var(--primary);
-  color: white;
+  background: #FAFAFA;
+  color: #09090B;
 }
 
 .btn-primary:hover {
-  background: var(--primary-light);
+  background: #E5E5E5;
   transform: translateY(-1px);
 }
 
@@ -75,16 +75,16 @@ input, textarea, select {
 
 .btn-secondary:hover {
   background: var(--bg-card-hover);
-  border-color: var(--primary);
+  border-color: #52525B;
 }
 
 .btn-accent {
-  background: var(--accent);
-  color: #0F0F14;
+  background: #FAFAFA;
+  color: #09090B;
 }
 
 .btn-accent:hover {
-  background: #FBBF24;
+  background: #D4D4D8;
   transform: translateY(-1px);
 }
 
@@ -100,7 +100,7 @@ input, textarea, select {
 }
 
 .input:focus {
-  border-color: var(--primary);
+  border-color: #52525B;
 }
 
 .input::placeholder {

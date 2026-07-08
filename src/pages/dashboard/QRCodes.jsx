@@ -2,7 +2,7 @@ import { useState } from 'react'
 import BrandedQR from '../../components/BrandedQR'
 
 const demoQRs = [
-  { id: 'q1', product: 'Pro Wireless Earbuds', scans: 412, created: '2026-06-15', fgColor: '#6C2BD9', bgColor: '#FFFFFF' },
+  { id: 'q1', product: 'Pro Wireless Earbuds', scans: 412, created: '2026-06-15', fgColor: '#18181B', bgColor: '#FFFFFF' },
   { id: 'q2', product: 'Running Shoes V2', scans: 287, created: '2026-06-20', fgColor: '#EC4899', bgColor: '#FFFFFF' },
   { id: 'q3', product: 'Sport Water Bottle', scans: 198, created: '2026-06-22', fgColor: '#10B981', bgColor: '#FFFFFF' },
   { id: 'q4', product: 'Training Gloves', scans: 156, created: '2026-06-28', fgColor: '#F59E0B', bgColor: '#FFFFFF' },
@@ -13,7 +13,7 @@ export default function QRCodes() {
   const [showCreate, setShowCreate] = useState(false)
   const [form, setForm] = useState({
     product: '',
-    fgColor: '#6C2BD9',
+    fgColor: '#18181B',
     bgColor: '#FFFFFF',
     logoFile: null,
     logoScale: 0.25,
@@ -34,7 +34,7 @@ export default function QRCodes() {
       logoScale: form.logoScale,
     }
     setQrCodes([...qrCodes, newQR])
-    setForm({ product: '', fgColor: '#6C2BD9', bgColor: '#FFFFFF', logoFile: null, logoScale: 0.25 })
+    setForm({ product: '', fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoScale: 0.25 })
     setShowCreate(false)
   }
 

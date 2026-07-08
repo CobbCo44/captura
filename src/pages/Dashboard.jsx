@@ -29,7 +29,7 @@ export default function Dashboard() {
       }}>
         <div style={{ padding: '0 20px', marginBottom: 32 }}>
           <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>
-            <span style={{ color: 'var(--primary-light)' }}>Cap</span>tura
+            Captura
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Brand Dashboard</div>
         </div>
@@ -45,8 +45,8 @@ export default function Dashboard() {
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '12px 20px', fontSize: '0.9rem', fontWeight: 500,
                 color: isActive ? 'var(--text)' : 'var(--text-muted)',
-                background: isActive ? 'rgba(108, 43, 217, 0.1)' : 'transparent',
-                borderRight: isActive ? '3px solid var(--primary)' : '3px solid transparent',
+                background: isActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
+                borderRight: isActive ? '3px solid #FAFAFA' : '3px solid transparent',
                 transition: 'all 0.15s',
               })}
             >

@@ -36,10 +36,10 @@ export default function Overview() {
       {/* Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 40 }}>
         {[
-          { label: 'Total Scans', value: stats.totalScans.toLocaleString(), color: 'var(--primary-light)' },
-          { label: 'Unique Locations', value: stats.uniqueLocations, color: 'var(--accent)' },
+          { label: 'Total Scans', value: stats.totalScans.toLocaleString(), color: '#FAFAFA' },
+          { label: 'Unique Locations', value: stats.uniqueLocations, color: '#A1A1AA' },
           { label: 'VIP Members', value: stats.vipMembers, color: 'var(--success)' },
-          { label: 'Active Products', value: stats.products, color: '#EC4899' },
+          { label: 'Active Products', value: stats.products, color: '#D4D4D8' },
         ].map(s => (
           <div key={s.label} className="card">
             <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 8 }}>{s.label}</div>
@@ -84,7 +84,7 @@ export default function Overview() {
                 }}>
                   <div style={{
                     height: '100%', borderRadius: 3,
-                    background: `var(--primary-light)`,
+                    background: '#FAFAFA',
                     width: `${(p.scans / stats.topProducts[0].scans) * 100}%`,
                     transition: 'width 0.5s'
                   }} />

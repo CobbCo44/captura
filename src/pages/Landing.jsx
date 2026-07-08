@@ -8,8 +8,8 @@ export default function Landing() {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '20px 40px', maxWidth: 1200, margin: '0 auto'
       }}>
-        <div style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.5px' }}>
-          <span style={{ color: 'var(--primary-light)' }}>Cap</span>tura
+        <div style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.5px', color: '#FAFAFA' }}>
+          Captura
         </div>
         <div style={{ display: 'flex', gap: 16 }}>
           <Link to="/login" className="btn btn-secondary">Log In</Link>
@@ -24,17 +24,18 @@ export default function Landing() {
       }}>
         <div style={{
           display: 'inline-block', padding: '6px 16px', borderRadius: 20,
-          background: 'rgba(108, 43, 217, 0.15)', color: 'var(--primary-light)',
-          fontSize: '0.85rem', fontWeight: 600, marginBottom: 24
+          background: 'rgba(255, 255, 255, 0.06)', color: '#A1A1AA',
+          fontSize: '0.85rem', fontWeight: 600, marginBottom: 24,
+          border: '1px solid rgba(255, 255, 255, 0.08)'
         }}>
           Consumer Engagement, Captured
         </div>
         <h1 style={{
           fontSize: 'clamp(2.5rem, 5vw, 4rem)', fontWeight: 800,
-          lineHeight: 1.1, marginBottom: 24, letterSpacing: '-1px'
+          lineHeight: 1.1, marginBottom: 24, letterSpacing: '-1px', color: '#FAFAFA'
         }}>
           Turn every product into a<br />
-          <span style={{ color: 'var(--primary-light)' }}>direct line</span> to your customer
+          <span style={{ color: '#D4D4D8' }}>direct line</span> to your customer
         </h1>
         <p style={{
           fontSize: '1.2rem', color: 'var(--text-muted)', maxWidth: 560,
@@ -64,7 +65,7 @@ export default function Landing() {
           { num: 'Real-time', label: 'Location data' },
         ].map(s => (
           <div key={s.label} style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-light)' }}>{s.num}</div>
+            <div style={{ fontSize: '2rem', fontWeight: 800, color: '#FAFAFA' }}>{s.num}</div>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: 4 }}>{s.label}</div>
           </div>
         ))}
@@ -98,7 +99,7 @@ export default function Landing() {
             <div key={item.step} className="card" style={{ position: 'relative', paddingTop: 48 }}>
               <div style={{
                 position: 'absolute', top: -16, left: 24,
-                background: 'var(--primary)', color: 'white',
+                background: '#FAFAFA', color: '#09090B',
                 padding: '6px 14px', borderRadius: 8,
                 fontWeight: 700, fontSize: '0.85rem'
               }}>{item.step}</div>
@@ -140,8 +141,8 @@ export default function Landing() {
       }}>
         <div className="card" style={{
           maxWidth: 700, margin: '0 auto', padding: '60px 40px',
-          background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(108, 43, 217, 0.1) 100%)',
-          border: '1px solid var(--primary)'
+          background: 'linear-gradient(135deg, var(--bg-card) 0%, rgba(255, 255, 255, 0.03) 100%)',
+          border: '1px solid #3F3F46'
         }}>
           <h2 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: 16 }}>
             Ready to capture your audience?
@@ -149,7 +150,7 @@ export default function Landing() {
           <p style={{ color: 'var(--text-muted)', marginBottom: 32, fontSize: '1.1rem' }}>
             Start connecting with every customer who touches your product.
           </p>
-          <Link to="/login?signup=true" className="btn btn-accent" style={{ padding: '16px 40px', fontSize: '1.05rem' }}>
+          <Link to="/login?signup=true" className="btn btn-primary" style={{ padding: '16px 40px', fontSize: '1.05rem' }}>
             Get Started Free
           </Link>
         </div>

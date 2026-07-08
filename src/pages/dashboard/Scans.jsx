@@ -44,7 +44,7 @@ export default function Scans() {
     lat: s.lat,
     lng: s.lng,
     label: `${s.product}\n${s.city}`,
-    color: s.vipSignup ? '#8B5CF6' : '#6C2BD9',
+    color: s.vipSignup ? '#FAFAFA' : '#A1A1AA',
     size: s.vipSignup ? 0.6 : 0.4,
   }))
 
@@ -79,10 +79,10 @@ export default function Scans() {
       {/* Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
         {[
-          { label: 'Total Scans', value: scans.length, color: 'var(--primary-light)' },
+          { label: 'Total Scans', value: scans.length, color: '#FAFAFA' },
           { label: 'Unique Cities', value: Object.keys(cityMap).length, color: 'var(--accent)' },
           { label: 'VIP Signups', value: scans.filter(s => s.vipSignup).length, color: 'var(--success)' },
-          { label: 'Products Scanned', value: Object.keys(skuMap).length, color: '#EC4899' },
+          { label: 'Products Scanned', value: Object.keys(skuMap).length, color: '#D4D4D8' },
         ].map(s => (
           <div key={s.label} className="card" style={{ padding: '16px 20px' }}>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>{s.label}</div>
@@ -108,7 +108,7 @@ export default function Scans() {
               pointColor="color"
               pointRadius="size"
               pointAltitude={0.01}
-              atmosphereColor="#6C2BD9"
+              atmosphereColor="#A1A1AA"
               atmosphereAltitude={0.15}
             />
           </div>
@@ -124,7 +124,7 @@ export default function Scans() {
                 }}>
                   <span style={{ fontSize: '0.9rem' }}>{city}</span>
                   <span style={{
-                    background: 'rgba(108, 43, 217, 0.15)', color: 'var(--primary-light)',
+                    background: 'rgba(255, 255, 255, 0.08)', color: '#FAFAFA',
                     padding: '2px 10px', borderRadius: 10, fontSize: '0.8rem', fontWeight: 600
                   }}>{count}</span>
                 </div>
@@ -149,7 +149,7 @@ export default function Scans() {
                     }}>SKU: {item.sku}</span>
                   </div>
                   <div style={{
-                    fontSize: '1.5rem', fontWeight: 800, color: 'var(--primary-light)'
+                    fontSize: '1.5rem', fontWeight: 800, color: '#FAFAFA'
                   }}>{item.totalScans}</div>
                 </div>
 
@@ -174,7 +174,7 @@ export default function Scans() {
                 <div style={{ height: 6, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }}>
                   <div style={{
                     height: '100%', borderRadius: 3,
-                    background: 'linear-gradient(90deg, var(--primary), var(--primary-light))',
+                    background: 'linear-gradient(90deg, #52525B, #FAFAFA)',
                     width: `${(item.totalScans / skuData[0].totalScans) * 100}%`,
                   }} />
                 </div>
@@ -249,7 +249,7 @@ export default function Scans() {
                 }}>
                   <span style={{ fontSize: '0.9rem' }}>{city}</span>
                   <span style={{
-                    background: 'rgba(108, 43, 217, 0.15)', color: 'var(--primary-light)',
+                    background: 'rgba(255, 255, 255, 0.08)', color: '#FAFAFA',
                     padding: '2px 10px', borderRadius: 10, fontSize: '0.8rem', fontWeight: 600
                   }}>{count}</span>
                 </div>

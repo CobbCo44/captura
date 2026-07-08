@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import Globe from 'react-globe.gl'
+import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
 
 const tabStyle = (active) => ({
   padding: '10px 20px', borderRadius: 8, fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer',
@@ -13,19 +14,12 @@ const tabStyle = (active) => ({
 export default function Scans({ brand }) {
   const [scans, setScans] = useState([])
   const [vipMembers, setVipMembers] = useState([])
-  const [tab, setTab] = useState('globe')
+  const [tab, setTab] = useState('map')
   const [loading, setLoading] = useState(true)
-  const globeRef = useRef()
 
   useEffect(() => {
     loadScans()
   }, [brand])
-
-  useEffect(() => {
-    if (globeRef.current && tab === 'globe' && scans.length > 0) {
-      globeRef.current.pointOfView({ lat: 35, lng: -98, altitude: 2.2 }, 1000)
-    }
-  }, [tab, scans])
 
   async function loadScans() {
     if (!supabase || !brand?.id || brand.id === 'demo') {
@@ -42,15 +36,7 @@ export default function Scans({ brand }) {
     setLoading(false)
   }
 
-  const globePoints = scans
-    .filter(s => s.latitude && s.longitude)
-    .map(s => ({
-      lat: s.latitude,
-      lng: s.longitude,
-      label: `${s.products?.name || 'Product'}\n${s.city || 'Unknown'}`,
-      color: '#EF4444',
-      size: 0.5,
-    }))
+  const mapPoints = scans.filter(s => s.latitude && s.longitude)
 
   // SKU breakdown with VIP conversion
   const vipByProduct = {}
@@ -87,7 +73,7 @@ export default function Scans({ brand }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Scan Activity</h1>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => setTab('globe')} style={tabStyle(tab === 'globe')}>Globe</button>
+          <button onClick={() => setTab('map')} style={tabStyle(tab === 'map')}>Map</button>
           <button onClick={() => setTab('sku')} style={tabStyle(tab === 'sku')}>By SKU</button>
           <button onClick={() => setTab('feed')} style={tabStyle(tab === 'feed')}>Live Feed</button>
         </div>
@@ -116,26 +102,43 @@ export default function Scans({ brand }) {
         </div>
       ) : (
         <>
-          {/* Globe Tab */}
-          {tab === 'globe' && (
+          {/* Map Tab */}
+          {tab === 'map' && (
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24 }}>
-              <div className="card" style={{ padding: 0, overflow: 'hidden', height: 500, position: 'relative' }}>
-                <Globe
-                  ref={globeRef}
-                  width={600}
-                  height={500}
-                  globeImageUrl="//unpkg.com/three-globe/example/img/earth-night.jpg"
-                  backgroundImageUrl="//unpkg.com/three-globe/example/img/night-sky.png"
-                  pointsData={globePoints}
-                  pointLat="lat"
-                  pointLng="lng"
-                  pointLabel="label"
-                  pointColor="color"
-                  pointRadius="size"
-                  pointAltitude={0.01}
-                  atmosphereColor="#A1A1AA"
-                  atmosphereAltitude={0.15}
-                />
+              <div className="card" style={{ padding: 0, overflow: 'hidden', height: 500 }}>
+                <MapContainer
+                  center={[35, -98]}
+                  zoom={4}
+                  style={{ height: '100%', width: '100%', background: '#09090B' }}
+                  zoomControl={true}
+                >
+                  <TileLayer
+                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                    attribution='&copy; CARTO'
+                  />
+                  {mapPoints.map((s, i) => (
+                    <CircleMarker
+                      key={s.id || i}
+                      center={[s.latitude, s.longitude]}
+                      radius={6}
+                      fillColor="#EF4444"
+                      fillOpacity={0.9}
+                      color="#FFFFFF"
+                      weight={2}
+                      opacity={1}
+                    >
+                      <Popup>
+                        <div style={{ color: '#09090B', fontSize: '0.85rem' }}>
+                          <strong>{s.products?.name || 'Product'}</strong><br />
+                          {s.city || 'Unknown'}<br />
+                          <span style={{ color: '#71717A', fontSize: '0.75rem' }}>
+                            {new Date(s.scanned_at).toLocaleString()}
+                          </span>
+                        </div>
+                      </Popup>
+                    </CircleMarker>
+                  ))}
+                </MapContainer>
               </div>
               <div className="card" style={{ maxHeight: 500, overflow: 'auto' }}>
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 16 }}>Scan Locations</h3>

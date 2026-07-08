@@ -193,17 +193,6 @@ export default function ScanPage() {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', padding: '0 0 40px' }}>
-      {/* Brand Logo */}
-      {brand?.logo_url && (
-        <div style={{
-          padding: '28px 20px', display: 'flex', justifyContent: 'center',
-          background: 'var(--bg-card)', borderBottom: '1px solid var(--border)',
-        }}>
-          <img src={brand.logo_url} alt={brand.name}
-            style={{ maxWidth: 180, maxHeight: 60, objectFit: 'contain' }} />
-        </div>
-      )}
-
       {/* Product Images */}
       {product?.image_urls?.length > 0 && (
         <div style={{

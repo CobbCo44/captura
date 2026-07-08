@@ -10,7 +10,6 @@ function isFinderPattern(x, y, gridSize) {
   return false
 }
 
-// Seeded random so the same QR always looks the same
 function seededRandom(seed) {
   let s = seed
   return () => {
@@ -19,7 +18,6 @@ function seededRandom(seed) {
   }
 }
 
-// Parse hex color to RGB
 function hexToRgb(hex) {
   const r = parseInt(hex.slice(1, 3), 16)
   const g = parseInt(hex.slice(3, 5), 16)
@@ -31,7 +29,6 @@ function rgbToHex(r, g, b) {
   return '#' + [r, g, b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('')
 }
 
-// Interpolate between two hex colors
 function lerpColor(color1, color2, t) {
   const [r1, g1, b1] = hexToRgb(color1)
   const [r2, g2, b2] = hexToRgb(color2)
@@ -42,25 +39,71 @@ function lerpColor(color1, color2, t) {
   )
 }
 
+// Build a mask from an image: returns a 2D boolean array [gridSize][gridSize]
+// true = this grid cell is inside the logo silhouette
+function buildMaskFromImage(imgSrc, gridSize) {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = gridSize
+      canvas.height = gridSize
+      const ctx = canvas.getContext('2d')
+
+      // Draw the logo scaled to fit the grid
+      ctx.drawImage(img, 0, 0, gridSize, gridSize)
+      const imageData = ctx.getImageData(0, 0, gridSize, gridSize)
+      const mask = []
+
+      for (let y = 0; y < gridSize; y++) {
+        mask[y] = []
+        for (let x = 0; x < gridSize; x++) {
+          const i = (y * gridSize + x) * 4
+          const alpha = imageData.data[i + 3] // alpha channel
+          const r = imageData.data[i]
+          const g = imageData.data[i + 1]
+          const b = imageData.data[i + 2]
+          // Pixel is "filled" if it has decent alpha and isn't near-white
+          const brightness = (r + g + b) / 3
+          mask[y][x] = alpha > 80 && brightness < 240
+        }
+      }
+      resolve(mask)
+    }
+    img.onerror = () => {
+      // If image fails, return all-true mask (no masking)
+      const mask = Array.from({ length: gridSize }, () =>
+        Array.from({ length: gridSize }, () => true)
+      )
+      resolve(mask)
+    }
+    img.src = imgSrc
+  })
+}
+
 export default function BrandedQR({
   url = 'https://captura44.netlify.app',
   iconSrc = null,
   iconSvgPath = null,
   iconViewBox = '0 0 24 24',
   fgColor = '#6C2BD9',
-  fgColor2 = null,          // second color for gradient effect
+  fgColor2 = null,
   bgColor = 'transparent',
   finderColor = null,
-  finderStyle = 'rounded',  // 'square', 'rounded', 'circle', 'diamond'
+  finderStyle = 'rounded',
   size = 300,
   showLogo = false,
   logoSrc = null,
-  // New style options
-  circularFade = false,     // fade dots toward edges for circular shape
-  randomSize = false,       // vary dot sizes
-  jitter = false,           // slight random position offset
-  dotScale = 1.0,           // overall dot scale multiplier
-  rotateIcons = false,      // randomly rotate icon dots
+  circularFade = false,
+  randomSize = false,
+  jitter = false,
+  dotScale = 1.0,
+  rotateIcons = false,
+  // Logo shape masking
+  shapeMaskSrc = null,    // image URL to use as shape mask
+  shapeMaskSvgPath = null, // SVG path to use as shape mask
+  shapeMaskViewBox = '0 0 24 24',
 }) {
   const canvasRef = useRef(null)
   const [svgContent, setSvgContent] = useState(null)
@@ -69,7 +112,313 @@ export default function BrandedQR({
   useEffect(() => {
     if (iconSrc && !iconSvgPath) return
 
-    try {
+    async function render() {
+      try {
+        const code = generateQR(url)
+        const matrix = code.modules
+        const gridSize = matrix.length
+        const modSize = size / gridSize
+        const center = gridSize / 2
+        const maxDist = center * 1.1
+        const rand = seededRandom(url.length * 137 + gridSize)
+        const elements = []
+
+        // Build shape mask if provided
+        let mask = null
+        if (shapeMaskSrc) {
+          mask = await buildMaskFromImage(shapeMaskSrc, gridSize)
+        }
+
+        // Build SVG path mask if provided
+        let svgMask = null
+        if (shapeMaskSvgPath && !shapeMaskSrc) {
+          // Rasterize SVG path to a mask using canvas
+          const maskCanvas = document.createElement('canvas')
+          maskCanvas.width = gridSize
+          maskCanvas.height = gridSize
+          const mctx = maskCanvas.getContext('2d')
+
+          // Parse viewBox
+          const vb = shapeMaskViewBox.split(' ').map(Number)
+          const scaleX = gridSize / vb[2]
+          const scaleY = gridSize / vb[3]
+
+          mctx.fillStyle = 'black'
+          mctx.scale(scaleX, scaleY)
+          mctx.translate(-vb[0], -vb[1])
+          const path2d = new Path2D(shapeMaskSvgPath)
+          mctx.fill(path2d)
+
+          const imageData = mctx.getImageData(0, 0, gridSize, gridSize)
+          svgMask = []
+          for (let y = 0; y < gridSize; y++) {
+            svgMask[y] = []
+            for (let x = 0; x < gridSize; x++) {
+              const i = (y * gridSize + x) * 4
+              svgMask[y][x] = imageData.data[i + 3] > 80
+            }
+          }
+        }
+
+        const activeMask = mask || svgMask
+
+        // Draw finder patterns (always visible)
+        const finderCenters = [
+          [3.5, 3.5],
+          [gridSize - 3.5, 3.5],
+          [3.5, gridSize - 3.5],
+        ]
+
+        for (const [fcx, fcy] of finderCenters) {
+          const px = fcx * modSize
+          const py = fcy * modSize
+
+          if (finderStyle === 'circle') {
+            elements.push(
+              <circle key={`fo-${fcx}-${fcy}`} cx={px} cy={py} r={modSize * 3.4}
+                fill="none" stroke={actualFinderColor} strokeWidth={modSize * 0.9} />
+            )
+            elements.push(
+              <circle key={`fi-${fcx}-${fcy}`} cx={px} cy={py} r={modSize * 1.4}
+                fill={actualFinderColor} />
+            )
+          } else if (finderStyle === 'diamond') {
+            const s = modSize * 3.5
+            const si = modSize * 1.5
+            elements.push(
+              <polygon key={`fo-${fcx}-${fcy}`}
+                points={`${px},${py - s} ${px + s},${py} ${px},${py + s} ${px - s},${py}`}
+                fill="none" stroke={actualFinderColor} strokeWidth={modSize * 0.8} />
+            )
+            elements.push(
+              <polygon key={`fi-${fcx}-${fcy}`}
+                points={`${px},${py - si} ${px + si},${py} ${px},${py + si} ${px - si},${py}`}
+                fill={actualFinderColor} />
+            )
+          } else if (finderStyle === 'rounded') {
+            const outerSize = modSize * 7
+            const innerSize = modSize * 3
+            elements.push(
+              <rect key={`fo-${fcx}-${fcy}`}
+                x={px - outerSize / 2} y={py - outerSize / 2}
+                width={outerSize} height={outerSize}
+                rx={modSize * 2} fill="none"
+                stroke={actualFinderColor} strokeWidth={modSize * 0.85} />
+            )
+            elements.push(
+              <rect key={`fi-${fcx}-${fcy}`}
+                x={px - innerSize / 2} y={py - innerSize / 2}
+                width={innerSize} height={innerSize}
+                rx={modSize * 0.8} fill={actualFinderColor} />
+            )
+          } else {
+            const outerSize = modSize * 7
+            const innerSize = modSize * 3
+            elements.push(
+              <rect key={`fo-${fcx}-${fcy}`}
+                x={px - outerSize / 2} y={py - outerSize / 2}
+                width={outerSize} height={outerSize}
+                fill="none" stroke={actualFinderColor} strokeWidth={modSize * 0.85} />
+            )
+            elements.push(
+              <rect key={`fi-${fcx}-${fcy}`}
+                x={px - innerSize / 2} y={py - innerSize / 2}
+                width={innerSize} height={innerSize}
+                fill={actualFinderColor} />
+            )
+          }
+        }
+
+        // Draw data modules
+        for (let y = 0; y < gridSize; y++) {
+          for (let x = 0; x < gridSize; x++) {
+            if (!matrix[y][x]) continue
+            if (isFinderPattern(x, y, gridSize)) continue
+
+            // Shape mask: skip dots outside the logo silhouette
+            if (activeMask && !activeMask[y][x]) continue
+
+            const rVal = rand()
+            const rVal2 = rand()
+            const rVal3 = rand()
+
+            // Circular fade
+            const dx = x - center
+            const dy = y - center
+            const dist = Math.sqrt(dx * dx + dy * dy)
+            let opacity = 1
+            if (circularFade && !activeMask) {
+              opacity = Math.max(0, 1 - (dist / maxDist) * 0.6)
+              if (dist > maxDist * 1.15) continue
+            }
+
+            // Gradient color
+            let dotColor = fgColor
+            if (fgColor2) {
+              const t = (x + y) / (gridSize * 2)
+              dotColor = lerpColor(fgColor, fgColor2, t)
+            }
+
+            // Position
+            let px = x * modSize + modSize / 2
+            let py = y * modSize + modSize / 2
+            if (jitter) {
+              px += (rVal - 0.5) * modSize * 0.3
+              py += (rVal2 - 0.5) * modSize * 0.3
+            }
+
+            // Size
+            let scale = dotScale
+            if (randomSize) {
+              scale *= 0.6 + rVal * 0.8
+            }
+
+            if (iconSvgPath) {
+              const iconSize = modSize * scale
+              const rotation = rotateIcons ? rVal3 * 360 : 0
+              elements.push(
+                <g key={`${x}-${y}`}
+                  transform={`translate(${px}, ${py}) rotate(${rotation})`}
+                  opacity={opacity}
+                >
+                  <svg
+                    x={-iconSize / 2}
+                    y={-iconSize / 2}
+                    width={iconSize}
+                    height={iconSize}
+                    viewBox={iconViewBox}
+                  >
+                    <path d={iconSvgPath} fill={dotColor} />
+                  </svg>
+                </g>
+              )
+            } else {
+              elements.push(
+                <circle
+                  key={`${x}-${y}`}
+                  cx={px}
+                  cy={py}
+                  r={modSize * 0.38 * scale}
+                  fill={dotColor}
+                  opacity={opacity}
+                />
+              )
+            }
+          }
+        }
+
+        // Also fill non-QR positions inside the mask with decorative dots
+        // This makes the logo shape more visible
+        if (activeMask) {
+          for (let y = 0; y < gridSize; y++) {
+            for (let x = 0; x < gridSize; x++) {
+              if (matrix[y][x]) continue // already drawn as QR dot
+              if (isFinderPattern(x, y, gridSize)) continue
+              if (!activeMask[y][x]) continue
+
+              const rVal = rand()
+              const rVal2 = rand()
+
+              // Gradient color (lighter for fill dots)
+              let dotColor = fgColor
+              if (fgColor2) {
+                const t = (x + y) / (gridSize * 2)
+                dotColor = lerpColor(fgColor, fgColor2, t)
+              }
+
+              let px = x * modSize + modSize / 2
+              let py = y * modSize + modSize / 2
+              if (jitter) {
+                px += (rVal - 0.5) * modSize * 0.25
+                py += (rVal2 - 0.5) * modSize * 0.25
+              }
+
+              let scale = dotScale * 0.55 // decorative dots are smaller
+              if (randomSize) {
+                scale *= 0.5 + rVal * 0.6
+              }
+
+              if (iconSvgPath) {
+                const iconSize = modSize * scale
+                elements.push(
+                  <g key={`fill-${x}-${y}`}
+                    transform={`translate(${px}, ${py})`}
+                    opacity={0.3}
+                  >
+                    <svg
+                      x={-iconSize / 2}
+                      y={-iconSize / 2}
+                      width={iconSize}
+                      height={iconSize}
+                      viewBox={iconViewBox}
+                    >
+                      <path d={iconSvgPath} fill={dotColor} />
+                    </svg>
+                  </g>
+                )
+              } else {
+                elements.push(
+                  <circle
+                    key={`fill-${x}-${y}`}
+                    cx={px}
+                    cy={py}
+                    r={modSize * 0.25 * scale}
+                    fill={dotColor}
+                    opacity={0.3}
+                  />
+                )
+              }
+            }
+          }
+        }
+
+        // Center logo
+        if (showLogo && logoSrc) {
+          const logoSize = size * 0.22
+          const logoPos = (size - logoSize) / 2
+          elements.push(
+            <g key="logo-bg">
+              <rect
+                x={logoPos - 6} y={logoPos - 6}
+                width={logoSize + 12} height={logoSize + 12}
+                rx={10}
+                fill={bgColor === 'transparent' ? '#0F0F14' : bgColor}
+              />
+              <image href={logoSrc}
+                x={logoPos} y={logoPos}
+                width={logoSize} height={logoSize}
+              />
+            </g>
+          )
+        }
+
+        setSvgContent(
+          <svg
+            width={size} height={size}
+            viewBox={`0 0 ${size} ${size}`}
+            xmlns="http://www.w3.org/2000/svg"
+            style={{ background: bgColor }}
+          >
+            {elements}
+          </svg>
+        )
+      } catch (err) {
+        console.error('QR generation failed:', err)
+      }
+    }
+
+    render()
+  }, [url, iconSvgPath, iconViewBox, fgColor, fgColor2, bgColor, finderColor,
+      finderStyle, size, showLogo, logoSrc, iconSrc, circularFade, randomSize,
+      jitter, dotScale, rotateIcons, shapeMaskSrc, shapeMaskSvgPath, shapeMaskViewBox])
+
+  // Canvas rendering for raster icon images with mask support
+  useEffect(() => {
+    if (!iconSrc || iconSvgPath) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    async function render() {
       const code = generateQR(url)
       const matrix = code.modules
       const gridSize = matrix.length
@@ -77,303 +426,147 @@ export default function BrandedQR({
       const center = gridSize / 2
       const maxDist = center * 1.1
       const rand = seededRandom(url.length * 137 + gridSize)
-      const elements = []
+      canvas.width = size
+      canvas.height = size
+      const ctx = canvas.getContext('2d')
 
-      // Draw custom finder patterns
-      const finderCenters = [
-        [3.5, 3.5],
-        [gridSize - 3.5, 3.5],
-        [3.5, gridSize - 3.5],
-      ]
-
-      for (const [fcx, fcy] of finderCenters) {
-        const px = fcx * modSize
-        const py = fcy * modSize
-
-        if (finderStyle === 'circle') {
-          // Outer ring
-          elements.push(
-            <circle key={`fo-${fcx}-${fcy}`} cx={px} cy={py} r={modSize * 3.4}
-              fill="none" stroke={actualFinderColor} strokeWidth={modSize * 0.9} />
-          )
-          // Inner dot
-          elements.push(
-            <circle key={`fi-${fcx}-${fcy}`} cx={px} cy={py} r={modSize * 1.4}
-              fill={actualFinderColor} />
-          )
-        } else if (finderStyle === 'diamond') {
-          const s = modSize * 3.5
-          const si = modSize * 1.5
-          elements.push(
-            <polygon key={`fo-${fcx}-${fcy}`}
-              points={`${px},${py - s} ${px + s},${py} ${px},${py + s} ${px - s},${py}`}
-              fill="none" stroke={actualFinderColor} strokeWidth={modSize * 0.8} />
-          )
-          elements.push(
-            <polygon key={`fi-${fcx}-${fcy}`}
-              points={`${px},${py - si} ${px + si},${py} ${px},${py + si} ${px - si},${py}`}
-              fill={actualFinderColor} />
-          )
-        } else if (finderStyle === 'rounded') {
-          const outerSize = modSize * 7
-          const innerSize = modSize * 3
-          elements.push(
-            <rect key={`fo-${fcx}-${fcy}`}
-              x={px - outerSize / 2} y={py - outerSize / 2}
-              width={outerSize} height={outerSize}
-              rx={modSize * 2} fill="none"
-              stroke={actualFinderColor} strokeWidth={modSize * 0.85} />
-          )
-          elements.push(
-            <rect key={`fi-${fcx}-${fcy}`}
-              x={px - innerSize / 2} y={py - innerSize / 2}
-              width={innerSize} height={innerSize}
-              rx={modSize * 0.8} fill={actualFinderColor} />
-          )
-        } else {
-          // square
-          const outerSize = modSize * 7
-          const innerSize = modSize * 3
-          elements.push(
-            <rect key={`fo-${fcx}-${fcy}`}
-              x={px - outerSize / 2} y={py - outerSize / 2}
-              width={outerSize} height={outerSize}
-              fill="none" stroke={actualFinderColor} strokeWidth={modSize * 0.85} />
-          )
-          elements.push(
-            <rect key={`fi-${fcx}-${fcy}`}
-              x={px - innerSize / 2} y={py - innerSize / 2}
-              width={innerSize} height={innerSize}
-              fill={actualFinderColor} />
-          )
-        }
+      let activeMask = null
+      if (shapeMaskSrc) {
+        activeMask = await buildMaskFromImage(shapeMaskSrc, gridSize)
       }
 
-      // Draw data modules
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-          if (!matrix[y][x]) continue
-          if (isFinderPattern(x, y, gridSize)) continue
+      const icon = new Image()
+      icon.crossOrigin = 'anonymous'
+      icon.onload = () => {
+        if (bgColor !== 'transparent') {
+          ctx.fillStyle = bgColor
+          ctx.fillRect(0, 0, size, size)
+        } else {
+          ctx.clearRect(0, 0, size, size)
+        }
 
-          const rVal = rand()
-          const rVal2 = rand()
-          const rVal3 = rand()
+        // Draw finder patterns
+        ctx.fillStyle = actualFinderColor
+        ctx.strokeStyle = actualFinderColor
+        ctx.lineWidth = modSize * 0.85
 
-          // Circular fade
-          const dx = x - center
-          const dy = y - center
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          let opacity = 1
-          if (circularFade) {
-            opacity = Math.max(0, 1 - (dist / maxDist) * 0.6)
-            if (dist > maxDist * 1.15) continue // skip dots outside circle
-          }
+        const finderCenters = [
+          [3.5 * modSize, 3.5 * modSize],
+          [(gridSize - 3.5) * modSize, 3.5 * modSize],
+          [3.5 * modSize, (gridSize - 3.5) * modSize],
+        ]
 
-          // Gradient color
-          let dotColor = fgColor
-          if (fgColor2) {
-            const t = (x + y) / (gridSize * 2)
-            dotColor = lerpColor(fgColor, fgColor2, t)
-          }
-
-          // Position with optional jitter
-          let px = x * modSize + modSize / 2
-          let py = y * modSize + modSize / 2
-          if (jitter) {
-            px += (rVal - 0.5) * modSize * 0.3
-            py += (rVal2 - 0.5) * modSize * 0.3
-          }
-
-          // Size with optional randomization
-          let scale = dotScale
-          if (randomSize) {
-            scale *= 0.6 + rVal * 0.8 // range: 0.6x to 1.4x
-          }
-
-          if (iconSvgPath) {
-            const iconSize = modSize * scale
-            const rotation = rotateIcons ? rVal3 * 360 : 0
-            elements.push(
-              <g key={`${x}-${y}`}
-                transform={`translate(${px}, ${py}) rotate(${rotation})`}
-                opacity={opacity}
-              >
-                <svg
-                  x={-iconSize / 2}
-                  y={-iconSize / 2}
-                  width={iconSize}
-                  height={iconSize}
-                  viewBox={iconViewBox}
-                >
-                  <path d={iconSvgPath} fill={dotColor} />
-                </svg>
-              </g>
-            )
+        for (const [fcx, fcy] of finderCenters) {
+          if (finderStyle === 'circle') {
+            ctx.beginPath()
+            ctx.arc(fcx, fcy, modSize * 3.4, 0, Math.PI * 2)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.arc(fcx, fcy, modSize * 1.4, 0, Math.PI * 2)
+            ctx.fill()
           } else {
-            elements.push(
-              <circle
-                key={`${x}-${y}`}
-                cx={px}
-                cy={py}
-                r={modSize * 0.38 * scale}
-                fill={dotColor}
-                opacity={opacity}
-              />
-            )
+            const os = modSize * 7
+            const is2 = modSize * 3
+            const r = finderStyle === 'rounded' ? modSize * 2 : 0
+            const ri = finderStyle === 'rounded' ? modSize * 0.8 : 0
+            roundRect(ctx, fcx - os / 2, fcy - os / 2, os, os, r)
+            ctx.stroke()
+            roundRect(ctx, fcx - is2 / 2, fcy - is2 / 2, is2, is2, ri)
+            ctx.fill()
           }
         }
-      }
 
-      // Center logo
-      if (showLogo && logoSrc) {
-        const logoSize = size * 0.22
-        const logoPos = (size - logoSize) / 2
-        elements.push(
-          <g key="logo-bg">
-            <rect
-              x={logoPos - 6} y={logoPos - 6}
-              width={logoSize + 12} height={logoSize + 12}
-              rx={10}
-              fill={bgColor === 'transparent' ? '#0F0F14' : bgColor}
-            />
-            <image href={logoSrc}
-              x={logoPos} y={logoPos}
-              width={logoSize} height={logoSize}
-            />
-          </g>
-        )
-      }
+        // Draw data modules
+        for (let y = 0; y < gridSize; y++) {
+          for (let x = 0; x < gridSize; x++) {
+            if (!matrix[y][x]) continue
+            if (isFinderPattern(x, y, gridSize)) continue
+            if (activeMask && !activeMask[y][x]) continue
 
-      setSvgContent(
-        <svg
-          width={size} height={size}
-          viewBox={`0 0 ${size} ${size}`}
-          xmlns="http://www.w3.org/2000/svg"
-          style={{ background: bgColor }}
-        >
-          {elements}
-        </svg>
-      )
-    } catch (err) {
-      console.error('QR generation failed:', err)
+            const rVal = rand()
+            const rVal2 = rand()
+
+            const dx = x - center
+            const dy = y - center
+            const dist = Math.sqrt(dx * dx + dy * dy)
+            if (circularFade && !activeMask && dist > maxDist * 1.15) continue
+
+            let alpha = 1
+            if (circularFade && !activeMask) {
+              alpha = Math.max(0, 1 - (dist / maxDist) * 0.6)
+            }
+
+            let px = x * modSize
+            let py = y * modSize
+            if (jitter) {
+              px += (rVal - 0.5) * modSize * 0.3
+              py += (rVal2 - 0.5) * modSize * 0.3
+            }
+
+            let scale = dotScale
+            if (randomSize) {
+              scale *= 0.6 + rVal * 0.8
+            }
+
+            ctx.globalAlpha = alpha
+            const drawSize = modSize * scale
+            ctx.drawImage(icon, px + (modSize - drawSize) / 2, py + (modSize - drawSize) / 2, drawSize, drawSize)
+          }
+        }
+
+        // Decorative fill dots inside mask
+        if (activeMask) {
+          for (let y = 0; y < gridSize; y++) {
+            for (let x = 0; x < gridSize; x++) {
+              if (matrix[y][x]) continue
+              if (isFinderPattern(x, y, gridSize)) continue
+              if (!activeMask[y][x]) continue
+
+              const rVal = rand()
+              const rVal2 = rand()
+
+              let px = x * modSize
+              let py = y * modSize
+              if (jitter) {
+                px += (rVal - 0.5) * modSize * 0.25
+                py += (rVal2 - 0.5) * modSize * 0.25
+              }
+
+              let scale = dotScale * 0.5
+              if (randomSize) {
+                scale *= 0.5 + rVal * 0.6
+              }
+
+              ctx.globalAlpha = 0.25
+              const drawSize = modSize * scale
+              ctx.drawImage(icon, px + (modSize - drawSize) / 2, py + (modSize - drawSize) / 2, drawSize, drawSize)
+            }
+          }
+        }
+
+        ctx.globalAlpha = 1
+
+        if (showLogo && logoSrc) {
+          const logoImg = new Image()
+          logoImg.crossOrigin = 'anonymous'
+          logoImg.onload = () => {
+            const logoSize = size * 0.22
+            const logoPos = (size - logoSize) / 2
+            ctx.fillStyle = bgColor === 'transparent' ? '#0F0F14' : bgColor
+            roundRect(ctx, logoPos - 6, logoPos - 6, logoSize + 12, logoSize + 12, 10)
+            ctx.fill()
+            ctx.drawImage(logoImg, logoPos, logoPos, logoSize, logoSize)
+          }
+          logoImg.src = logoSrc
+        }
+      }
+      icon.src = iconSrc
     }
-  }, [url, iconSvgPath, iconViewBox, fgColor, fgColor2, bgColor, finderColor,
-      finderStyle, size, showLogo, logoSrc, iconSrc, circularFade, randomSize,
-      jitter, dotScale, rotateIcons])
 
-  // Canvas rendering for raster images
-  useEffect(() => {
-    if (!iconSrc || iconSvgPath) return
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const code = generateQR(url)
-    const matrix = code.modules
-    const gridSize = matrix.length
-    const modSize = size / gridSize
-    const center = gridSize / 2
-    const maxDist = center * 1.1
-    const rand = seededRandom(url.length * 137 + gridSize)
-    canvas.width = size
-    canvas.height = size
-    const ctx = canvas.getContext('2d')
-
-    const icon = new Image()
-    icon.crossOrigin = 'anonymous'
-    icon.onload = () => {
-      if (bgColor !== 'transparent') {
-        ctx.fillStyle = bgColor
-        ctx.fillRect(0, 0, size, size)
-      } else {
-        ctx.clearRect(0, 0, size, size)
-      }
-
-      // Draw finder patterns
-      ctx.fillStyle = actualFinderColor
-      ctx.strokeStyle = actualFinderColor
-      ctx.lineWidth = modSize * 0.85
-
-      const finderCenters = [
-        [3.5 * modSize, 3.5 * modSize],
-        [(gridSize - 3.5) * modSize, 3.5 * modSize],
-        [3.5 * modSize, (gridSize - 3.5) * modSize],
-      ]
-
-      for (const [fcx, fcy] of finderCenters) {
-        if (finderStyle === 'circle') {
-          ctx.beginPath()
-          ctx.arc(fcx, fcy, modSize * 3.4, 0, Math.PI * 2)
-          ctx.stroke()
-          ctx.beginPath()
-          ctx.arc(fcx, fcy, modSize * 1.4, 0, Math.PI * 2)
-          ctx.fill()
-        } else {
-          const os = modSize * 7
-          const is2 = modSize * 3
-          const r = finderStyle === 'rounded' ? modSize * 2 : 0
-          const ri = finderStyle === 'rounded' ? modSize * 0.8 : 0
-          roundRect(ctx, fcx - os / 2, fcy - os / 2, os, os, r)
-          ctx.stroke()
-          roundRect(ctx, fcx - is2 / 2, fcy - is2 / 2, is2, is2, ri)
-          ctx.fill()
-        }
-      }
-
-      // Draw data modules
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-          if (!matrix[y][x]) continue
-          if (isFinderPattern(x, y, gridSize)) continue
-
-          const rVal = rand()
-          const rVal2 = rand()
-
-          const dx = x - center
-          const dy = y - center
-          const dist = Math.sqrt(dx * dx + dy * dy)
-          if (circularFade && dist > maxDist * 1.15) continue
-
-          let alpha = 1
-          if (circularFade) {
-            alpha = Math.max(0, 1 - (dist / maxDist) * 0.6)
-          }
-
-          let px = x * modSize
-          let py = y * modSize
-          if (jitter) {
-            px += (rVal - 0.5) * modSize * 0.3
-            py += (rVal2 - 0.5) * modSize * 0.3
-          }
-
-          let scale = dotScale
-          if (randomSize) {
-            scale *= 0.6 + rVal * 0.8
-          }
-
-          ctx.globalAlpha = alpha
-          const drawSize = modSize * scale
-          ctx.drawImage(icon, px + (modSize - drawSize) / 2, py + (modSize - drawSize) / 2, drawSize, drawSize)
-        }
-      }
-      ctx.globalAlpha = 1
-
-      if (showLogo && logoSrc) {
-        const logoImg = new Image()
-        logoImg.crossOrigin = 'anonymous'
-        logoImg.onload = () => {
-          const logoSize = size * 0.22
-          const logoPos = (size - logoSize) / 2
-          ctx.fillStyle = bgColor === 'transparent' ? '#0F0F14' : bgColor
-          roundRect(ctx, logoPos - 6, logoPos - 6, logoSize + 12, logoSize + 12, 10)
-          ctx.fill()
-          ctx.drawImage(logoImg, logoPos, logoPos, logoSize, logoSize)
-        }
-        logoImg.src = logoSrc
-      }
-    }
-    icon.src = iconSrc
+    render()
   }, [url, iconSrc, iconSvgPath, fgColor, bgColor, finderColor, finderStyle,
-      size, showLogo, logoSrc, circularFade, randomSize, jitter, dotScale, rotateIcons])
+      size, showLogo, logoSrc, circularFade, randomSize, jitter, dotScale, rotateIcons,
+      shapeMaskSrc, shapeMaskSvgPath])
 
   if (iconSrc && !iconSvgPath) {
     return <canvas ref={canvasRef} style={{ width: size, height: size }} />

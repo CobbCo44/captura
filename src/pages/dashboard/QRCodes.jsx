@@ -62,8 +62,9 @@ const demoQRs = [
   },
   {
     id: 'q4', product: 'Training Gloves', scans: 156, created: '2026-06-28',
-    color: '#F59E0B', color2: '#EF4444', icon: 'flame',
-    finderStyle: 'circle', circularFade: true, randomSize: true, jitter: true, rotateIcons: true,
+    color: '#F59E0B', color2: '#EF4444', icon: 'circle',
+    finderStyle: 'circle', circularFade: false, randomSize: true, jitter: true,
+    shapeMask: 'shield',
   },
 ]
 
@@ -89,6 +90,8 @@ export default function QRCodes() {
     jitter: true,
     rotateIcons: false,
     dotScale: 1.0,
+    shapeMask: 'none',        // 'none', preset key, or 'custom'
+    customShapeMask: null,     // data URL of uploaded shape image
   })
 
   const scanUrl = typeof window !== 'undefined' ? window.location.origin : ''
@@ -119,6 +122,16 @@ export default function QRCodes() {
     const reader = new FileReader()
     reader.onload = (ev) => {
       setForm({ ...form, customIconFile: ev.target.result, icon: 'custom' })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleShapeMaskUpload = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setForm({ ...form, customShapeMask: ev.target.result, shapeMask: 'custom' })
     }
     reader.readAsDataURL(file)
   }
@@ -154,10 +167,18 @@ export default function QRCodes() {
                   iconViewBox={preset.viewBox}
                   size={200}
                   finderStyle={qr.finderStyle || 'rounded'}
-                  circularFade={qr.circularFade}
+                  circularFade={qr.shapeMask ? false : qr.circularFade}
                   randomSize={qr.randomSize}
                   jitter={qr.jitter}
                   rotateIcons={qr.rotateIcons}
+                  shapeMaskSvgPath={
+                    qr.shapeMask && qr.shapeMask !== 'none' && iconPresets[qr.shapeMask]
+                      ? iconPresets[qr.shapeMask].path : null
+                  }
+                  shapeMaskViewBox={
+                    qr.shapeMask && iconPresets[qr.shapeMask]
+                      ? iconPresets[qr.shapeMask].viewBox : '0 0 24 24'
+                  }
                 />
               </div>
               <h3 style={{ fontWeight: 600, marginBottom: 4 }}>{qr.product}</h3>
@@ -319,6 +340,43 @@ export default function QRCodes() {
                       onChange={e => setForm({ ...form, dotScale: parseFloat(e.target.value) })}
                       style={{ width: '100%', accentColor: 'var(--primary)' }} />
                   </div>
+
+                  {/* Logo Shape Mask */}
+                  <div style={{
+                    background: 'rgba(108, 43, 217, 0.05)',
+                    border: '1px solid rgba(108, 43, 217, 0.2)',
+                    borderRadius: 12, padding: 14,
+                  }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--primary-light)', marginBottom: 8, fontWeight: 600 }}>
+                      Logo Shape Mask
+                    </label>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.4 }}>
+                      Upload your logo to shape the entire QR code into your logo's silhouette. Works best with bold, chunky logos.
+                    </p>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                      <button type="button" onClick={() => setForm({ ...form, shapeMask: 'none', customShapeMask: null })}
+                        style={toggleStyle(form.shapeMask === 'none')}>None</button>
+                      {Object.entries(iconPresets).filter(([k]) => k !== 'circle').map(([key, preset]) => (
+                        <button type="button" key={`shape-${key}`}
+                          onClick={() => setForm({ ...form, shapeMask: key, customShapeMask: null })}
+                          style={toggleStyle(form.shapeMask === key)}>
+                          {preset.path && (
+                            <svg width="14" height="14" viewBox={preset.viewBox} style={{ verticalAlign: 'middle', marginRight: 2 }}>
+                              <path d={preset.path} fill="currentColor" />
+                            </svg>
+                          )}
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                    <input type="file" accept="image/*" onChange={handleShapeMaskUpload}
+                      style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} />
+                    {form.shapeMask !== 'none' && (
+                      <p style={{ fontSize: '0.7rem', color: 'var(--accent)', marginTop: 6 }}>
+                        Scan with your phone to test. Complex shapes may not scan.
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Right: Live Preview */}
@@ -340,11 +398,22 @@ export default function QRCodes() {
                       iconSrc={form.icon === 'custom' ? form.customIconFile : null}
                       size={260}
                       finderStyle={form.finderStyle}
-                      circularFade={form.circularFade}
+                      circularFade={form.shapeMask === 'none' ? form.circularFade : false}
                       randomSize={form.randomSize}
                       jitter={form.jitter}
                       rotateIcons={form.rotateIcons}
                       dotScale={form.dotScale}
+                      shapeMaskSrc={form.shapeMask === 'custom' ? form.customShapeMask : null}
+                      shapeMaskSvgPath={
+                        form.shapeMask !== 'none' && form.shapeMask !== 'custom' && iconPresets[form.shapeMask]
+                          ? iconPresets[form.shapeMask].path
+                          : null
+                      }
+                      shapeMaskViewBox={
+                        form.shapeMask !== 'none' && form.shapeMask !== 'custom' && iconPresets[form.shapeMask]
+                          ? iconPresets[form.shapeMask].viewBox
+                          : '0 0 24 24'
+                      }
                     />
                   </div>
                   <p style={{

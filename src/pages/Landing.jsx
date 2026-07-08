@@ -149,7 +149,7 @@ export default function Landing() {
             The ROI
           </div>
           <h2 style={{ fontSize: '2.5rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-1px', color: '#FAFAFA' }}>
-            What one QR code scan is actually worth
+            The math on owning your consumer
           </h2>
         </div>
 
@@ -157,8 +157,8 @@ export default function Landing() {
           {[
             { value: '$0.00', label: 'Cost per scan', sub: 'No hardware. No app. A printed QR code.' },
             { value: '18%', label: 'Avg VIP conversion', sub: 'Nearly 1 in 5 scanners give you their contact info voluntarily.' },
-            { value: '$47', label: 'LTV per captured consumer', sub: 'Industry average for a named, reachable first-party contact.' },
-            { value: '∞', label: 'Reuse value', sub: 'That contact is yours forever. Text them. Email them. Re-engage.' },
+            { value: '~$0.55', label: 'Cost per first-party contact', sub: "On the Growth plan, that's what it costs to turn an anonymous retail buyer into a named, reachable contact you own \u2014 versus $68\u2013$84 to acquire a customer through paid channels." },
+            { value: '∞', label: 'Owned, not rented', sub: "The relationship is yours \u2014 not the retailer's, not the ad platform's. Re-engage anytime, with consent." },
           ].map((item, i) => (
             <div key={i} style={{
               padding: '40px 32px', background: '#131316',

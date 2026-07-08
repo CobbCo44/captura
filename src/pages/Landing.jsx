@@ -399,6 +399,119 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Pricing */}
+      <section id="pricing" style={{
+        padding: '100px 40px', maxWidth: 1200, margin: '0 auto',
+        borderTop: '1px solid #1C1C21',
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: 60 }}>
+          <div style={{ fontSize: '0.75rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 16 }}>
+            Pricing
+          </div>
+          <h2 style={{ fontSize: '2.5rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-1px', color: '#FAFAFA', marginBottom: 16 }}>
+            Simple pricing. No per-scan fees.
+          </h2>
+          <p style={{ color: '#52525B', fontSize: '1.05rem', maxWidth: 500, margin: '0 auto' }}>
+            Pay for the tier that fits your volume. Upgrade anytime as your consumer database grows.
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
+          {[
+            {
+              name: 'Starter',
+              price: '99',
+              desc: 'For brands launching their first consumer capture program.',
+              features: [
+                'Up to 1,000 scans/month',
+                '5 products',
+                '3 QR codes',
+                'VIP member capture',
+                'Scan analytics + map',
+                'CSV exports',
+              ],
+              cta: 'Get Started',
+              highlight: false,
+            },
+            {
+              name: 'Growth',
+              price: '299',
+              desc: 'For brands scaling consumer engagement across product lines.',
+              features: [
+                'Up to 10,000 scans/month',
+                '25 products',
+                'Unlimited QR codes',
+                'Promotional campaigns',
+                'Social media links',
+                'Reorder links',
+                'AI insights reports',
+                'Consumer data dashboard',
+              ],
+              cta: 'Get Started',
+              highlight: true,
+            },
+            {
+              name: 'Enterprise',
+              price: '799',
+              desc: 'For large manufacturers with high-volume product lines.',
+              features: [
+                'Unlimited scans',
+                'Unlimited products',
+                'Unlimited QR codes',
+                'Everything in Growth',
+                'Custom onboarding',
+                'Priority support',
+                'Dedicated account manager',
+                'API access (coming soon)',
+              ],
+              cta: 'Contact Sales',
+              highlight: false,
+            },
+          ].map((tier) => (
+            <div key={tier.name} style={{
+              padding: '44px 36px', background: '#131316',
+              border: tier.highlight ? '1px solid #3F3F46' : 'none',
+              display: 'flex', flexDirection: 'column',
+            }}>
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ fontSize: '0.8rem', color: '#52525B', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 8 }}>
+                  {tier.name}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 12 }}>
+                  <span style={{ fontSize: '3rem', fontWeight: 800, color: '#FAFAFA', letterSpacing: '-2px' }}>${tier.price}</span>
+                  <span style={{ color: '#3F3F46', fontSize: '0.9rem' }}>/month</span>
+                </div>
+                <p style={{ color: '#52525B', fontSize: '0.85rem', lineHeight: 1.5 }}>{tier.desc}</p>
+              </div>
+
+              <div style={{ flex: 1, marginBottom: 28 }}>
+                {tier.features.map((f, i) => (
+                  <div key={i} style={{
+                    padding: '8px 0', fontSize: '0.9rem', color: '#A1A1AA',
+                    borderBottom: '1px solid #1C1C21',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                  }}>
+                    <span style={{ color: '#22C55E', fontSize: '0.8rem' }}>+</span>
+                    {f}
+                  </div>
+                ))}
+              </div>
+
+              <Link to={tier.name === 'Enterprise' ? '/login?signup=true' : '/login?signup=true'} style={{
+                display: 'block', textAlign: 'center', padding: '14px',
+                borderRadius: 8, fontWeight: 600, fontSize: '0.95rem',
+                textDecoration: 'none',
+                background: tier.highlight ? '#FAFAFA' : 'transparent',
+                color: tier.highlight ? '#09090B' : '#A1A1AA',
+                border: tier.highlight ? 'none' : '1px solid #27272A',
+              }}>
+                {tier.cta}
+              </Link>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Final CTA */}
       <section style={{ padding: '100px 40px 120px', textAlign: 'center' }}>
         <h2 style={{

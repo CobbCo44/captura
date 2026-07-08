@@ -17,6 +17,7 @@ export default function BrandedQR({
   size = 300,
   logoSrc = null,
   logoScale = 0.25,
+  canvasId = null,
 }) {
   const canvasRef = useRef(null)
 
@@ -68,7 +69,7 @@ export default function BrandedQR({
     }
   }, [url, fgColor, bgColor, size, logoSrc, logoScale])
 
-  return <canvas ref={canvasRef} style={{ width: size, height: size }} />
+  return <canvas ref={canvasRef} id={canvasId} style={{ width: size, height: size }} />
 }
 
 function roundRect(ctx, x, y, w, h, r) {

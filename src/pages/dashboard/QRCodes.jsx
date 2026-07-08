@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase, generateShortId } from '../../lib/supabase'
 import BrandedQR from '../../components/BrandedQR'
+import generateQRCode from 'qr.js'
 
 export default function QRCodes({ brand }) {
   const [qrCodes, setQrCodes] = useState([])
@@ -157,6 +158,51 @@ export default function QRCodes({ brand }) {
     setQrCodes(qrCodes.filter(q => q.id !== qr.id))
   }
 
+  const downloadPNG = (shortId, productName) => {
+    const canvas = document.getElementById(`qr-${shortId}`)
+    if (!canvas) return
+    // Create a high-res version
+    const hiRes = document.createElement('canvas')
+    hiRes.width = 1000
+    hiRes.height = 1000
+    const ctx = hiRes.getContext('2d')
+    ctx.drawImage(canvas, 0, 0, 1000, 1000)
+    const link = document.createElement('a')
+    link.download = `${productName || shortId}-qr.png`
+    link.href = hiRes.toDataURL('image/png')
+    link.click()
+  }
+
+  const downloadSVG = (shortId, productName, qr) => {
+    // Re-generate QR as SVG
+    const code = generateQRCode(`${scanUrl}/s/${shortId}`)
+    if (!code) return
+    const matrix = code.modules
+    const gridSize = matrix.length
+    const modSize = 10
+    const svgSize = gridSize * modSize
+
+    let rects = ''
+    for (let y = 0; y < gridSize; y++) {
+      for (let x = 0; x < gridSize; x++) {
+        if (!matrix[y][x]) continue
+        rects += `<rect x="${x * modSize}" y="${y * modSize}" width="${modSize}" height="${modSize}" fill="${qr.fg_color || '#18181B'}"/>`
+      }
+    }
+
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgSize}" height="${svgSize}" viewBox="0 0 ${svgSize} ${svgSize}">
+      <rect width="${svgSize}" height="${svgSize}" fill="${qr.bg_color || '#FFFFFF'}"/>
+      ${rects}
+    </svg>`
+
+    const blob = new Blob([svg], { type: 'image/svg+xml' })
+    const link = document.createElement('a')
+    link.download = `${productName || shortId}-qr.svg`
+    link.href = URL.createObjectURL(blob)
+    link.click()
+    URL.revokeObjectURL(link.href)
+  }
+
   // Preview logo: use new file preview, existing URL, or null
   const previewLogo = form.logoRawFile ? form.logoFile : (form.existingLogoUrl || null)
 
@@ -199,6 +245,7 @@ export default function QRCodes({ brand }) {
                   logoSrc={qr.logo_url || null}
                   logoScale={qr.logo_scale || 0.25}
                   size={200}
+                  canvasId={`qr-${qr.short_id}`}
                 />
               </div>
               <h3 style={{ fontWeight: 600, marginBottom: 4 }}>{qr.products?.name || 'Product'}</h3>
@@ -208,12 +255,23 @@ export default function QRCodes({ brand }) {
               <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 12 }}>
                 ID: {qr.short_id}
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <button className="btn btn-primary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}
+                  onClick={() => downloadPNG(qr.short_id, qr.products?.name)}>
+                  PNG
+                </button>
+                <button className="btn btn-primary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}
+                  onClick={() => downloadSVG(qr.short_id, qr.products?.name, qr)}>
+                  SVG
+                </button>
                 <button className="btn btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}
                   onClick={() => openEdit(qr)}>
                   Edit
                 </button>
-                <button className="btn btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}
+                <button style={{
+                  background: 'none', border: 'none', color: 'var(--text-muted)',
+                  fontSize: '0.75rem', cursor: 'pointer', padding: '8px',
+                }}
                   onClick={() => handleDelete(qr)}>
                   Delete
                 </button>

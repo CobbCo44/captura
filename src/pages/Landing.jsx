@@ -8,7 +8,7 @@ export default function Landing() {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '20px 40px', maxWidth: 1200, margin: '0 auto',
       }}>
-        <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#FAFAFA', letterSpacing: '-0.5px' }}>
+        <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#FAFAFA', letterSpacing: '-1px' }}>
           Captura
         </div>
         <div style={{ display: 'flex', gap: 12 }}>

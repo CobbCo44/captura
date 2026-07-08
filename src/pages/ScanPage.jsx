@@ -398,7 +398,7 @@ export default function ScanPage() {
           return (
             <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
               <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>
-                Follow {brand.name}
+                Follow Us
               </div>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
                 {socials.map(s => (

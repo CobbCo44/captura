@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import BrandedQR from '../../components/BrandedQR'
 
-// Sample SVG icon paths (brand icons represented as SVG paths)
 const iconPresets = {
   star: {
     label: 'Star',
@@ -9,7 +8,7 @@ const iconPresets = {
     viewBox: '0 0 24 24',
   },
   bolt: {
-    label: 'Lightning Bolt',
+    label: 'Bolt',
     path: 'M13 2L3 14h9l-1 10 10-12h-9l1-10z',
     viewBox: '0 0 24 24',
   },
@@ -39,18 +38,41 @@ const iconPresets = {
     viewBox: '0 0 24 24',
   },
   circle: {
-    label: 'Circle (default)',
+    label: 'Dot',
     path: null,
     viewBox: '0 0 24 24',
   },
 }
 
 const demoQRs = [
-  { id: 'q1', product: 'Pro Wireless Earbuds', scans: 412, created: '2026-06-15', color: '#6C2BD9', icon: 'bolt' },
-  { id: 'q2', product: 'Running Shoes V2', scans: 287, created: '2026-06-20', color: '#EC4899', icon: 'star' },
-  { id: 'q3', product: 'Sport Water Bottle', scans: 198, created: '2026-06-22', color: '#10B981', icon: 'diamond' },
-  { id: 'q4', product: 'Training Gloves', scans: 156, created: '2026-06-28', color: '#F59E0B', icon: 'shield' },
+  {
+    id: 'q1', product: 'Pro Wireless Earbuds', scans: 412, created: '2026-06-15',
+    color: '#6C2BD9', color2: '#EC4899', icon: 'bolt',
+    finderStyle: 'circle', circularFade: true, randomSize: true, jitter: true,
+  },
+  {
+    id: 'q2', product: 'Running Shoes V2', scans: 287, created: '2026-06-20',
+    color: '#EC4899', color2: '#F59E0B', icon: 'star',
+    finderStyle: 'rounded', circularFade: false, randomSize: true, jitter: false, rotateIcons: true,
+  },
+  {
+    id: 'q3', product: 'Sport Water Bottle', scans: 198, created: '2026-06-22',
+    color: '#10B981', color2: '#06B6D4', icon: 'diamond',
+    finderStyle: 'diamond', circularFade: true, randomSize: false, jitter: true,
+  },
+  {
+    id: 'q4', product: 'Training Gloves', scans: 156, created: '2026-06-28',
+    color: '#F59E0B', color2: '#EF4444', icon: 'flame',
+    finderStyle: 'circle', circularFade: true, randomSize: true, jitter: true, rotateIcons: true,
+  },
 ]
+
+const toggleStyle = (active) => ({
+  padding: '6px 12px', borderRadius: 8, fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer',
+  background: active ? 'rgba(108, 43, 217, 0.2)' : 'var(--bg)',
+  border: active ? '1px solid var(--primary)' : '1px solid var(--border)',
+  color: active ? 'var(--text)' : 'var(--text-muted)',
+})
 
 export default function QRCodes() {
   const [qrCodes, setQrCodes] = useState(demoQRs)
@@ -58,9 +80,15 @@ export default function QRCodes() {
   const [form, setForm] = useState({
     product: '',
     fgColor: '#6C2BD9',
-    bgColor: '#0F0F14',
+    fgColor2: '#EC4899',
     icon: 'circle',
     customIconFile: null,
+    finderStyle: 'circle',
+    circularFade: true,
+    randomSize: true,
+    jitter: true,
+    rotateIcons: false,
+    dotScale: 1.0,
   })
 
   const scanUrl = typeof window !== 'undefined' ? window.location.origin : ''
@@ -68,15 +96,20 @@ export default function QRCodes() {
   const handleCreate = (e) => {
     e.preventDefault()
     const newQR = {
-      id: `q${qrCodes.length + 1}`,
+      id: `q${Date.now()}`,
       product: form.product,
       scans: 0,
       created: new Date().toISOString().split('T')[0],
       color: form.fgColor,
+      color2: form.fgColor2,
       icon: form.icon,
+      finderStyle: form.finderStyle,
+      circularFade: form.circularFade,
+      randomSize: form.randomSize,
+      jitter: form.jitter,
+      rotateIcons: form.rotateIcons,
     }
     setQrCodes([...qrCodes, newQR])
-    setForm({ product: '', fgColor: '#6C2BD9', bgColor: '#0F0F14', icon: 'circle', customIconFile: null })
     setShowCreate(false)
   }
 
@@ -116,17 +149,20 @@ export default function QRCodes() {
                 <BrandedQR
                   url={`${scanUrl}/s/${qr.id}`}
                   fgColor={qr.color}
+                  fgColor2={qr.color2}
                   iconSvgPath={preset.path}
                   iconViewBox={preset.viewBox}
                   size={200}
+                  finderStyle={qr.finderStyle || 'rounded'}
+                  circularFade={qr.circularFade}
+                  randomSize={qr.randomSize}
+                  jitter={qr.jitter}
+                  rotateIcons={qr.rotateIcons}
                 />
               </div>
               <h3 style={{ fontWeight: 600, marginBottom: 4 }}>{qr.product}</h3>
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 4 }}>
-                Icon: {preset.label}
-              </div>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 12 }}>
-                {qr.scans} scans &middot; Created {qr.created}
+                {qr.scans} scans &middot; {qr.created}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}>
@@ -148,12 +184,15 @@ export default function QRCodes() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50,
           overflow: 'auto', padding: 24
         }} onClick={() => setShowCreate(false)}>
-          <div className="card" style={{ width: 560, maxWidth: '95vw' }} onClick={e => e.stopPropagation()}>
+          <div className="card" style={{ width: 680, maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto' }}
+            onClick={e => e.stopPropagation()}>
             <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: 24 }}>Create Branded QR Code</h2>
             <form onSubmit={handleCreate}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-                {/* Left: Settings */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
+
+                {/* Left: Controls */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                  {/* Product */}
                   <div>
                     <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
                       Product
@@ -173,29 +212,26 @@ export default function QRCodes() {
                   {/* Icon Shape */}
                   <div>
                     <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 8 }}>
-                      Dot Shape (your brand icon)
+                      Dot Shape
                     </label>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
                       {Object.entries(iconPresets).map(([key, preset]) => (
-                        <button
-                          type="button"
-                          key={key}
+                        <button type="button" key={key}
                           onClick={() => setForm({ ...form, icon: key, customIconFile: null })}
                           style={{
-                            padding: '8px 4px', borderRadius: 8, fontSize: '0.7rem',
+                            padding: '8px 4px', borderRadius: 8, fontSize: '0.65rem',
                             background: form.icon === key ? 'rgba(108, 43, 217, 0.2)' : 'var(--bg)',
                             border: form.icon === key ? '2px solid var(--primary)' : '1px solid var(--border)',
                             color: form.icon === key ? 'var(--text)' : 'var(--text-muted)',
                             cursor: 'pointer', textAlign: 'center',
-                          }}
-                        >
+                          }}>
                           {preset.path ? (
-                            <svg width="20" height="20" viewBox={preset.viewBox} style={{ display: 'block', margin: '0 auto 4px' }}>
+                            <svg width="18" height="18" viewBox={preset.viewBox} style={{ display: 'block', margin: '0 auto 2px' }}>
                               <path d={preset.path} fill={form.icon === key ? 'var(--primary-light)' : 'var(--text-muted)'} />
                             </svg>
                           ) : (
                             <div style={{
-                              width: 20, height: 20, borderRadius: '50%', margin: '0 auto 4px',
+                              width: 18, height: 18, borderRadius: '50%', margin: '0 auto 2px',
                               background: form.icon === key ? 'var(--primary-light)' : 'var(--text-muted)',
                             }} />
                           )}
@@ -205,33 +241,83 @@ export default function QRCodes() {
                     </div>
                   </div>
 
-                  {/* Upload Custom Icon */}
+                  {/* Upload */}
                   <div>
                     <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                      Or upload your brand icon
+                      Or upload brand icon (SVG/PNG)
                     </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleIconUpload}
-                      style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}
-                    />
+                    <input type="file" accept="image/*" onChange={handleIconUpload}
+                      style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }} />
                   </div>
 
                   {/* Colors */}
                   <div style={{ display: 'flex', gap: 12 }}>
                     <div style={{ flex: 1 }}>
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                        Color
+                        Color 1
                       </label>
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                         <input type="color" value={form.fgColor}
                           onChange={e => setForm({ ...form, fgColor: e.target.value })}
-                          style={{ width: 40, height: 40, border: 'none', borderRadius: 8, cursor: 'pointer' }} />
+                          style={{ width: 36, height: 36, border: 'none', borderRadius: 8, cursor: 'pointer' }} />
                         <input className="input" value={form.fgColor}
-                          onChange={e => setForm({ ...form, fgColor: e.target.value })} />
+                          onChange={e => setForm({ ...form, fgColor: e.target.value })} style={{ fontSize: '0.85rem' }} />
                       </div>
                     </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                        Color 2 (gradient)
+                      </label>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <input type="color" value={form.fgColor2}
+                          onChange={e => setForm({ ...form, fgColor2: e.target.value })}
+                          style={{ width: 36, height: 36, border: 'none', borderRadius: 8, cursor: 'pointer' }} />
+                        <input className="input" value={form.fgColor2}
+                          onChange={e => setForm({ ...form, fgColor2: e.target.value })} style={{ fontSize: '0.85rem' }} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Corner Style */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 8 }}>
+                      Corner Style
+                    </label>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {['circle', 'rounded', 'diamond', 'square'].map(s => (
+                        <button type="button" key={s} onClick={() => setForm({ ...form, finderStyle: s })}
+                          style={toggleStyle(form.finderStyle === s)}>
+                          {s.charAt(0).toUpperCase() + s.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Style Toggles */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 8 }}>
+                      Effects
+                    </label>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button type="button" onClick={() => setForm({ ...form, circularFade: !form.circularFade })}
+                        style={toggleStyle(form.circularFade)}>Circular Fade</button>
+                      <button type="button" onClick={() => setForm({ ...form, randomSize: !form.randomSize })}
+                        style={toggleStyle(form.randomSize)}>Random Sizes</button>
+                      <button type="button" onClick={() => setForm({ ...form, jitter: !form.jitter })}
+                        style={toggleStyle(form.jitter)}>Jitter</button>
+                      <button type="button" onClick={() => setForm({ ...form, rotateIcons: !form.rotateIcons })}
+                        style={toggleStyle(form.rotateIcons)}>Rotate Icons</button>
+                    </div>
+                  </div>
+
+                  {/* Dot Scale */}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                      Dot Size: {(form.dotScale * 100).toFixed(0)}%
+                    </label>
+                    <input type="range" min="0.5" max="1.5" step="0.05" value={form.dotScale}
+                      onChange={e => setForm({ ...form, dotScale: parseFloat(e.target.value) })}
+                      style={{ width: '100%', accentColor: 'var(--primary)' }} />
                   </div>
                 </div>
 
@@ -241,25 +327,31 @@ export default function QRCodes() {
                     Live Preview
                   </label>
                   <div style={{
-                    background: '#0A0A10', borderRadius: 12, padding: 20,
+                    background: '#0A0A10', borderRadius: 16, padding: 24,
                     display: 'flex', justifyContent: 'center', alignItems: 'center',
-                    border: '1px solid var(--border)', minHeight: 260,
+                    border: '1px solid var(--border)', minHeight: 300,
                   }}>
                     <BrandedQR
                       url={`${scanUrl}/s/preview`}
                       fgColor={form.fgColor}
+                      fgColor2={form.fgColor2}
                       iconSvgPath={form.icon === 'custom' ? null : (selectedPreset?.path || null)}
                       iconViewBox={selectedPreset?.viewBox}
                       iconSrc={form.icon === 'custom' ? form.customIconFile : null}
-                      size={220}
+                      size={260}
+                      finderStyle={form.finderStyle}
+                      circularFade={form.circularFade}
+                      randomSize={form.randomSize}
+                      jitter={form.jitter}
+                      rotateIcons={form.rotateIcons}
+                      dotScale={form.dotScale}
                     />
                   </div>
                   <p style={{
                     color: 'var(--text-muted)', fontSize: '0.75rem',
-                    textAlign: 'center', marginTop: 8, lineHeight: 1.4
+                    textAlign: 'center', marginTop: 10, lineHeight: 1.4
                   }}>
-                    Every dot in this QR code is your brand icon.
-                    Try scanning it with your phone camera.
+                    Try scanning with your phone camera to verify it works.
                   </p>
                 </div>
               </div>

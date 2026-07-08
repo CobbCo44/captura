@@ -234,13 +234,16 @@ export default function Landing() {
               background: '#09090B', borderRadius: 22, padding: '28px 20px',
               minHeight: 420,
             }}>
-              {/* Brand header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid #1C1C21' }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#1C1C21', border: '1px solid #27272A' }} />
-                <div>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#FAFAFA' }}>Performance Bat 34"</div>
-                  <div style={{ fontSize: '0.6rem', color: '#3F3F46', textTransform: 'uppercase', letterSpacing: '1px' }}>44 Pro</div>
-                </div>
+              {/* Product image */}
+              <div style={{
+                width: '100%', height: 120, borderRadius: 12, marginBottom: 20, overflow: 'hidden',
+                background: '#1C1C21', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <img src="https://images.unsplash.com/photo-1529768167801-9173d94c2a42?w=400&h=200&fit=crop" alt="Baseball bat"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+              <div style={{ marginBottom: 20, paddingBottom: 16, borderBottom: '1px solid #1C1C21' }}>
+                <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#FAFAFA' }}>Performance Bat 34"</div>
               </div>
 
               {/* Scan page rows */}

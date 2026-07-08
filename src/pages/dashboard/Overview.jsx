@@ -78,18 +78,22 @@ export default function Overview({ brand }) {
       {stats.scansByDay && stats.scansByDay.some(([, count]) => count > 0) && (
         <div className="card" style={{ marginBottom: 24 }}>
           <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 16 }}>Scans (Last 7 Days)</h3>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 120 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 140 }}>
             {(() => {
               const max = Math.max(...stats.scansByDay.map(([, c]) => c), 1)
-              return stats.scansByDay.map(([day, count]) => (
+              return stats.scansByDay.map(([day, count], i) => (
                 <div key={day} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                  <span style={{ fontSize: '0.7rem', color: '#FAFAFA', fontWeight: 600 }}>{count || ''}</span>
-                  <div style={{
-                    width: '100%', borderRadius: 4,
-                    background: count > 0 ? '#FAFAFA' : 'var(--border)',
-                    height: `${Math.max((count / max) * 90, 4)}%`,
+                  <span className="bar-count" style={{
+                    fontSize: '0.75rem', color: '#FAFAFA', fontWeight: 700,
+                    opacity: 0, animation: `fadeIn 0.3s ease forwards ${0.3 + i * 0.1}s`,
+                  }}>{count || ''}</span>
+                  <div className="bar" style={{
+                    width: '100%', borderRadius: 6,
+                    background: count > 0 ? 'linear-gradient(180deg, #FAFAFA 0%, #71717A 100%)' : 'var(--border)',
+                    height: 0,
                     minHeight: 4,
-                    transition: 'height 0.3s',
+                    animation: `growBar 0.6s ease forwards ${0.1 + i * 0.1}s`,
+                    '--bar-height': `${Math.max((count / max) * 90, 4)}%`,
                   }} />
                   <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
                     {new Date(day + 'T12:00:00').toLocaleDateString('en', { weekday: 'short' })}
@@ -98,6 +102,16 @@ export default function Overview({ brand }) {
               ))
             })()}
           </div>
+          <style>{`
+            @keyframes growBar {
+              from { height: 0; }
+              to { height: var(--bar-height); }
+            }
+            @keyframes fadeIn {
+              from { opacity: 0; transform: translateY(4px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
         </div>
       )}
 

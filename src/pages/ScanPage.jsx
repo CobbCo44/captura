@@ -85,40 +85,26 @@ export default function ScanPage() {
       user_agent: navigator.userAgent,
     }
 
-    // Try to get location (with a timeout so we don't wait forever)
+    // Get location from IP address (no permission popup needed)
     try {
-      const loc = await new Promise((resolve, reject) => {
-        if (!('geolocation' in navigator)) return reject('no geo')
-        navigator.geolocation.getCurrentPosition(
-          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-          () => reject('denied'),
-          { timeout: 5000 }
-        )
-      })
-
-      scanData.latitude = loc.lat
-      scanData.longitude = loc.lng
-      setLocation(loc)
-
-      // Reverse geocode for city
-      try {
-        const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${loc.lat}&longitude=${loc.lng}&localityLanguage=en`)
-        const geo = await res.json()
-        const city = geo.city || geo.locality || ''
-        const region = geo.principalSubdivisionCode || geo.principalSubdivision || ''
-        const country = geo.countryCode || ''
-
-        if (city) {
-          scanData.city = `${city}, ${region}`
-          scanData.region = region
-          scanData.country = country
-          setLocation({ ...loc, city, region, country })
-        }
-      } catch (e) {
-        // Geocode failed, still have lat/lng
+      const res = await fetch('https://ipapi.co/json/')
+      const geo = await res.json()
+      if (geo && geo.city) {
+        scanData.latitude = geo.latitude
+        scanData.longitude = geo.longitude
+        scanData.city = `${geo.city}, ${geo.region_code || geo.region}`
+        scanData.region = geo.region_code || geo.region
+        scanData.country = geo.country_code
+        setLocation({
+          lat: geo.latitude,
+          lng: geo.longitude,
+          city: geo.city,
+          region: geo.region_code || geo.region,
+          country: geo.country_code,
+        })
       }
     } catch (e) {
-      // Location denied or unavailable, log without it
+      // IP geolocation failed, log without location
     }
 
     // Log the scan with whatever data we have

@@ -5,7 +5,7 @@ export default function Products({ brand }) {
   const [products, setProducts] = useState([])
   const [view, setView] = useState('list') // 'list' or 'form'
   const [editingProduct, setEditingProduct] = useState(null)
-  const [form, setForm] = useState({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', images: [], existingImages: [] })
+  const [form, setForm] = useState({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', images: [], existingImages: [] })
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
 
@@ -30,7 +30,7 @@ export default function Products({ brand }) {
 
   const openAdd = () => {
     setEditingProduct(null)
-    setForm({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', images: [], existingImages: [] })
+    setForm({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', images: [], existingImages: [] })
     setView('form')
   }
 
@@ -43,6 +43,7 @@ export default function Products({ brand }) {
       contentTitle: p.content_title || '',
       contentBody: p.content_body || '',
       contentUrl: p.content_url || '',
+      reorderUrl: p.reorder_url || '',
       images: [],
       existingImages: p.image_urls || [],
     })
@@ -112,6 +113,7 @@ export default function Products({ brand }) {
         content_title: form.contentTitle,
         content_body: form.contentBody,
         content_url: form.contentUrl,
+        reorder_url: form.reorderUrl,
         image_urls: allImageUrls,
       }
 
@@ -138,7 +140,7 @@ export default function Products({ brand }) {
       }
     }
 
-    setForm({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', images: [], existingImages: [] })
+    setForm({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', images: [], existingImages: [] })
     setEditingProduct(null)
     setView('list')
     setUploading(false)
@@ -250,6 +252,16 @@ export default function Products({ brand }) {
                 style={{ minHeight: 80, resize: 'vertical' }} />
               <input className="input" placeholder="Link URL (video, tutorial, etc.)" value={form.contentUrl}
                 onChange={e => setForm({ ...form, contentUrl: e.target.value })} />
+            </div>
+
+            {/* Reorder */}
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Reorder Link</label>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: -8 }}>
+                For consumable products (supplements, beauty, etc.). Consumers see a "Reorder" button that links directly to your product page.
+              </p>
+              <input className="input" placeholder="https://yourbrand.com/product/buy" value={form.reorderUrl}
+                onChange={e => setForm({ ...form, reorderUrl: e.target.value })} />
             </div>
 
             {/* Actions */}

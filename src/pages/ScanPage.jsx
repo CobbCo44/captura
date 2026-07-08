@@ -261,6 +261,21 @@ export default function ScanPage() {
           </div>
         )}
 
+        {/* Reorder Button */}
+        {product?.reorder_url && (
+          <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
+            <a href={product.reorder_url} target="_blank" rel="noopener noreferrer"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: '100%', padding: '16px', borderRadius: 'var(--radius)',
+                background: '#FAFAFA', color: '#09090B', fontWeight: 700,
+                fontSize: '1rem', textDecoration: 'none', gap: 8,
+              }}>
+              Reorder This Product
+            </a>
+          </div>
+        )}
+
         {/* Active Promo */}
         {activePromo && (
           <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border)' }}>

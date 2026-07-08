@@ -5,7 +5,7 @@ export default function Products({ brand }) {
   const [products, setProducts] = useState([])
   const [view, setView] = useState('list') // 'list' or 'form'
   const [editingProduct, setEditingProduct] = useState(null)
-  const [form, setForm] = useState({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', images: [], existingImages: [] })
+  const [form, setForm] = useState({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', images: [], existingImages: [] })
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
 
@@ -44,6 +44,9 @@ export default function Products({ brand }) {
       contentBody: p.content_body || '',
       contentUrl: p.content_url || '',
       reorderUrl: p.reorder_url || '',
+      warrantyEnabled: p.warranty_enabled || false,
+      warrantyDuration: p.warranty_duration || '',
+      warrantyTerms: p.warranty_terms || '',
       images: [],
       existingImages: p.image_urls || [],
     })
@@ -114,6 +117,9 @@ export default function Products({ brand }) {
         content_body: form.contentBody,
         content_url: form.contentUrl,
         reorder_url: form.reorderUrl,
+        warranty_enabled: form.warrantyEnabled,
+        warranty_duration: form.warrantyDuration || null,
+        warranty_terms: form.warrantyTerms || null,
         image_urls: allImageUrls,
       }
 
@@ -262,6 +268,39 @@ export default function Products({ brand }) {
               </p>
               <input className="input" placeholder="https://yourbrand.com/product/buy" value={form.reorderUrl}
                 onChange={e => setForm({ ...form, reorderUrl: e.target.value })} />
+            </div>
+
+            {/* Warranty */}
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Warranty Registration</label>
+                <div onClick={() => setForm({ ...form, warrantyEnabled: !form.warrantyEnabled })} style={{
+                  width: 44, height: 24, borderRadius: 12, cursor: 'pointer',
+                  background: form.warrantyEnabled ? '#22C55E' : '#3F3F46',
+                  position: 'relative', transition: 'background 0.2s',
+                }}>
+                  <div style={{
+                    width: 18, height: 18, borderRadius: '50%', background: 'white',
+                    position: 'absolute', top: 3,
+                    left: form.warrantyEnabled ? 23 : 3,
+                    transition: 'left 0.2s',
+                  }} />
+                </div>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: -8 }}>
+                When enabled, consumers see a "Register Your Warranty" section on the scan page. They provide their contact info, purchase date, and retailer.
+              </p>
+              {form.warrantyEnabled && (
+                <>
+                  <input className="input" placeholder="Warranty Duration (e.g. 1 Year, 2 Years, Lifetime)"
+                    value={form.warrantyDuration}
+                    onChange={e => setForm({ ...form, warrantyDuration: e.target.value })} />
+                  <textarea className="input" placeholder="Warranty Terms (what's covered, what's not)"
+                    value={form.warrantyTerms}
+                    onChange={e => setForm({ ...form, warrantyTerms: e.target.value })}
+                    style={{ minHeight: 80, resize: 'vertical' }} />
+                </>
+              )}
             </div>
 
             {/* Actions */}

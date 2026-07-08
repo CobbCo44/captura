@@ -23,6 +23,9 @@ export default function ScanPage() {
   const [showPromoEntry, setShowPromoEntry] = useState(false)
   const [promoForm, setPromoForm] = useState({ firstName: '', lastName: '', email: '', phone: '', consent: false })
   const [promoEntered, setPromoEntered] = useState(false)
+  const [showWarranty, setShowWarranty] = useState(false)
+  const [warrantyForm, setWarrantyForm] = useState({ firstName: '', lastName: '', email: '', phone: '', purchaseDate: '', retailer: '', consent: false })
+  const [warrantyRegistered, setWarrantyRegistered] = useState(false)
   const scanLogged = useRef(false)
 
   useEffect(() => {
@@ -160,6 +163,26 @@ export default function ScanPage() {
     setPromoEntered(true)
   }
 
+  const handleWarrantySubmit = async (e) => {
+    e.preventDefault()
+    if (supabase && qrCode) {
+      await supabase.from('warranty_registrations').insert({
+        brand_id: qrCode.brand_id,
+        product_id: qrCode.product_id,
+        qr_code_id: qrCode.id,
+        first_name: warrantyForm.firstName,
+        last_name: warrantyForm.lastName,
+        email: warrantyForm.email,
+        phone: warrantyForm.phone,
+        purchase_date: warrantyForm.purchaseDate || null,
+        retailer: warrantyForm.retailer || null,
+        city: location?.city ? `${location.city}, ${location.region}` : null,
+        consent: warrantyForm.consent,
+      })
+    }
+    setWarrantyRegistered(true)
+  }
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -243,6 +266,90 @@ export default function ScanPage() {
                 className="btn btn-secondary" style={{ marginTop: 16, display: 'inline-flex' }}>
                 View More
               </a>
+            )}
+          </div>
+        )}
+
+        {/* Warranty Registration */}
+        {product?.warranty_enabled && (
+          <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border)' }}>
+            {!showWarranty && !warrantyRegistered && (
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid #3F3F46',
+                borderRadius: 'var(--radius)', padding: '28px 20px', textAlign: 'center'
+              }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 8 }}>
+                  Register Your Warranty
+                </h3>
+                {product.warranty_duration && (
+                  <p style={{ color: '#FAFAFA', fontSize: '0.95rem', fontWeight: 600, marginBottom: 8 }}>
+                    {product.warranty_duration} Coverage
+                  </p>
+                )}
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 20, lineHeight: 1.5 }}>
+                  Activate your product warranty and get support when you need it.
+                </p>
+                <button className="btn btn-primary" style={{ padding: '14px 32px' }}
+                  onClick={() => setShowWarranty(true)}>
+                  Register Now
+                </button>
+              </div>
+            )}
+
+            {showWarranty && !warrantyRegistered && (
+              <form onSubmit={handleWarrantySubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Warranty Registration</h3>
+                <input className="input" placeholder="First Name" value={warrantyForm.firstName}
+                  onChange={e => setWarrantyForm({ ...warrantyForm, firstName: e.target.value })} required />
+                <input className="input" placeholder="Last Name" value={warrantyForm.lastName}
+                  onChange={e => setWarrantyForm({ ...warrantyForm, lastName: e.target.value })} required />
+                <input className="input" type="email" placeholder="Email" value={warrantyForm.email}
+                  onChange={e => setWarrantyForm({ ...warrantyForm, email: e.target.value })} />
+                <input className="input" type="tel" placeholder="Phone Number" value={warrantyForm.phone}
+                  onChange={e => setWarrantyForm({ ...warrantyForm, phone: e.target.value })} required />
+                <input className="input" type="date" value={warrantyForm.purchaseDate}
+                  onChange={e => setWarrantyForm({ ...warrantyForm, purchaseDate: e.target.value })}
+                  style={{ colorScheme: 'dark' }} />
+                <input className="input" placeholder="Where did you purchase? (store name)" value={warrantyForm.retailer}
+                  onChange={e => setWarrantyForm({ ...warrantyForm, retailer: e.target.value })} />
+                {product.warranty_terms && (
+                  <div style={{
+                    padding: '12px', borderRadius: 8, background: 'var(--bg)',
+                    border: '1px solid var(--border)', fontSize: '0.8rem',
+                    color: 'var(--text-muted)', lineHeight: 1.6, maxHeight: 120, overflow: 'auto',
+                  }}>
+                    {product.warranty_terms}
+                  </div>
+                )}
+                <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={warrantyForm.consent} required
+                    onChange={e => setWarrantyForm({ ...warrantyForm, consent: e.target.checked })}
+                    style={{ marginTop: 3, accentColor: '#FAFAFA' }} />
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', lineHeight: 1.5 }}>
+                    I am 18 years or older and agree to the warranty terms. I consent to receiving communications about my warranty and product updates. <a href="/privacy" target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Privacy Policy</a>
+                  </span>
+                </label>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 14 }}>
+                  Register Warranty
+                </button>
+              </form>
+            )}
+
+            {warrantyRegistered && (
+              <div style={{
+                textAlign: 'center', padding: 28,
+                background: 'rgba(34, 197, 94, 0.1)',
+                border: '1px solid var(--success)',
+                borderRadius: 'var(--radius)'
+              }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>
+                  Warranty Registered
+                </h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  Your {product.warranty_duration || ''} warranty is now active, {warrantyForm.firstName}. Keep this confirmation for your records.
+                </p>
+              </div>
             )}
           </div>
         )}

@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 export default function Consumers({ brand }) {
   const [vipMembers, setVipMembers] = useState([])
   const [promoEntries, setPromoEntries] = useState([])
+  const [warrantyRegs, setWarrantyRegs] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
@@ -17,12 +18,14 @@ export default function Consumers({ brand }) {
       setLoading(false)
       return
     }
-    const [vipRes, promoRes] = await Promise.all([
+    const [vipRes, promoRes, warrantyRes] = await Promise.all([
       supabase.from('vip_members').select('*, products(name)').eq('brand_id', brand.id).order('joined_at', { ascending: false }),
       supabase.from('promo_entries').select('*, products(name), promos(title)').eq('brand_id', brand.id).order('entered_at', { ascending: false }),
+      supabase.from('warranty_registrations').select('*, products(name)').eq('brand_id', brand.id).order('registered_at', { ascending: false }),
     ])
     setVipMembers(vipRes.data || [])
     setPromoEntries(promoRes.data || [])
+    setWarrantyRegs(warrantyRes.data || [])
     setLoading(false)
   }
 
@@ -52,11 +55,24 @@ export default function Consumers({ brand }) {
       source: p.promos?.title || 'Promo Entry',
       date: p.entered_at,
     })),
+    ...warrantyRegs.map(w => ({
+      id: `warranty-${w.id}`,
+      firstName: w.first_name,
+      lastName: w.last_name,
+      email: w.email || '',
+      phone: w.phone,
+      product: w.products?.name || '',
+      city: w.city || '',
+      type: 'Warranty',
+      source: 'Warranty Registration',
+      date: w.registered_at,
+    })),
   ].sort((a, b) => new Date(b.date) - new Date(a.date))
 
   const filtered = allConsumers.filter(c => {
     if (filter === 'vip' && c.type !== 'VIP') return false
     if (filter === 'promo' && c.type !== 'Promo') return false
+    if (filter === 'warranty' && c.type !== 'Warranty') return false
     if (search) {
       const q = search.toLowerCase()
       return `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) ||
@@ -124,6 +140,10 @@ export default function Consumers({ brand }) {
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Promo Entries</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#D4D4D8' }}>{promoEntries.length}</div>
         </div>
+        <div className="card" style={{ padding: '16px 20px' }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Warranty Regs</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#A1A1AA' }}>{warrantyRegs.length}</div>
+        </div>
       </div>
 
       {/* Filters */}
@@ -131,6 +151,7 @@ export default function Consumers({ brand }) {
         <button onClick={() => setFilter('all')} style={tabStyle(filter === 'all')}>All ({allConsumers.length})</button>
         <button onClick={() => setFilter('vip')} style={tabStyle(filter === 'vip')}>VIP ({vipMembers.length})</button>
         <button onClick={() => setFilter('promo')} style={tabStyle(filter === 'promo')}>Promo ({promoEntries.length})</button>
+        <button onClick={() => setFilter('warranty')} style={tabStyle(filter === 'warranty')}>Warranty ({warrantyRegs.length})</button>
         <input
           className="input"
           placeholder="Search name, email, phone, city, product..."

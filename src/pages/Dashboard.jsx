@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom'
+import { supabase, getCurrentBrand } from '../lib/supabase'
 import Products from './dashboard/Products'
 import QRCodes from './dashboard/QRCodes'
 import Scans from './dashboard/Scans'
@@ -16,7 +17,44 @@ const navItems = [
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const [mobileNav, setMobileNav] = useState(false)
+  const [brand, setBrand] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function loadBrand() {
+      if (!supabase) {
+        setBrand({ id: 'demo', name: 'Demo Brand' })
+        setLoading(false)
+        return
+      }
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        navigate('/login')
+        return
+      }
+      const b = await getCurrentBrand()
+      if (b) {
+        setBrand(b)
+      } else {
+        setBrand({ id: 'new', name: 'My Brand' })
+      }
+      setLoading(false)
+    }
+    loadBrand()
+  }, [navigate])
+
+  const handleLogout = async () => {
+    if (supabase) await supabase.auth.signOut()
+    navigate('/')
+  }
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ color: 'var(--text-muted)' }}>Loading...</div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -25,13 +63,14 @@ export default function Dashboard() {
         width: 240, background: 'var(--bg-card)', borderRight: '1px solid var(--border)',
         padding: '24px 0', display: 'flex', flexDirection: 'column',
         position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 10,
-        transform: mobileNav ? 'translateX(0)' : undefined,
       }}>
         <div style={{ padding: '0 20px', marginBottom: 32 }}>
-          <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#FAFAFA' }}>
             Captura
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Brand Dashboard</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+            {brand?.name || 'Brand Dashboard'}
+          </div>
         </div>
 
         <nav style={{ flex: 1 }}>
@@ -40,11 +79,10 @@ export default function Dashboard() {
               key={item.path}
               to={`/dashboard/${item.path}`}
               end={item.path === ''}
-              onClick={() => setMobileNav(false)}
               style={({ isActive }) => ({
                 display: 'flex', alignItems: 'center', gap: 10,
                 padding: '12px 20px', fontSize: '0.9rem', fontWeight: 500,
-                color: isActive ? 'var(--text)' : 'var(--text-muted)',
+                color: isActive ? '#FAFAFA' : 'var(--text-muted)',
                 background: isActive ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
                 borderRight: isActive ? '3px solid #FAFAFA' : '3px solid transparent',
                 transition: 'all 0.15s',
@@ -58,7 +96,7 @@ export default function Dashboard() {
 
         <div style={{ padding: '0 20px' }}>
           <button
-            onClick={() => navigate('/')}
+            onClick={handleLogout}
             className="btn btn-secondary"
             style={{ width: '100%', fontSize: '0.85rem' }}
           >
@@ -73,11 +111,11 @@ export default function Dashboard() {
         maxWidth: 1100
       }}>
         <Routes>
-          <Route index element={<Overview />} />
-          <Route path="products" element={<Products />} />
-          <Route path="qr-codes" element={<QRCodes />} />
-          <Route path="scans" element={<Scans />} />
-          <Route path="vip" element={<VIPMembers />} />
+          <Route index element={<Overview brand={brand} />} />
+          <Route path="products" element={<Products brand={brand} />} />
+          <Route path="qr-codes" element={<QRCodes brand={brand} />} />
+          <Route path="scans" element={<Scans brand={brand} />} />
+          <Route path="vip" element={<VIPMembers brand={brand} />} />
         </Routes>
       </main>
     </div>

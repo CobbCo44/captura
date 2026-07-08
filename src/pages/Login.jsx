@@ -18,7 +18,6 @@ export default function Login() {
     setLoading(true)
 
     if (!supabase) {
-      // Demo mode - skip auth, go straight to dashboard
       navigate('/dashboard')
       return
     }
@@ -28,14 +27,12 @@ export default function Login() {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { brand_name: brandName } }
         })
         if (signUpError) throw signUpError
 
-        // Create brand record
         if (data.user) {
           await supabase.from('brands').insert({
-            id: data.user.id,
+            user_id: data.user.id,
             name: brandName,
             email: email
           })
@@ -138,7 +135,7 @@ export default function Login() {
             {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
             <span
               onClick={() => setIsSignup(!isSignup)}
-              style={{ color: 'var(--primary-light)', cursor: 'pointer', fontWeight: 500 }}
+              style={{ color: '#FAFAFA', cursor: 'pointer', fontWeight: 500 }}
             >
               {isSignup ? 'Log In' : 'Sign Up'}
             </span>

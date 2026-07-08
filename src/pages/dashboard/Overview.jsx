@@ -1,43 +1,54 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 
-const demoStats = {
-  totalScans: 1247,
-  uniqueLocations: 38,
-  vipMembers: 214,
-  products: 6,
-  recentScans: [
-    { id: 1, product: 'Pro Wireless Earbuds', city: 'Houston, TX', time: '2 min ago' },
-    { id: 2, product: 'Sport Water Bottle', city: 'Miami, FL', time: '8 min ago' },
-    { id: 3, product: 'Running Shoes V2', city: 'Denver, CO', time: '14 min ago' },
-    { id: 4, product: 'Pro Wireless Earbuds', city: 'Austin, TX', time: '22 min ago' },
-    { id: 5, product: 'Training Gloves', city: 'Chicago, IL', time: '31 min ago' },
-  ],
-  topProducts: [
-    { name: 'Pro Wireless Earbuds', scans: 412 },
-    { name: 'Running Shoes V2', scans: 287 },
-    { name: 'Sport Water Bottle', scans: 198 },
-    { name: 'Training Gloves', scans: 156 },
-  ]
-}
-
-export default function Overview() {
-  const [stats, setStats] = useState(demoStats)
+export default function Overview({ brand }) {
+  const [stats, setStats] = useState({ totalScans: 0, uniqueCities: 0, vipMembers: 0, products: 0 })
+  const [recentScans, setRecentScans] = useState([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!supabase) return
-    // Future: fetch real stats from Supabase
-  }, [])
+    loadStats()
+  }, [brand])
+
+  async function loadStats() {
+    if (!supabase || !brand?.id || brand.id === 'demo') {
+      setStats({ totalScans: 0, uniqueCities: 0, vipMembers: 0, products: 0 })
+      setLoading(false)
+      return
+    }
+
+    const [scansRes, vipRes, productsRes, recentRes] = await Promise.all([
+      supabase.from('scans').select('id, city').eq('brand_id', brand.id),
+      supabase.from('vip_members').select('id').eq('brand_id', brand.id),
+      supabase.from('products').select('id').eq('brand_id', brand.id),
+      supabase.from('scans').select('*, products(name)').eq('brand_id', brand.id).order('scanned_at', { ascending: false }).limit(10),
+    ])
+
+    const scans = scansRes.data || []
+    const cities = new Set(scans.map(s => s.city).filter(Boolean))
+
+    setStats({
+      totalScans: scans.length,
+      uniqueCities: cities.size,
+      vipMembers: (vipRes.data || []).length,
+      products: (productsRes.data || []).length,
+    })
+    setRecentScans(recentRes.data || [])
+    setLoading(false)
+  }
+
+  if (loading) {
+    return <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>Loading...</div>
+  }
 
   return (
     <div>
       <h1 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: 32 }}>Overview</h1>
 
-      {/* Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 20, marginBottom: 40 }}>
         {[
           { label: 'Total Scans', value: stats.totalScans.toLocaleString(), color: '#FAFAFA' },
-          { label: 'Unique Locations', value: stats.uniqueLocations, color: '#A1A1AA' },
+          { label: 'Unique Cities', value: stats.uniqueCities, color: '#A1A1AA' },
           { label: 'VIP Members', value: stats.vipMembers, color: 'var(--success)' },
           { label: 'Active Products', value: stats.products, color: '#D4D4D8' },
         ].map(s => (
@@ -48,52 +59,38 @@ export default function Overview() {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-        {/* Recent Scans */}
+      {recentScans.length > 0 && (
         <div className="card">
           <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 16 }}>Recent Scans</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {stats.recentScans.map(scan => (
+            {recentScans.map(scan => (
               <div key={scan.id} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 padding: '10px 0', borderBottom: '1px solid var(--border)'
               }}>
                 <div>
-                  <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>{scan.product}</div>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>📍 {scan.city}</div>
+                  <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>{scan.products?.name || 'Unknown'}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                    {scan.city || 'Unknown location'} {scan.device ? `· ${scan.device}` : ''}
+                  </div>
                 </div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{scan.time}</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                  {new Date(scan.scanned_at).toLocaleString()}
+                </div>
               </div>
             ))}
           </div>
         </div>
+      )}
 
-        {/* Top Products */}
-        <div className="card">
-          <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 16 }}>Top Products by Scans</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {stats.topProducts.map((p, i) => (
-              <div key={p.name}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{p.name}</span>
-                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{p.scans}</span>
-                </div>
-                <div style={{
-                  height: 6, borderRadius: 3, background: 'var(--border)',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{
-                    height: '100%', borderRadius: 3,
-                    background: '#FAFAFA',
-                    width: `${(p.scans / stats.topProducts[0].scans) * 100}%`,
-                    transition: 'width 0.5s'
-                  }} />
-                </div>
-              </div>
-            ))}
-          </div>
+      {stats.totalScans === 0 && (
+        <div className="card" style={{ textAlign: 'center', padding: 60 }}>
+          <div style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 8 }}>No scans yet</div>
+          <p style={{ color: 'var(--text-muted)' }}>
+            Create a product, generate a QR code, and start scanning to see data here.
+          </p>
         </div>
-      </div>
+      )}
     </div>
   )
 }

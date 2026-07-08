@@ -276,17 +276,6 @@ export default function QRCodes({ brand }) {
                         style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }} />
                     </div>
 
-                    {previewLogo && (
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                          Logo Size: {Math.round(form.logoScale * 100)}%
-                        </label>
-                        <input type="range" min="0.15" max="0.40" step="0.01" value={form.logoScale}
-                          onChange={e => setForm({ ...form, logoScale: parseFloat(e.target.value) })}
-                          style={{ width: '100%' }} />
-                      </div>
-                    )}
-
                     <div>
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
                         QR Color

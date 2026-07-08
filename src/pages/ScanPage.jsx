@@ -2,6 +2,12 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
+function getYouTubeId(url) {
+  if (!url) return null
+  const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)
+  return match ? match[1] : null
+}
+
 export default function ScanPage() {
   const { qrId } = useParams()
   const [product, setProduct] = useState(null)
@@ -184,15 +190,16 @@ export default function ScanPage() {
       {/* Product Images */}
       {product?.image_urls?.length > 0 && (
         <div style={{
-          width: '100%', overflow: 'auto', background: 'var(--bg-card)',
+          width: '100%', overflow: 'auto', background: '#000',
           display: 'flex', scrollSnapType: 'x mandatory',
         }}>
           {product.image_urls.map((url, i) => (
             <div key={i} style={{
-              minWidth: '100%', height: 260, scrollSnapAlign: 'start',
+              minWidth: '100%', height: 300, scrollSnapAlign: 'start',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <img src={url} alt={`${product.name} ${i + 1}`}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
             </div>
           ))}
         </div>
@@ -228,7 +235,20 @@ export default function ScanPage() {
             <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.95rem' }}>
               {product.content_body}
             </p>
-            {product.content_url && (
+            {product.content_url && getYouTubeId(product.content_url) && (
+              <div style={{
+                marginTop: 16, borderRadius: 8, overflow: 'hidden',
+                position: 'relative', paddingBottom: '56.25%', height: 0,
+              }}>
+                <iframe
+                  src={`https://www.youtube.com/embed/${getYouTubeId(product.content_url)}`}
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            )}
+            {product.content_url && !getYouTubeId(product.content_url) && (
               <a href={product.content_url} target="_blank" rel="noopener noreferrer"
                 className="btn btn-secondary" style={{ marginTop: 16, display: 'inline-flex' }}>
                 View More

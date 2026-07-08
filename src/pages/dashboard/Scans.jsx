@@ -48,7 +48,7 @@ export default function Scans({ brand }) {
       lat: s.latitude,
       lng: s.longitude,
       label: `${s.products?.name || 'Product'}\n${s.city || 'Unknown'}`,
-      color: '#FAFAFA',
+      color: '#EF4444',
       size: 0.5,
     }))
 

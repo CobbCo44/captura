@@ -14,7 +14,8 @@
     "react-router-dom": "^7.6.0",
     "@supabase/supabase-js": "^2.49.0",
     "qrcode.react": "^4.2.0",
-    "qr.js": "^0.0.0"
+    "qr.js": "^0.0.0",
+    "react-globe.gl": "^2.27.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.5.0",

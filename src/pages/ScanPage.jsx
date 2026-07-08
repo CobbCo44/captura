@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
@@ -13,20 +13,19 @@ export default function ScanPage() {
   const [vipSubmitted, setVipSubmitted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const scanLogged = useRef(false)
 
   useEffect(() => {
     loadQRCode()
-    requestLocation()
   }, [qrId])
 
   async function loadQRCode() {
     if (!supabase) {
-      setProduct({ name: 'Demo Product', brand: 'Demo Brand', description: 'This is a demo product.', content_title: 'Getting Started', content_body: 'Scan a real QR code to see actual product content.' })
+      setProduct({ name: 'Demo Product', description: 'This is a demo product.', content_title: 'Getting Started', content_body: 'Scan a real QR code to see actual product content.' })
       setLoading(false)
       return
     }
 
-    // Look up QR code by short_id
     const { data: qr, error } = await supabase
       .from('qr_codes')
       .select('*, products(*), brands:brand_id(name, logo_url)')
@@ -44,14 +43,15 @@ export default function ScanPage() {
     setBrand(qr.brands)
     setLoading(false)
 
-    // Log the scan
-    logScan(qr)
+    // Get location, then log scan with it
+    getLocationAndLogScan(qr)
   }
 
-  async function logScan(qr) {
-    if (!supabase) return
+  async function getLocationAndLogScan(qr) {
+    if (scanLogged.current) return
+    scanLogged.current = true
 
-    const scanData = {
+    let scanData = {
       qr_code_id: qr.id,
       product_id: qr.product_id,
       brand_id: qr.brand_id,
@@ -59,54 +59,45 @@ export default function ScanPage() {
       user_agent: navigator.userAgent,
     }
 
-    // Add location if available
-    if (location) {
-      scanData.latitude = location.lat
-      scanData.longitude = location.lng
+    // Try to get location (with a timeout so we don't wait forever)
+    try {
+      const loc = await new Promise((resolve, reject) => {
+        if (!('geolocation' in navigator)) return reject('no geo')
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+          () => reject('denied'),
+          { timeout: 5000 }
+        )
+      })
+
+      scanData.latitude = loc.lat
+      scanData.longitude = loc.lng
+      setLocation(loc)
+
+      // Reverse geocode for city
+      try {
+        const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${loc.lat}&longitude=${loc.lng}&localityLanguage=en`)
+        const geo = await res.json()
+        const city = geo.city || geo.locality || ''
+        const region = geo.principalSubdivisionCode || geo.principalSubdivision || ''
+        const country = geo.countryCode || ''
+
+        if (city) {
+          scanData.city = `${city}, ${region}`
+          scanData.region = region
+          scanData.country = country
+          setLocation({ ...loc, city, region, country })
+        }
+      } catch (e) {
+        // Geocode failed, still have lat/lng
+      }
+    } catch (e) {
+      // Location denied or unavailable, log without it
     }
 
-    await supabase.from('scans').insert(scanData)
-  }
-
-  function requestLocation() {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude }
-          setLocation(loc)
-
-          // Try to reverse geocode for city name
-          try {
-            const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${loc.lat}&longitude=${loc.lng}&localityLanguage=en`)
-            const data = await res.json()
-            if (data.city || data.locality) {
-              loc.city = data.city || data.locality
-              loc.region = data.principalSubdivisionCode || data.principalSubdivision
-              loc.country = data.countryCode
-              setLocation({ ...loc })
-
-              // Update the scan with location if it was already logged
-              if (supabase && qrCode) {
-                await supabase.from('scans')
-                  .update({
-                    latitude: loc.lat,
-                    longitude: loc.lng,
-                    city: `${loc.city}, ${loc.region}`,
-                    country: loc.country,
-                  })
-                  .eq('qr_code_id', qrCode.id)
-                  .order('scanned_at', { ascending: false })
-                  .limit(1)
-              }
-            }
-          } catch (e) {
-            // Geocoding failed, that's ok
-          }
-        },
-        () => {
-          // Location denied, still log scan without location
-        }
-      )
+    // Log the scan with whatever data we have
+    if (supabase) {
+      await supabase.from('scans').insert(scanData)
     }
   }
 
@@ -174,6 +165,7 @@ export default function ScanPage() {
           ))}
         </div>
       )}
+
       <div style={{
         width: '100%', padding: '20px 20px 16px',
         background: 'var(--bg-card)', borderBottom: '1px solid var(--border)'
@@ -188,7 +180,6 @@ export default function ScanPage() {
       </div>
 
       <div style={{ padding: '0 20px' }}>
-        {/* Product Description */}
         {product?.description && (
           <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
             <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.95rem' }}>
@@ -197,7 +188,6 @@ export default function ScanPage() {
           </div>
         )}
 
-        {/* Content Section */}
         {product?.content_title && (
           <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border)' }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12 }}>
@@ -272,7 +262,6 @@ export default function ScanPage() {
           )}
         </div>
 
-        {/* Powered By */}
         <div style={{
           textAlign: 'center', padding: '20px 0',
           color: 'var(--text-muted)', fontSize: '0.75rem'

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { INDUSTRIES } from '../lib/industries'
 
 export default function Login() {
   const [searchParams] = useSearchParams()
@@ -9,6 +10,7 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [brandName, setBrandName] = useState('')
+  const [industry, setIndustry] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -34,7 +36,8 @@ export default function Login() {
           await supabase.from('brands').insert({
             user_id: data.user.id,
             name: brandName,
-            email: email
+            email: email,
+            industry: industry,
           })
         }
         navigate('/dashboard')
@@ -70,19 +73,37 @@ export default function Login() {
 
         <form onSubmit={handleSubmit} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {isSignup && (
-            <div>
-              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                Brand Name
-              </label>
-              <input
-                type="text"
-                className="input"
-                placeholder="Your brand name"
-                value={brandName}
-                onChange={e => setBrandName(e.target.value)}
-                required
-              />
-            </div>
+            <>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                  Brand Name
+                </label>
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Your brand name"
+                  value={brandName}
+                  onChange={e => setBrandName(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                  Industry
+                </label>
+                <select
+                  className="input"
+                  value={industry}
+                  onChange={e => setIndustry(e.target.value)}
+                  required
+                >
+                  <option value="">Select your industry</option>
+                  {INDUSTRIES.map(ind => (
+                    <option key={ind} value={ind}>{ind}</option>
+                  ))}
+                </select>
+              </div>
+            </>
           )}
           <div>
             <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>

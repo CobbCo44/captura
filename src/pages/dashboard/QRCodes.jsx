@@ -5,13 +5,17 @@ import BrandedQR from '../../components/BrandedQR'
 export default function QRCodes({ brand }) {
   const [qrCodes, setQrCodes] = useState([])
   const [products, setProducts] = useState([])
-  const [showCreate, setShowCreate] = useState(false)
+  const [showModal, setShowModal] = useState(false)
+  const [editingQR, setEditingQR] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     productId: '',
     fgColor: '#18181B',
     bgColor: '#FFFFFF',
     logoFile: null,
+    logoRawFile: null,
+    existingLogoUrl: null,
     logoScale: 0.25,
   })
 
@@ -37,25 +41,24 @@ export default function QRCodes({ brand }) {
     setLoading(false)
   }
 
-  const handleCreate = async (e) => {
-    e.preventDefault()
-    if (!supabase || !brand?.id || brand.id === 'demo') return
+  const openCreate = () => {
+    setEditingQR(null)
+    setForm({ productId: '', fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoRawFile: null, existingLogoUrl: null, logoScale: 0.25 })
+    setShowModal(true)
+  }
 
-    const shortId = generateShortId()
-    const { data, error } = await supabase.from('qr_codes').insert({
-      brand_id: brand.id,
-      product_id: form.productId,
-      short_id: shortId,
-      fg_color: form.fgColor,
-      bg_color: form.bgColor,
-      logo_scale: form.logoScale,
-    }).select('*, products(name, sku)').single()
-
-    if (!error && data) {
-      setQrCodes([data, ...qrCodes])
-    }
-    setForm({ productId: '', fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoScale: 0.25 })
-    setShowCreate(false)
+  const openEdit = (qr) => {
+    setEditingQR(qr)
+    setForm({
+      productId: qr.product_id,
+      fgColor: qr.fg_color || '#18181B',
+      bgColor: qr.bg_color || '#FFFFFF',
+      logoFile: qr.logo_url || null,
+      logoRawFile: null,
+      existingLogoUrl: qr.logo_url || null,
+      logoScale: qr.logo_scale || 0.25,
+    })
+    setShowModal(true)
   }
 
   const handleLogoUpload = (e) => {
@@ -63,10 +66,99 @@ export default function QRCodes({ brand }) {
     if (!file) return
     const reader = new FileReader()
     reader.onload = (ev) => {
-      setForm({ ...form, logoFile: ev.target.result })
+      setForm({ ...form, logoFile: ev.target.result, logoRawFile: file, existingLogoUrl: null })
     }
     reader.readAsDataURL(file)
   }
+
+  const removeLogo = () => {
+    setForm({ ...form, logoFile: null, logoRawFile: null, existingLogoUrl: null })
+  }
+
+  async function uploadLogo() {
+    if (!form.logoRawFile || !supabase || !brand?.id) return null
+
+    const fileExt = form.logoRawFile.name.split('.').pop()
+    const fileName = `${brand.id}/qr-logo-${Date.now()}.${fileExt}`
+    const { error } = await supabase.storage
+      .from('product-images')
+      .upload(fileName, form.logoRawFile)
+
+    if (error) {
+      console.error('Logo upload error:', error)
+      return null
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('product-images')
+      .getPublicUrl(fileName)
+    return urlData.publicUrl
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!supabase || !brand?.id || brand.id === 'demo') return
+    setSaving(true)
+
+    // Upload logo if new file selected
+    let logoUrl = form.existingLogoUrl || null
+    if (form.logoRawFile) {
+      const uploaded = await uploadLogo()
+      if (uploaded) logoUrl = uploaded
+    }
+
+    const qrData = {
+      fg_color: form.fgColor,
+      bg_color: form.bgColor,
+      logo_url: logoUrl,
+      logo_scale: form.logoScale,
+    }
+
+    if (editingQR) {
+      // Update
+      const { data, error } = await supabase.from('qr_codes')
+        .update({ ...qrData, product_id: form.productId })
+        .eq('id', editingQR.id)
+        .select('*, products(name, sku)').single()
+
+      if (error) {
+        alert(`Error updating QR code: ${error.message}`)
+      } else if (data) {
+        setQrCodes(qrCodes.map(q => q.id === data.id ? data : q))
+      }
+    } else {
+      // Create
+      const shortId = generateShortId()
+      const { data, error } = await supabase.from('qr_codes').insert({
+        brand_id: brand.id,
+        product_id: form.productId,
+        short_id: shortId,
+        ...qrData,
+      }).select('*, products(name, sku)').single()
+
+      if (error) {
+        alert(`Error creating QR code: ${error.message}`)
+      } else if (data) {
+        setQrCodes([data, ...qrCodes])
+      }
+    }
+
+    setForm({ productId: '', fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoRawFile: null, existingLogoUrl: null, logoScale: 0.25 })
+    setEditingQR(null)
+    setShowModal(false)
+    setSaving(false)
+  }
+
+  const handleDelete = async (qr) => {
+    if (!confirm(`Delete QR code for ${qr.products?.name || 'this product'}?`)) return
+    if (supabase) {
+      await supabase.from('qr_codes').delete().eq('id', qr.id)
+    }
+    setQrCodes(qrCodes.filter(q => q.id !== qr.id))
+  }
+
+  // Preview logo: use new file preview, existing URL, or null
+  const previewLogo = form.logoRawFile ? form.logoFile : (form.existingLogoUrl || null)
 
   return (
     <div>
@@ -77,7 +169,7 @@ export default function QRCodes({ brand }) {
             Branded QR codes with your logo in the center
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowCreate(true)}>+ Create QR Code</button>
+        <button className="btn btn-primary" onClick={openCreate}>+ Create QR Code</button>
       </div>
 
       {loading ? (
@@ -90,7 +182,7 @@ export default function QRCodes({ brand }) {
               ? 'Add a product first, then create a QR code for it.'
               : 'Create your first QR code to start tracking scans.'}
           </p>
-          <button className="btn btn-primary" onClick={() => setShowCreate(true)}>+ Create QR Code</button>
+          <button className="btn btn-primary" onClick={openCreate}>+ Create QR Code</button>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 24 }}>
@@ -117,8 +209,13 @@ export default function QRCodes({ brand }) {
                 ID: {qr.short_id}
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}>
-                  Download PNG
+                <button className="btn btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}
+                  onClick={() => openEdit(qr)}>
+                  Edit
+                </button>
+                <button className="btn btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}
+                  onClick={() => handleDelete(qr)}>
+                  Delete
                 </button>
               </div>
             </div>
@@ -126,23 +223,26 @@ export default function QRCodes({ brand }) {
         </div>
       )}
 
-      {showCreate && (
+      {/* Create / Edit Modal */}
+      {showModal && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50,
           padding: 24
-        }} onClick={() => setShowCreate(false)}>
+        }} onClick={() => { setShowModal(false); setEditingQR(null) }}>
           <div className="card" style={{ width: 580, maxWidth: '95vw' }}
             onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: 24 }}>Create QR Code</h2>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: 24 }}>
+              {editingQR ? 'Edit QR Code' : 'Create QR Code'}
+            </h2>
 
             {products.length === 0 ? (
               <div style={{ textAlign: 'center', padding: 20 }}>
                 <p style={{ color: 'var(--text-muted)', marginBottom: 16 }}>You need to add a product first before creating a QR code.</p>
-                <button className="btn btn-secondary" onClick={() => setShowCreate(false)}>Close</button>
+                <button className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
               </div>
             ) : (
-              <form onSubmit={handleCreate}>
+              <form onSubmit={handleSubmit}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 28 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
                     <div>
@@ -162,21 +262,21 @@ export default function QRCodes({ brand }) {
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
                         Center Logo
                       </label>
-                      <input type="file" accept="image/*" onChange={handleLogoUpload}
-                        style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }} />
-                      {form.logoFile && (
-                        <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <img src={form.logoFile} alt="Logo preview"
-                            style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 4 }} />
-                          <button type="button" onClick={() => setForm({ ...form, logoFile: null })}
+                      {previewLogo ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                          <img src={previewLogo} alt="Logo"
+                            style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 4, background: '#fff', padding: 2 }} />
+                          <button type="button" onClick={removeLogo}
                             style={{ fontSize: '0.75rem', color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer' }}>
                             Remove
                           </button>
                         </div>
-                      )}
+                      ) : null}
+                      <input type="file" accept="image/*" onChange={handleLogoUpload}
+                        style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }} />
                     </div>
 
-                    {form.logoFile && (
+                    {previewLogo && (
                       <div>
                         <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
                           Logo Size: {Math.round(form.logoScale * 100)}%
@@ -224,10 +324,10 @@ export default function QRCodes({ brand }) {
                       border: '1px solid var(--border)', minHeight: 280,
                     }}>
                       <BrandedQR
-                        url={`${scanUrl}/s/preview`}
+                        url={`${scanUrl}/s/${editingQR?.short_id || 'preview'}`}
                         fgColor={form.fgColor}
                         bgColor={form.bgColor}
-                        logoSrc={form.logoFile}
+                        logoSrc={previewLogo}
                         logoScale={form.logoScale}
                         size={240}
                       />
@@ -243,8 +343,10 @@ export default function QRCodes({ brand }) {
 
                 <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
                   <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
-                    onClick={() => setShowCreate(false)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Create QR Code</button>
+                    onClick={() => { setShowModal(false); setEditingQR(null) }}>Cancel</button>
+                  <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={saving}>
+                    {saving ? 'Saving...' : editingQR ? 'Save Changes' : 'Create QR Code'}
+                  </button>
                 </div>
               </form>
             )}

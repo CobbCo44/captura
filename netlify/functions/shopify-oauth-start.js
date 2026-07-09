@@ -26,7 +26,7 @@ export default async (req) => {
   }
 
   const scopes = 'read_products,write_products,read_customers,write_customers'
-  const redirectUri = `${process.env.URL || 'https://captura44.netlify.app'}/.netlify/functions/shopify-oauth-callback`
+  const redirectUri = 'https://captura44.netlify.app/.netlify/functions/shopify-oauth-callback'
   const state = brandId || ''
 
   const authUrl = `https://${store}.myshopify.com/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`

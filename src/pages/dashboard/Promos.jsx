@@ -175,7 +175,7 @@ export default function Promos({ brand }) {
   }
 
   const handleDeleteQR = async (qr) => {
-    if (!confirm(`Delete this promo QR code?`)) return
+    if (!confirm(`Delete this event QR code?`)) return
     if (supabase) {
       await supabase.from('qr_codes').delete().eq('id', qr.id)
     }
@@ -191,7 +191,7 @@ export default function Promos({ brand }) {
     const ctx = hiRes.getContext('2d')
     ctx.drawImage(canvas, 0, 0, 1000, 1000)
     const link = document.createElement('a')
-    link.download = `${label || shortId}-promo-qr.png`
+    link.download = `${label || shortId}-event-qr.png`
     link.href = hiRes.toDataURL('image/png')
     link.click()
   }
@@ -213,7 +213,7 @@ export default function Promos({ brand }) {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgSize}" height="${svgSize}" viewBox="0 0 ${svgSize} ${svgSize}"><rect width="${svgSize}" height="${svgSize}" fill="${qr.bg_color || '#FFFFFF'}"/>${rects}</svg>`
     const blob = new Blob([svg], { type: 'image/svg+xml' })
     const link = document.createElement('a')
-    link.download = `${label || shortId}-promo-qr.svg`
+    link.download = `${label || shortId}-event-qr.svg`
     link.href = URL.createObjectURL(blob)
     link.click()
     URL.revokeObjectURL(link.href)
@@ -334,7 +334,7 @@ export default function Promos({ brand }) {
       <div style={{ display: 'flex', gap: 0, marginBottom: 28, borderBottom: '1px solid var(--border)' }}>
         {[
           { key: 'promos', label: 'My Promos' },
-          { key: 'createqr', label: 'Create QR' },
+          { key: 'createqr', label: 'Event QR' },
         ].map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
             padding: '12px 24px', background: 'none', border: 'none', cursor: 'pointer',
@@ -594,7 +594,7 @@ export default function Promos({ brand }) {
         </div>
       )}
 
-      {/* Create/Edit Promo QR Modal */}
+      {/* Create/Edit Event QR Modal */}
       {showQRModal && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',

@@ -428,6 +428,91 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Works with Shopify */}
+      <section style={{
+        padding: '100px 40px', maxWidth: 1200, margin: '0 auto',
+        borderTop: '1px solid #1C1C21',
+      }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: '0.75rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 16 }}>
+              Works with Shopify
+            </div>
+            <h2 style={{ fontSize: '2.2rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-1px', color: '#FAFAFA', marginBottom: 24 }}>
+              Captura connects directly to your Shopify store
+            </h2>
+            <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8, marginBottom: 32 }}>
+              The relationships you capture feed the tools you already sell and market from.
+            </p>
+
+            {[
+              {
+                title: 'Product sync',
+                desc: 'Connect your store and your catalog flows in automatically. Choose which products get QR codes. Images, descriptions, and pricing stay in sync.',
+              },
+              {
+                title: 'Reorder to checkout',
+                desc: 'Scan pages link straight to the product\u2019s Shopify page. Consumers scan, tap reorder, and land in your store ready to buy.',
+              },
+              {
+                title: 'Contacts to customers',
+                desc: 'Opted-in consumers sync into your Shopify customer list, ready for the email and SMS flows you already run. Consent-aware, so only contacts cleared for marketing sync across.',
+              },
+            ].map((item, i) => (
+              <div key={i} style={{
+                padding: '20px 0',
+                borderBottom: '1px solid #1C1C21',
+              }}>
+                <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#FAFAFA', marginBottom: 6 }}>{item.title}</h4>
+                <p style={{ color: '#52525B', fontSize: '0.9rem', lineHeight: 1.7 }}>{item.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Shopify flow visual */}
+          <div style={{
+            background: '#131316', border: '1px solid #1C1C21', borderRadius: 16,
+            padding: '36px',
+          }}>
+            <div style={{ fontSize: '0.7rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 24 }}>
+              Shopify sync flow
+            </div>
+
+            {[
+              { step: 'Consumer scans QR code', icon: '📱', detail: 'On your product packaging' },
+              { step: 'Opts in as VIP or enters promo', icon: '✓', detail: 'Name, email, phone captured with consent' },
+              { step: 'Contact syncs to Shopify', icon: '⟶', detail: 'Tagged by source: vip, promo, warranty' },
+              { step: 'Ready for your marketing flows', icon: '✉', detail: 'Email campaigns, SMS, segmentation' },
+            ].map((item, i) => (
+              <div key={i} style={{
+                display: 'flex', gap: 16, alignItems: 'flex-start',
+                padding: '18px 0',
+                borderBottom: i < 3 ? '1px solid #1C1C21' : 'none',
+              }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 8,
+                  background: '#1C1C21', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '0.9rem', flexShrink: 0,
+                }}>{item.icon}</div>
+                <div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#FAFAFA', marginBottom: 2 }}>{item.step}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#3F3F46' }}>{item.detail}</div>
+                </div>
+              </div>
+            ))}
+
+            <div style={{
+              marginTop: 24, padding: '16px', borderRadius: 8,
+              background: 'rgba(150, 191, 72, 0.08)', border: '1px solid rgba(150, 191, 72, 0.2)',
+              textAlign: 'center',
+            }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#96BF48' }}>No Shopify app install required</div>
+              <div style={{ fontSize: '0.7rem', color: '#52525B', marginTop: 4 }}>Connect with a simple API token from your Shopify admin</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Double down section */}
       <section style={{
         padding: '100px 40px', maxWidth: 1200, margin: '0 auto',

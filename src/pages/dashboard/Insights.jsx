@@ -40,16 +40,44 @@ export default function Insights({ brand }) {
 
     setGenerating(true)
     try {
+      // Summarize data locally so the serverless function gets a small payload
+      const byProduct = {}
+      scans.forEach(s => {
+        const name = s.products?.name || 'Unknown'
+        if (!byProduct[name]) byProduct[name] = { scans: 0, cities: new Set() }
+        byProduct[name].scans++
+        if (s.city) byProduct[name].cities.add(s.city)
+      })
+      const byCity = {}
+      scans.forEach(s => { if (s.city) byCity[s.city] = (byCity[s.city] || 0) + 1 })
+
+      const summary = [
+        `Total Scans: ${scans.length}`,
+        `VIP Members: ${vipMembers.length}`,
+        `Promo Entries: ${promoEntries.length}`,
+        `VIP Conversion Rate: ${scans.length > 0 ? Math.round((vipMembers.length / scans.length) * 100) : 0}%`,
+        `Products: ${products.map(p => p.name).join(', ')}`,
+        '',
+        'Scans by product:',
+        ...Object.entries(byProduct).map(([name, data]) =>
+          `  ${name}: ${data.scans} scans in ${data.cities.size} cities (${[...data.cities].join(', ')})`
+        ),
+        '',
+        'Scans by city:',
+        ...Object.entries(byCity).sort((a, b) => b[1] - a[1]).map(([city, count]) =>
+          `  ${city}: ${count}`
+        ),
+        '',
+        'Recent scans (last 10):',
+        ...scans.slice(0, 10).map(s =>
+          `  ${s.scanned_at} - ${s.products?.name || 'Unknown'} - ${s.city || 'Unknown'}`
+        ),
+      ].join('\n')
+
       const res = await fetch('/.netlify/functions/generate-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          brandName: brand.name,
-          scans,
-          vipMembers,
-          promoEntries,
-          products,
-        }),
+        body: JSON.stringify({ brandName: brand.name, summary }),
       })
 
       if (!res.ok) {

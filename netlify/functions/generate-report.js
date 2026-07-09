@@ -12,45 +12,13 @@ export default async (req) => {
   }
 
   try {
-    const { brandName, scans, vipMembers, promoEntries, products } = await req.json()
+    const { brandName, summary } = await req.json()
 
-    const prompt = `You are an analytics expert for a consumer engagement platform called Captura. A brand uses QR codes on their products to track consumer engagement.
+    const prompt = `You are an analytics expert for Captura, a consumer engagement platform where brands use QR codes on products to track engagement.
 
-Analyze this data for the brand "${brandName}" and generate a concise weekly insights report. Be direct and actionable. Do not use em dashes. Use commas, periods, or short sentences instead.
+Analyze this pre-summarized data for "${brandName}" and generate a concise weekly insights report. Be direct and actionable. Do not use em dashes. Use commas, periods, or short sentences instead.
 
-DATA:
-- Total Scans: ${scans.length}
-- Products: ${JSON.stringify(products.map(p => ({ name: p.name, sku: p.sku })))}
-- VIP Members: ${vipMembers.length}
-- Promo Entries: ${promoEntries.length}
-
-Scan breakdown by product:
-${(() => {
-  const byProduct = {}
-  scans.forEach(s => {
-    const name = s.products?.name || 'Unknown'
-    if (!byProduct[name]) byProduct[name] = { scans: 0, cities: new Set() }
-    byProduct[name].scans++
-    if (s.city) byProduct[name].cities.add(s.city)
-  })
-  return Object.entries(byProduct).map(([name, data]) =>
-    `  ${name}: ${data.scans} scans in ${data.cities.size} cities (${[...data.cities].join(', ')})`
-  ).join('\n')
-})()}
-
-Scan breakdown by city:
-${(() => {
-  const byCity = {}
-  scans.forEach(s => { if (s.city) byCity[s.city] = (byCity[s.city] || 0) + 1 })
-  return Object.entries(byCity).sort((a, b) => b[1] - a[1]).map(([city, count]) =>
-    `  ${city}: ${count} scans`
-  ).join('\n')
-})()}
-
-VIP conversion rate: ${scans.length > 0 ? Math.round((vipMembers.length / scans.length) * 100) : 0}%
-
-Recent scan timestamps (last 20):
-${scans.slice(0, 20).map(s => `  ${s.scanned_at} - ${s.products?.name || 'Unknown'} - ${s.city || 'Unknown'}`).join('\n')}
+${summary}
 
 Generate a report with these sections:
 1. **Performance Summary** - Key numbers and what they mean
@@ -69,8 +37,8 @@ Keep it concise. No fluff. Write like you are advising a brand owner who wants t
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1500,
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1000,
         messages: [{ role: 'user', content: prompt }],
       }),
     })

@@ -8,6 +8,8 @@ export default function Products({ brand }) {
   const [form, setForm] = useState({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', images: [], existingImages: [] })
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState(null)
 
   useEffect(() => {
     loadProducts()
@@ -158,6 +160,55 @@ export default function Products({ brand }) {
       await supabase.from('products').delete().eq('id', id)
     }
     setProducts(products.filter(p => p.id !== id))
+  }
+
+  const handleShopifyImport = async () => {
+    if (!brand?.shopify_store || !brand?.shopify_token) return
+    setImporting(true)
+    setImportResult(null)
+    try {
+      const res = await fetch('/.netlify/functions/import-shopify-products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shopifyStore: brand.shopify_store, shopifyToken: brand.shopify_token }),
+      })
+      if (!res.ok) throw new Error('Failed to fetch Shopify products')
+      const { products: shopifyProducts } = await res.json()
+
+      // Get existing product SKUs and shopify_product_ids to avoid duplicates
+      const existingSkus = new Set(products.filter(p => p.sku).map(p => p.sku))
+      const existingShopifyIds = new Set(products.filter(p => p.shopify_product_id).map(p => p.shopify_product_id))
+
+      const newProducts = shopifyProducts.filter(sp =>
+        !existingShopifyIds.has(sp.shopify_id) && (!sp.sku || !existingSkus.has(sp.sku))
+      )
+
+      if (newProducts.length === 0) {
+        setImportResult({ count: 0, message: 'All Shopify products are already imported.' })
+        setImporting(false)
+        return
+      }
+
+      let imported = 0
+      for (const sp of newProducts) {
+        const { error } = await supabase.from('products').insert({
+          brand_id: brand.id,
+          name: sp.name,
+          sku: sp.sku || null,
+          description: sp.description || null,
+          image_urls: sp.images.length > 0 ? sp.images : null,
+          reorder_url: sp.shopify_url,
+          shopify_product_id: sp.shopify_id,
+        })
+        if (!error) imported++
+      }
+
+      setImportResult({ count: imported, message: `Imported ${imported} product${imported !== 1 ? 's' : ''} from Shopify.` })
+      loadProducts()
+    } catch (err) {
+      setImportResult({ count: 0, message: `Import failed: ${err.message}` })
+    }
+    setImporting(false)
   }
 
   const getFirstImage = (p) => {
@@ -322,8 +373,32 @@ export default function Products({ brand }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Products</h1>
-        <button className="btn btn-primary" onClick={openAdd}>+ Add Product</button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {brand?.shopify_store && brand?.shopify_token && (
+            <button className="btn btn-secondary" onClick={handleShopifyImport} disabled={importing}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+              {importing ? 'Importing...' : 'Import from Shopify'}
+            </button>
+          )}
+          <button className="btn btn-primary" onClick={openAdd}>+ Add Product</button>
+        </div>
       </div>
+
+      {importResult && (
+        <div style={{
+          padding: '12px 16px', borderRadius: 8, marginBottom: 16,
+          background: importResult.count > 0 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(161, 161, 170, 0.1)',
+          border: `1px solid ${importResult.count > 0 ? 'var(--success)' : 'var(--border)'}`,
+          color: importResult.count > 0 ? 'var(--success)' : 'var(--text-muted)',
+          fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <span>{importResult.message}</span>
+          <button onClick={() => setImportResult(null)} style={{
+            background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem',
+          }}>Dismiss</button>
+        </div>
+      )}
 
       {loading ? (
         <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>Loading...</div>

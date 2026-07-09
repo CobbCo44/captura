@@ -41,7 +41,7 @@ export default function ScanPage() {
 
     const { data: qr, error } = await supabase
       .from('qr_codes')
-      .select('*, products(*), brands:brand_id(name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
+      .select('*, products(*), brands:brand_id(name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website, shopify_store, shopify_token)')
       .eq('short_id', qrId)
       .single()
 
@@ -126,6 +126,23 @@ export default function ScanPage() {
     return 'Unknown'
   }
 
+  async function syncToShopify(customerData) {
+    if (!brand?.shopify_store || !brand?.shopify_token) return
+    try {
+      await fetch('/.netlify/functions/sync-shopify-customer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shopifyStore: brand.shopify_store,
+          shopifyToken: brand.shopify_token,
+          customer: customerData,
+        }),
+      })
+    } catch (err) {
+      // Shopify sync is best-effort, don't block the consumer experience
+    }
+  }
+
   const handleVIPSubmit = async (e) => {
     e.preventDefault()
     if (supabase && qrCode) {
@@ -140,6 +157,14 @@ export default function ScanPage() {
         latitude: location?.lat || null,
         longitude: location?.lng || null,
         city: location?.city ? `${location.city}, ${location.region}` : null,
+      })
+      syncToShopify({
+        firstName: vipForm.firstName,
+        lastName: vipForm.lastName,
+        email: vipForm.email,
+        phone: vipForm.phone,
+        tags: 'captura, vip',
+        note: `VIP signup via Captura QR scan - ${product?.name || 'Unknown product'}`,
       })
     }
     setVipSubmitted(true)
@@ -158,6 +183,14 @@ export default function ScanPage() {
         email: promoForm.email,
         phone: promoForm.phone,
         city: location?.city ? `${location.city}, ${location.region}` : null,
+      })
+      syncToShopify({
+        firstName: promoForm.firstName,
+        lastName: promoForm.lastName,
+        email: promoForm.email,
+        phone: promoForm.phone,
+        tags: 'captura, promo',
+        note: `Promo entry via Captura - ${activePromo.title} - ${product?.name || 'Unknown product'}`,
       })
     }
     setPromoEntered(true)
@@ -178,6 +211,14 @@ export default function ScanPage() {
         retailer: warrantyForm.retailer || null,
         city: location?.city ? `${location.city}, ${location.region}` : null,
         consent: warrantyForm.consent,
+      })
+      syncToShopify({
+        firstName: warrantyForm.firstName,
+        lastName: warrantyForm.lastName,
+        email: warrantyForm.email,
+        phone: warrantyForm.phone,
+        tags: 'captura, warranty',
+        note: `Warranty registration via Captura - ${product?.name || 'Unknown product'}`,
       })
     }
     setWarrantyRegistered(true)

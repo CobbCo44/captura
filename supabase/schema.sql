@@ -8,6 +8,8 @@ CREATE TABLE brands (
   name TEXT NOT NULL,
   email TEXT NOT NULL,
   logo_url TEXT,
+  shopify_store TEXT,
+  shopify_token TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -22,6 +24,7 @@ CREATE TABLE products (
   content_body TEXT,
   content_url TEXT,
   image_url TEXT,
+  shopify_product_id TEXT,
   status TEXT DEFAULT 'active',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

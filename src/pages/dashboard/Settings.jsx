@@ -11,7 +11,8 @@ export default function Settings({ brand, onBrandUpdate }) {
   const [shopifyTesting, setShopifyTesting] = useState(false)
   const [shopifyStatus, setShopifyStatus] = useState(null) // 'connected', 'error', null
   const [shopifySaving, setShopifySaving] = useState(false)
-  const [showToken, setShowToken] = useState(false)
+  const [shopifyConnecting, setShopifyConnecting] = useState(false)
+  const [connectStore, setConnectStore] = useState('')
 
   useEffect(() => {
     if (brand) {
@@ -27,6 +28,53 @@ export default function Settings({ brand, onBrandUpdate }) {
       setShopifyStatus(brand.shopify_store && brand.shopify_token ? 'connected' : null)
     }
   }, [brand])
+
+  // Handle OAuth callback - check URL for success flag or token
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const hash = window.location.hash
+
+    if (params.get('shopify') === 'connected') {
+      // Token was saved server-side, reload brand data
+      window.history.replaceState({}, '', window.location.pathname)
+      if (onBrandUpdate) {
+        supabase?.from('brands').select('*').eq('id', brand?.id).single().then(({ data }) => {
+          if (data) {
+            onBrandUpdate(data)
+            setShopifyStore(data.shopify_store || '')
+            setShopifyToken(data.shopify_token || '')
+            setShopifyStatus('connected')
+          }
+        })
+      }
+    } else if (hash.includes('shopify_token=')) {
+      // Fallback: token passed via hash fragment
+      const hashParams = new URLSearchParams(hash.replace('#', ''))
+      const token = hashParams.get('shopify_token')
+      const store = hashParams.get('shopify_store')
+      if (token && store && brand?.id) {
+        window.history.replaceState({}, '', window.location.pathname)
+        setShopifyStore(store)
+        setShopifyToken(token)
+        supabase?.from('brands').update({ shopify_store: store, shopify_token: token })
+          .eq('id', brand.id).select().single().then(({ data }) => {
+            if (data && onBrandUpdate) onBrandUpdate(data)
+            setShopifyStatus('connected')
+          })
+      }
+    }
+  }, [brand?.id])
+
+  const handleConnectShopify = () => {
+    if (!connectStore) return
+    setShopifyConnecting(true)
+    const store = connectStore
+      .replace(/^https?:\/\//, '')
+      .replace(/\.myshopify\.com.*$/, '')
+      .replace(/\/$/, '')
+      .trim()
+    window.location.href = `/.netlify/functions/shopify-oauth-start?shop=${encodeURIComponent(store)}&brand_id=${brand?.id || ''}`
+  }
 
   const handleLogoSelect = (e) => {
     const file = e.target.files[0]
@@ -67,27 +115,6 @@ export default function Settings({ brand, onBrandUpdate }) {
       if (onBrandUpdate && data) onBrandUpdate(data)
     }
     setSaving(false)
-  }
-
-  const handleTestShopify = async () => {
-    if (!shopifyStore || !shopifyToken) return
-    setShopifyTesting(true)
-    setShopifyStatus(null)
-    try {
-      const res = await fetch('/.netlify/functions/import-shopify-products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shopifyStore, shopifyToken }),
-      })
-      if (res.ok) {
-        setShopifyStatus('connected')
-      } else {
-        setShopifyStatus('error')
-      }
-    } catch {
-      setShopifyStatus('error')
-    }
-    setShopifyTesting(false)
   }
 
   const handleDisconnectShopify = async () => {
@@ -216,49 +243,34 @@ export default function Settings({ brand, onBrandUpdate }) {
               <>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
-                    Store URL
+                    Your Shopify Store
                   </label>
-                  <input className="input" placeholder="yourstore.myshopify.com" value={shopifyStore}
-                    onChange={e => setShopifyStore(e.target.value)} />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
-                    Admin API Access Token
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <input className="input" type={showToken ? 'text' : 'password'}
-                      placeholder="shpat_xxxxxxxxxxxxxxxx" value={shopifyToken}
-                      onChange={e => setShopifyToken(e.target.value)}
-                      style={{ paddingRight: 60 }} />
-                    <button type="button" onClick={() => setShowToken(!showToken)}
-                      style={{
-                        position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-                        background: 'none', border: 'none', color: 'var(--text-muted)',
-                        fontSize: '0.75rem', cursor: 'pointer',
-                      }}>
-                      {showToken ? 'Hide' : 'Show'}
-                    </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input className="input" placeholder="yourstore" value={connectStore}
+                      onChange={e => setConnectStore(e.target.value)}
+                      style={{ flex: 1 }} />
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>.myshopify.com</span>
                   </div>
                 </div>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', lineHeight: 1.5 }}>
-                  Create a custom app in your Shopify admin under Settings &gt; Apps &gt; Develop apps.
-                  Give it read/write access to Customers and Products, then copy the Admin API access token.
-                </p>
                 {shopifyStatus === 'error' && (
                   <div style={{ color: 'var(--danger)', fontSize: '0.8rem' }}>
-                    Could not connect. Check your store URL and token.
+                    Could not connect. Check your store name and try again.
                   </div>
                 )}
-                <button type="button" onClick={handleTestShopify}
-                  disabled={shopifyTesting || !shopifyStore || !shopifyToken}
+                <button type="button" onClick={handleConnectShopify}
+                  disabled={shopifyConnecting || !connectStore}
                   style={{
-                    padding: '8px 16px', borderRadius: 8, fontSize: '0.85rem', fontWeight: 600,
-                    background: shopifyTesting ? 'var(--bg)' : '#96BF48', color: '#fff',
-                    border: 'none', cursor: shopifyTesting || !shopifyStore || !shopifyToken ? 'not-allowed' : 'pointer',
-                    opacity: !shopifyStore || !shopifyToken ? 0.5 : 1,
+                    padding: '10px 20px', borderRadius: 8, fontSize: '0.9rem', fontWeight: 600,
+                    background: !connectStore ? 'var(--bg)' : '#96BF48', color: '#fff',
+                    border: 'none', cursor: !connectStore ? 'not-allowed' : 'pointer',
+                    opacity: !connectStore ? 0.5 : 1,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                   }}>
-                  {shopifyTesting ? 'Testing...' : 'Test Connection'}
+                  {shopifyConnecting ? 'Redirecting...' : 'Connect to Shopify'}
                 </button>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', lineHeight: 1.5 }}>
+                  You'll be redirected to Shopify to authorize Captura. We'll get read/write access to your products and customers so we can sync data automatically.
+                </p>
               </>
             )}
           </div>

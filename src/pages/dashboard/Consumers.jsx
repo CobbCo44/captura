@@ -5,6 +5,7 @@ export default function Consumers({ brand }) {
   const [vipMembers, setVipMembers] = useState([])
   const [promoEntries, setPromoEntries] = useState([])
   const [warrantyRegs, setWarrantyRegs] = useState([])
+  const [eventEntries, setEventEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
@@ -18,14 +19,16 @@ export default function Consumers({ brand }) {
       setLoading(false)
       return
     }
-    const [vipRes, promoRes, warrantyRes] = await Promise.all([
+    const [vipRes, promoRes, warrantyRes, eventRes] = await Promise.all([
       supabase.from('vip_members').select('*, products(name)').eq('brand_id', brand.id).order('joined_at', { ascending: false }),
       supabase.from('promo_entries').select('*, products(name), promos(title)').eq('brand_id', brand.id).order('entered_at', { ascending: false }),
       supabase.from('warranty_registrations').select('*, products(name)').eq('brand_id', brand.id).order('registered_at', { ascending: false }),
+      supabase.from('event_entries').select('*, events(name)').eq('brand_id', brand.id).order('entered_at', { ascending: false }),
     ])
     setVipMembers(vipRes.data || [])
     setPromoEntries(promoRes.data || [])
     setWarrantyRegs(warrantyRes.data || [])
+    setEventEntries(eventRes.data || [])
     setLoading(false)
   }
 
@@ -67,12 +70,25 @@ export default function Consumers({ brand }) {
       source: 'Warranty Registration',
       date: w.registered_at,
     })),
+    ...eventEntries.map(ev => ({
+      id: `event-${ev.id}`,
+      firstName: ev.first_name,
+      lastName: ev.last_name,
+      email: ev.email || '',
+      phone: ev.phone,
+      product: '',
+      city: ev.city || '',
+      type: 'Event',
+      source: ev.events?.name || 'Event Entry',
+      date: ev.entered_at,
+    })),
   ].sort((a, b) => new Date(b.date) - new Date(a.date))
 
   const filtered = allConsumers.filter(c => {
     if (filter === 'vip' && c.type !== 'VIP') return false
     if (filter === 'promo' && c.type !== 'Promo') return false
     if (filter === 'warranty' && c.type !== 'Warranty') return false
+    if (filter === 'event' && c.type !== 'Event') return false
     if (search) {
       const q = search.toLowerCase()
       return `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) ||
@@ -120,7 +136,7 @@ export default function Consumers({ brand }) {
         <div>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Consumer Data</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: 4 }}>
-            All consumers from VIP signups and promo entries
+            All consumers from VIP signups, promo entries, events, and warranty registrations
           </p>
         </div>
         <button className="btn btn-primary" onClick={exportCSV}>Export CSV</button>
@@ -141,6 +157,10 @@ export default function Consumers({ brand }) {
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#D4D4D8' }}>{promoEntries.length}</div>
         </div>
         <div className="card" style={{ padding: '16px 20px' }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Event Entries</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#60A5FA' }}>{eventEntries.length}</div>
+        </div>
+        <div className="card" style={{ padding: '16px 20px' }}>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Warranty Regs</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#A1A1AA' }}>{warrantyRegs.length}</div>
         </div>
@@ -151,6 +171,7 @@ export default function Consumers({ brand }) {
         <button onClick={() => setFilter('all')} style={tabStyle(filter === 'all')}>All ({allConsumers.length})</button>
         <button onClick={() => setFilter('vip')} style={tabStyle(filter === 'vip')}>VIP ({vipMembers.length})</button>
         <button onClick={() => setFilter('promo')} style={tabStyle(filter === 'promo')}>Promo ({promoEntries.length})</button>
+        <button onClick={() => setFilter('event')} style={tabStyle(filter === 'event')}>Event ({eventEntries.length})</button>
         <button onClick={() => setFilter('warranty')} style={tabStyle(filter === 'warranty')}>Warranty ({warrantyRegs.length})</button>
         <input
           className="input"
@@ -202,8 +223,8 @@ export default function Consumers({ brand }) {
                   <td style={{ padding: '12px 16px' }}>
                     <span style={{
                       padding: '3px 10px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 600,
-                      background: c.type === 'VIP' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                      color: c.type === 'VIP' ? 'var(--success)' : '#F59E0B',
+                      background: c.type === 'VIP' ? 'rgba(34, 197, 94, 0.1)' : c.type === 'Event' ? 'rgba(96, 165, 250, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                      color: c.type === 'VIP' ? 'var(--success)' : c.type === 'Event' ? '#60A5FA' : '#F59E0B',
                     }}>
                       {c.source}
                     </span>

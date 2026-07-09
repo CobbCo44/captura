@@ -60,19 +60,21 @@ export default function ScanPage() {
     if (qr.events) setEvent(qr.events)
     setLoading(false)
 
-    // If this QR is linked directly to a promo, use that
-    if (qr.promos) {
-      setActivePromo(qr.promos)
-    } else {
-      // Otherwise check for a brand-wide active promo
-      const { data: promoData } = await supabase
-        .from('promos')
-        .select('*')
-        .eq('brand_id', qr.brand_id)
-        .eq('active', true)
-        .limit(1)
-        .single()
-      if (promoData) setActivePromo(promoData)
+    // Only show promos on product QR codes, never on event QR codes
+    if (!qr.events) {
+      if (qr.promos) {
+        setActivePromo(qr.promos)
+      } else {
+        // Check for a brand-wide active promo
+        const { data: promoData } = await supabase
+          .from('promos')
+          .select('*')
+          .eq('brand_id', qr.brand_id)
+          .eq('active', true)
+          .limit(1)
+          .single()
+        if (promoData) setActivePromo(promoData)
+      }
     }
 
     // Get location, then log scan with it

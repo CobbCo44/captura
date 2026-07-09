@@ -41,7 +41,7 @@ export default function ScanPage() {
 
     const { data: qr, error } = await supabase
       .from('qr_codes')
-      .select('*, products(*), brands:brand_id(name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website, shopify_store, shopify_token)')
+      .select('*, products(*), promos(*), brands:brand_id(name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website, shopify_store, shopify_token)')
       .eq('short_id', qrId)
       .single()
 
@@ -52,19 +52,24 @@ export default function ScanPage() {
     }
 
     setQrCode(qr)
-    setProduct(qr.products)
+    setProduct(qr.products || null)
     setBrand(qr.brands)
     setLoading(false)
 
-    // Check for active promo
-    const { data: promoData } = await supabase
-      .from('promos')
-      .select('*')
-      .eq('brand_id', qr.brand_id)
-      .eq('active', true)
-      .limit(1)
-      .single()
-    if (promoData) setActivePromo(promoData)
+    // If this QR is linked directly to a promo, use that
+    if (qr.promos) {
+      setActivePromo(qr.promos)
+    } else {
+      // Otherwise check for a brand-wide active promo
+      const { data: promoData } = await supabase
+        .from('promos')
+        .select('*')
+        .eq('brand_id', qr.brand_id)
+        .eq('active', true)
+        .limit(1)
+        .single()
+      if (promoData) setActivePromo(promoData)
+    }
 
     // Get location, then log scan with it
     getLocationAndLogScan(qr)
@@ -82,7 +87,7 @@ export default function ScanPage() {
 
     let scanData = {
       qr_code_id: qr.id,
-      product_id: qr.product_id,
+      product_id: qr.product_id || null,
       brand_id: qr.brand_id,
       device: getDeviceInfo(),
       user_agent: navigator.userAgent,
@@ -149,7 +154,7 @@ export default function ScanPage() {
       await supabase.from('vip_members').insert({
         brand_id: qrCode.brand_id,
         qr_code_id: qrCode.id,
-        product_id: qrCode.product_id,
+        product_id: qrCode.product_id || null,
         first_name: vipForm.firstName,
         last_name: vipForm.lastName,
         email: vipForm.email,
@@ -177,7 +182,7 @@ export default function ScanPage() {
         promo_id: activePromo.id,
         brand_id: qrCode.brand_id,
         qr_code_id: qrCode.id,
-        product_id: qrCode.product_id,
+        product_id: qrCode.product_id || null,
         first_name: promoForm.firstName,
         last_name: promoForm.lastName,
         email: promoForm.email,
@@ -190,7 +195,7 @@ export default function ScanPage() {
         email: promoForm.email,
         phone: promoForm.phone,
         tags: 'captura, promo',
-        note: `Promo entry via Captura - ${activePromo.title} - ${product?.name || 'Unknown product'}`,
+        note: `Promo entry via Captura - ${activePromo.title} - ${product?.name || 'Event QR'}`,
       })
     }
     setPromoEntered(true)
@@ -235,16 +240,19 @@ export default function ScanPage() {
   if (notFound) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
-        <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>Product not found</div>
-        <div style={{ color: 'var(--text-muted)' }}>This QR code is not linked to a product.</div>
+        <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>QR code not found</div>
+        <div style={{ color: 'var(--text-muted)' }}>This QR code doesn't exist or has been removed.</div>
       </div>
     )
   }
 
+  // Promo-only QR (no product attached)
+  const isPromoOnly = !product
+
   return (
     <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', padding: '0 0 40px' }}>
       {/* Product Images */}
-      {product?.image_urls?.length > 0 && (
+      {!isPromoOnly && product?.image_urls?.length > 0 && (
         <div style={{
           width: '100%', overflow: 'auto', background: '#000',
           display: 'flex', scrollSnapType: 'x mandatory',
@@ -261,15 +269,18 @@ export default function ScanPage() {
         </div>
       )}
 
+      {/* Header */}
       <div style={{
         width: '100%', padding: '20px 20px 16px',
         background: 'var(--bg-card)', borderBottom: '1px solid var(--border)'
       }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>{product?.name || 'Product'}</h1>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>
+          {isPromoOnly ? (activePromo?.title || brand?.name || 'Event') : (product?.name || 'Product')}
+        </h1>
       </div>
 
       <div style={{ padding: '0 20px' }}>
-        {product?.description && (
+        {!isPromoOnly && product?.description && (
           <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
             <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.95rem' }}>
               {product.description}
@@ -277,7 +288,7 @@ export default function ScanPage() {
           </div>
         )}
 
-        {(product?.content_title || product?.content_body || product?.content_url) && (
+        {!isPromoOnly && (product?.content_title || product?.content_body || product?.content_url) && (
           <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border)' }}>
             {product.content_title && (
               <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12 }}>
@@ -312,7 +323,7 @@ export default function ScanPage() {
         )}
 
         {/* Warranty Registration */}
-        {product?.warranty_enabled && (
+        {!isPromoOnly && product?.warranty_enabled && (
           <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border)' }}>
             {!showWarranty && !warrantyRegistered && (
               <div style={{
@@ -396,7 +407,7 @@ export default function ScanPage() {
         )}
 
         {/* Reorder Button */}
-        {product?.reorder_url && (
+        {!isPromoOnly && product?.reorder_url && (
           <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
             <a href={product.reorder_url} target="_blank" rel="noopener noreferrer"
               style={{

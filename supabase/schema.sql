@@ -33,12 +33,14 @@ CREATE TABLE products (
 CREATE TABLE qr_codes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   brand_id UUID REFERENCES brands(id) ON DELETE CASCADE NOT NULL,
-  product_id UUID REFERENCES products(id) ON DELETE CASCADE NOT NULL,
+  product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+  promo_id UUID REFERENCES promos(id) ON DELETE SET NULL,
   short_id TEXT UNIQUE NOT NULL,
   fg_color TEXT DEFAULT '#18181B',
   bg_color TEXT DEFAULT '#FFFFFF',
   logo_url TEXT,
   logo_scale REAL DEFAULT 0.25,
+  cta_text TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -46,7 +48,7 @@ CREATE TABLE qr_codes (
 CREATE TABLE scans (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   qr_code_id UUID REFERENCES qr_codes(id) ON DELETE CASCADE NOT NULL,
-  product_id UUID REFERENCES products(id) ON DELETE CASCADE NOT NULL,
+  product_id UUID REFERENCES products(id) ON DELETE CASCADE,
   brand_id UUID REFERENCES brands(id) ON DELETE CASCADE NOT NULL,
   latitude REAL,
   longitude REAL,

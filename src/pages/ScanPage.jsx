@@ -26,6 +26,9 @@ export default function ScanPage() {
   const [showWarranty, setShowWarranty] = useState(false)
   const [warrantyForm, setWarrantyForm] = useState({ firstName: '', lastName: '', email: '', phone: '', purchaseDate: '', retailer: '', consent: false })
   const [warrantyRegistered, setWarrantyRegistered] = useState(false)
+  const [event, setEvent] = useState(null)
+  const [eventForm, setEventForm] = useState({ firstName: '', lastName: '', email: '', phone: '', consent: false })
+  const [eventSubmitted, setEventSubmitted] = useState(false)
   const scanLogged = useRef(false)
 
   useEffect(() => {
@@ -41,7 +44,7 @@ export default function ScanPage() {
 
     const { data: qr, error } = await supabase
       .from('qr_codes')
-      .select('*, products(*), promos(*), brands:brand_id(name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website, shopify_store, shopify_token)')
+      .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website, shopify_store, shopify_token)')
       .eq('short_id', qrId)
       .single()
 
@@ -54,6 +57,7 @@ export default function ScanPage() {
     setQrCode(qr)
     setProduct(qr.products || null)
     setBrand(qr.brands)
+    if (qr.events) setEvent(qr.events)
     setLoading(false)
 
     // If this QR is linked directly to a promo, use that
@@ -229,6 +233,31 @@ export default function ScanPage() {
     setWarrantyRegistered(true)
   }
 
+  const handleEventSubmit = async (e) => {
+    e.preventDefault()
+    if (supabase && event && qrCode) {
+      await supabase.from('event_entries').insert({
+        event_id: event.id,
+        brand_id: qrCode.brand_id,
+        qr_code_id: qrCode.id,
+        first_name: eventForm.firstName,
+        last_name: eventForm.lastName,
+        email: eventForm.email,
+        phone: eventForm.phone,
+        city: location?.city ? `${location.city}, ${location.region}` : null,
+      })
+      syncToShopify({
+        firstName: eventForm.firstName,
+        lastName: eventForm.lastName,
+        email: eventForm.email,
+        phone: eventForm.phone,
+        tags: 'captura, event',
+        note: `Event signup via Captura - ${event.name}${event.giveaway ? ` - Giveaway: ${event.giveaway}` : ''}`,
+      })
+    }
+    setEventSubmitted(true)
+  }
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -246,8 +275,157 @@ export default function ScanPage() {
     )
   }
 
-  // Promo-only QR (no product attached)
-  const isPromoOnly = !product
+  // Event QR - completely separate experience
+  const isEventQR = !!event
+  const isPromoOnly = !product && !isEventQR
+
+  // Event scan page
+  if (isEventQR) {
+    return (
+      <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', padding: '0 0 40px' }}>
+        <div style={{
+          width: '100%', padding: '28px 20px 20px',
+          background: 'var(--bg-card)', borderBottom: '1px solid var(--border)',
+          textAlign: 'center',
+        }}>
+          {brand?.logo_url && (
+            <img src={brand.logo_url} alt={brand.name} style={{
+              width: 48, height: 48, borderRadius: 10, objectFit: 'contain',
+              background: '#fff', padding: 3, marginBottom: 12,
+            }} />
+          )}
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>{event.name}</h1>
+          {brand?.name && (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 4 }}>by {brand.name}</p>
+          )}
+        </div>
+
+        <div style={{ padding: '0 20px' }}>
+          {event.description && (
+            <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
+              <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.95rem' }}>
+                {event.description}
+              </p>
+            </div>
+          )}
+
+          {event.giveaway && (
+            <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(245, 158, 11, 0.1))',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 'var(--radius)', padding: '24px 20px', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: '1.3rem', marginBottom: 6 }}>🎁</div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 6 }}>Giveaway</h3>
+                <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#FAFAFA' }}>{event.giveaway}</p>
+              </div>
+            </div>
+          )}
+
+          {/* VIP Signup Form */}
+          <div style={{ padding: '24px 0' }}>
+            {!eventSubmitted ? (
+              <div>
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid #3F3F46',
+                  borderRadius: 'var(--radius)', padding: '28px 20px',
+                }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 8, textAlign: 'center' }}>
+                    Sign Up
+                  </h3>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 20, textAlign: 'center', lineHeight: 1.5 }}>
+                    {event.giveaway ? 'Enter your info for a chance to win.' : 'Sign up to stay connected.'}
+                  </p>
+                  <form onSubmit={handleEventSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <input className="input" placeholder="First Name" value={eventForm.firstName}
+                      onChange={e => setEventForm({ ...eventForm, firstName: e.target.value })} required />
+                    <input className="input" placeholder="Last Name" value={eventForm.lastName}
+                      onChange={e => setEventForm({ ...eventForm, lastName: e.target.value })} required />
+                    <input className="input" type="email" placeholder="Email" value={eventForm.email}
+                      onChange={e => setEventForm({ ...eventForm, email: e.target.value })} />
+                    <input className="input" type="tel" placeholder="Phone Number" value={eventForm.phone}
+                      onChange={e => setEventForm({ ...eventForm, phone: e.target.value })} required />
+                    <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={eventForm.consent} required
+                        onChange={e => setEventForm({ ...eventForm, consent: e.target.checked })}
+                        style={{ marginTop: 3, accentColor: '#FAFAFA' }} />
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', lineHeight: 1.5 }}>
+                        I am 18 years or older and agree to receive communications from this brand via text, email, or phone. I understand my data will be used in accordance with the <a href="/privacy" target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Privacy Policy</a>. Message and data rates may apply. Reply STOP to opt out.
+                      </span>
+                    </label>
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 14 }}>
+                      {event.giveaway ? 'Enter to Win' : 'Sign Up'}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            ) : (
+              <div style={{
+                textAlign: 'center', padding: 28,
+                background: 'rgba(34, 197, 94, 0.1)',
+                border: '1px solid var(--success)',
+                borderRadius: 'var(--radius)'
+              }}>
+                <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>🎉</div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>
+                  You're In!
+                </h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                  {event.giveaway
+                    ? `Good luck, ${eventForm.firstName}! We'll contact winners directly.`
+                    : `Thanks for signing up, ${eventForm.firstName}!`}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Social Links */}
+          {brand && (() => {
+            const socials = [
+              { key: 'social_instagram', label: 'Instagram', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>' },
+              { key: 'social_tiktok', label: 'TikTok', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 00-.79-.05A6.34 6.34 0 003.15 15.2a6.34 6.34 0 0010.86 4.48V13a8.28 8.28 0 005.58 2.15V11.7a4.79 4.79 0 01-3.77-1.85V6.69h3.77z"/></svg>' },
+              { key: 'social_twitter', label: 'X', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>' },
+              { key: 'social_website', label: 'Website', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>' },
+            ].filter(s => brand[s.key])
+            if (socials.length === 0) return null
+            return (
+              <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>Follow Us</div>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+                  {socials.map(s => (
+                    <a key={s.key} href={brand[s.key]} target="_blank" rel="noopener noreferrer"
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: 44, height: 44, borderRadius: '50%',
+                        background: 'var(--bg-card)', border: '1px solid var(--border)',
+                        color: '#FAFAFA', textDecoration: 'none',
+                      }}>
+                      <span style={{ width: 20, height: 20 }} dangerouslySetInnerHTML={{ __html: s.svg }} />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
+
+          <div style={{
+            textAlign: 'center', padding: '20px 0',
+            color: 'var(--text-muted)', fontSize: '0.75rem',
+          }}>
+            <div style={{ marginBottom: 8 }}>
+              Powered by <span style={{ color: '#FAFAFA', fontWeight: 600 }}>Captura</span>
+            </div>
+            <div style={{ fontSize: '0.65rem', color: '#3F3F46', lineHeight: 1.5 }}>
+              By scanning this code, approximate location data may be collected to improve your experience.{' '}
+              <a href="/privacy" target="_blank" style={{ color: '#52525B', textDecoration: 'underline' }}>Privacy Policy</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', padding: '0 0 40px' }}>

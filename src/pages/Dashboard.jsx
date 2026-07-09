@@ -10,6 +10,7 @@ import Promos from './dashboard/Promos'
 import Socials from './dashboard/Socials'
 import Insights from './dashboard/Insights'
 import Consumers from './dashboard/Consumers'
+import Events from './dashboard/Events'
 import Settings from './dashboard/Settings'
 
 const navItems = [
@@ -17,6 +18,7 @@ const navItems = [
   { path: 'products', label: 'Products', icon: '▦' },
   { path: 'qr-codes', label: 'QR Codes', icon: '⊞' },
   { path: 'promos', label: 'Promos', icon: '🎁' },
+  { path: 'events', label: 'Events', icon: '🎪' },
   { path: 'socials', label: 'Socials', icon: '🔗' },
   { path: 'scans', label: 'Scans', icon: '📍' },
   { path: 'consumers', label: 'Consumers', icon: '👥' },
@@ -155,6 +157,7 @@ export default function Dashboard() {
           <Route path="products" element={<Products brand={brand} />} />
           <Route path="qr-codes" element={<QRCodes brand={brand} />} />
           <Route path="promos" element={<Promos brand={brand} />} />
+          <Route path="events" element={<Events brand={brand} />} />
           <Route path="socials" element={<Socials brand={brand} />} />
           <Route path="scans" element={<Scans brand={brand} />} />
           <Route path="vip" element={<VIPMembers brand={brand} />} />

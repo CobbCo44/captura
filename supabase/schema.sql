@@ -29,12 +29,37 @@ CREATE TABLE products (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Events (activations, giveaways, pop-ups)
+CREATE TABLE events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  brand_id UUID REFERENCES brands(id) ON DELETE CASCADE NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  giveaway TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Event Entries (attendee signups)
+CREATE TABLE event_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID REFERENCES events(id) ON DELETE CASCADE NOT NULL,
+  brand_id UUID REFERENCES brands(id) ON DELETE CASCADE NOT NULL,
+  qr_code_id UUID REFERENCES qr_codes(id) ON DELETE SET NULL,
+  first_name TEXT NOT NULL,
+  last_name TEXT NOT NULL,
+  email TEXT,
+  phone TEXT NOT NULL,
+  city TEXT,
+  entered_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- QR Codes
 CREATE TABLE qr_codes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   brand_id UUID REFERENCES brands(id) ON DELETE CASCADE NOT NULL,
   product_id UUID REFERENCES products(id) ON DELETE CASCADE,
   promo_id UUID REFERENCES promos(id) ON DELETE SET NULL,
+  event_id UUID REFERENCES events(id) ON DELETE CASCADE,
   short_id TEXT UNIQUE NOT NULL,
   fg_color TEXT DEFAULT '#18181B',
   bg_color TEXT DEFAULT '#FFFFFF',

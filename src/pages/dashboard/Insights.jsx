@@ -52,6 +52,12 @@ export default function Insights({ brand }) {
         }),
       })
 
+      if (!res.ok) {
+        const text = await res.text()
+        alert(`Error ${res.status}: ${text.slice(0, 200)}`)
+        setGenerating(false)
+        return
+      }
       const data = await res.json()
       if (data.error) {
         alert(`Error: ${data.error}`)

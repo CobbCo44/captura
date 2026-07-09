@@ -35,7 +35,7 @@ export default function QRCodes({ brand }) {
       return
     }
     const [qrRes, prodRes, scansRes] = await Promise.all([
-      supabase.from('qr_codes').select('*, products(name, sku)').eq('brand_id', brand.id).order('created_at', { ascending: false }),
+      supabase.from('qr_codes').select('*, products(name, sku)').eq('brand_id', brand.id).is('event_id', null).order('created_at', { ascending: false }),
       supabase.from('products').select('id, name, sku').eq('brand_id', brand.id).order('name'),
       supabase.from('scans').select('qr_code_id').eq('brand_id', brand.id),
     ])

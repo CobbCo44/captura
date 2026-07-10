@@ -10,6 +10,11 @@ export default function Products({ brand }) {
   const [uploading, setUploading] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState(null)
+  const [showPicker, setShowPicker] = useState(false)
+  const [shopifyProducts, setShopifyProducts] = useState([])
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [pickerSearch, setPickerSearch] = useState('')
+  const [pickerLoading, setPickerLoading] = useState(false)
 
   useEffect(() => {
     loadProducts()
@@ -162,10 +167,12 @@ export default function Products({ brand }) {
     setProducts(products.filter(p => p.id !== id))
   }
 
-  const handleShopifyImport = async () => {
+  const openShopifyPicker = async () => {
     if (!brand?.shopify_store || !brand?.shopify_token) return
-    setImporting(true)
-    setImportResult(null)
+    setPickerLoading(true)
+    setShowPicker(true)
+    setPickerSearch('')
+    setSelectedIds(new Set())
     try {
       const res = await fetch('/.netlify/functions/import-shopify-products', {
         method: 'POST',
@@ -173,41 +180,79 @@ export default function Products({ brand }) {
         body: JSON.stringify({ shopifyStore: brand.shopify_store, shopifyToken: brand.shopify_token }),
       })
       if (!res.ok) throw new Error('Failed to fetch Shopify products')
-      const { products: shopifyProducts } = await res.json()
+      const { products: fetched } = await res.json()
 
-      // Get existing product SKUs and shopify_product_ids to avoid duplicates
+      // Mark which ones are already imported
       const existingSkus = new Set(products.filter(p => p.sku).map(p => p.sku))
       const existingShopifyIds = new Set(products.filter(p => p.shopify_product_id).map(p => p.shopify_product_id))
+      const tagged = fetched.map(sp => ({
+        ...sp,
+        alreadyImported: existingShopifyIds.has(sp.shopify_id) || (sp.sku && existingSkus.has(sp.sku)),
+      }))
 
-      const newProducts = shopifyProducts.filter(sp =>
-        !existingShopifyIds.has(sp.shopify_id) && (!sp.sku || !existingSkus.has(sp.sku))
-      )
-
-      if (newProducts.length === 0) {
-        setImportResult({ count: 0, message: 'All Shopify products are already imported.' })
-        setImporting(false)
-        return
-      }
-
-      let imported = 0
-      for (const sp of newProducts) {
-        const { error } = await supabase.from('products').insert({
-          brand_id: brand.id,
-          name: sp.name,
-          sku: sp.sku || null,
-          description: sp.description || null,
-          image_urls: sp.images.length > 0 ? sp.images : null,
-          reorder_url: sp.shopify_url,
-          shopify_product_id: sp.shopify_id,
-        })
-        if (!error) imported++
-      }
-
-      setImportResult({ count: imported, message: `Imported ${imported} product${imported !== 1 ? 's' : ''} from Shopify.` })
-      loadProducts()
+      setShopifyProducts(tagged)
     } catch (err) {
-      setImportResult({ count: 0, message: `Import failed: ${err.message}` })
+      setImportResult({ count: 0, message: `Failed to load Shopify products: ${err.message}` })
+      setShowPicker(false)
     }
+    setPickerLoading(false)
+  }
+
+  const toggleProduct = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleAll = () => {
+    const available = filteredShopifyProducts.filter(p => !p.alreadyImported)
+    if (available.every(p => selectedIds.has(p.shopify_id))) {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        available.forEach(p => next.delete(p.shopify_id))
+        return next
+      })
+    } else {
+      setSelectedIds(prev => {
+        const next = new Set(prev)
+        available.forEach(p => next.add(p.shopify_id))
+        return next
+      })
+    }
+  }
+
+  const filteredShopifyProducts = shopifyProducts.filter(p => {
+    if (!pickerSearch) return true
+    const q = pickerSearch.toLowerCase()
+    return p.name.toLowerCase().includes(q) || (p.sku && p.sku.toLowerCase().includes(q))
+  })
+
+  const handleImportSelected = async () => {
+    if (selectedIds.size === 0) return
+    setImporting(true)
+    setShowPicker(false)
+    setImportResult(null)
+
+    const toImport = shopifyProducts.filter(sp => selectedIds.has(sp.shopify_id))
+    let imported = 0
+    for (const sp of toImport) {
+      const { error } = await supabase.from('products').insert({
+        brand_id: brand.id,
+        name: sp.name,
+        sku: sp.sku || null,
+        description: sp.description || null,
+        image_urls: sp.images.length > 0 ? sp.images : null,
+        reorder_url: sp.shopify_url,
+        shopify_product_id: sp.shopify_id,
+      })
+      if (!error) imported++
+    }
+
+    setImportResult({ count: imported, message: `Imported ${imported} product${imported !== 1 ? 's' : ''} from Shopify.` })
+    loadProducts()
     setImporting(false)
   }
 
@@ -375,7 +420,7 @@ export default function Products({ brand }) {
         <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Products</h1>
         <div style={{ display: 'flex', gap: 10 }}>
           {brand?.shopify_store && brand?.shopify_token && (
-            <button className="btn btn-secondary" onClick={handleShopifyImport} disabled={importing}
+            <button className="btn btn-secondary" onClick={openShopifyPicker} disabled={importing}
               style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
               {importing ? 'Importing...' : 'Import from Shopify'}
@@ -470,6 +515,120 @@ export default function Products({ brand }) {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Shopify Product Picker Modal */}
+      {showPicker && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.7)', zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 20,
+        }} onClick={() => setShowPicker(false)}>
+          <div style={{
+            background: 'var(--card-bg)', borderRadius: 12, width: '100%', maxWidth: 640,
+            maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+            border: '1px solid var(--border)',
+          }} onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Import from Shopify</h2>
+                <button onClick={() => setShowPicker(false)} style={{
+                  background: 'none', border: 'none', color: 'var(--text-muted)',
+                  fontSize: '1.2rem', cursor: 'pointer',
+                }}>x</button>
+              </div>
+              <input className="input" placeholder="Search products by name or SKU..."
+                value={pickerSearch} onChange={e => setPickerSearch(e.target.value)}
+                style={{ width: '100%' }} />
+            </div>
+
+            {/* Product List */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0' }}>
+              {pickerLoading ? (
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
+                  Loading products from Shopify...
+                </div>
+              ) : filteredShopifyProducts.length === 0 ? (
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
+                  {pickerSearch ? 'No products match your search.' : 'No products found in your Shopify store.'}
+                </div>
+              ) : (
+                <>
+                  {/* Select All */}
+                  <div style={{
+                    padding: '10px 24px', borderBottom: '1px solid var(--border)',
+                    display: 'flex', alignItems: 'center', gap: 10,
+                  }}>
+                    <input type="checkbox"
+                      checked={filteredShopifyProducts.filter(p => !p.alreadyImported).length > 0 &&
+                        filteredShopifyProducts.filter(p => !p.alreadyImported).every(p => selectedIds.has(p.shopify_id))}
+                      onChange={toggleAll}
+                      style={{ width: 18, height: 18, cursor: 'pointer' }} />
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      Select all ({filteredShopifyProducts.filter(p => !p.alreadyImported).length} available)
+                    </span>
+                  </div>
+
+                  {filteredShopifyProducts.map(sp => (
+                    <div key={sp.shopify_id} style={{
+                      padding: '12px 24px', borderBottom: '1px solid var(--border)',
+                      display: 'flex', alignItems: 'center', gap: 14,
+                      opacity: sp.alreadyImported ? 0.4 : 1,
+                      cursor: sp.alreadyImported ? 'default' : 'pointer',
+                    }} onClick={() => !sp.alreadyImported && toggleProduct(sp.shopify_id)}>
+                      <input type="checkbox"
+                        checked={sp.alreadyImported || selectedIds.has(sp.shopify_id)}
+                        disabled={sp.alreadyImported}
+                        onChange={() => !sp.alreadyImported && toggleProduct(sp.shopify_id)}
+                        style={{ width: 18, height: 18, cursor: sp.alreadyImported ? 'default' : 'pointer' }} />
+                      {sp.image_url ? (
+                        <img src={sp.image_url} alt={sp.name}
+                          style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{
+                          width: 44, height: 44, borderRadius: 6, background: 'var(--bg)',
+                          border: '1px solid var(--border)', display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.6rem',
+                        }}>IMG</div>
+                      )}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 500, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {sp.name}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                          {sp.sku && `SKU: ${sp.sku}`}
+                          {sp.sku && sp.variants.length > 1 && ' · '}
+                          {sp.variants.length > 1 && `${sp.variants.length} variants`}
+                          {sp.alreadyImported && ' · Already imported'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: '16px 24px', borderTop: '1px solid var(--border)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                {selectedIds.size} product{selectedIds.size !== 1 ? 's' : ''} selected
+              </span>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="btn btn-secondary" onClick={() => setShowPicker(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleImportSelected}
+                  disabled={selectedIds.size === 0}
+                  style={{ opacity: selectedIds.size === 0 ? 0.5 : 1 }}>
+                  Import Selected
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

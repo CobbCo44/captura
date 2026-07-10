@@ -170,49 +170,163 @@ export default function QRCodes({ brand }) {
     setQrCodes(qrCodes.filter(q => q.id !== qr.id))
   }
 
-  const downloadPNG = (shortId, productName) => {
-    const canvas = document.getElementById(`qr-${shortId}`)
-    if (!canvas) return
-    // Create a high-res version
+  const downloadPNG = (shortId, productName, qr) => {
+    const code = generateQRCode(`${scanUrl}/s/${shortId}`)
+    if (!code) return
+    const matrix = code.modules
+    const gridSize = matrix.length
+    const hiResSize = 1000
+    const modSize = hiResSize / gridSize
+
+    const ctaText = qr.cta_text || ''
+    const bannerHeight = ctaText ? hiResSize * 0.12 : 0
+    const totalHeight = hiResSize + bannerHeight
+
     const hiRes = document.createElement('canvas')
-    hiRes.width = 1000
-    hiRes.height = 1000
+    hiRes.width = hiResSize
+    hiRes.height = totalHeight
     const ctx = hiRes.getContext('2d')
-    ctx.drawImage(canvas, 0, 0, 1000, 1000)
-    const link = document.createElement('a')
-    link.download = `${productName || shortId}-qr.png`
-    link.href = hiRes.toDataURL('image/png')
-    link.click()
+
+    // Background
+    ctx.fillStyle = qr.bg_color || '#FFFFFF'
+    ctx.fillRect(0, 0, hiResSize, totalHeight)
+
+    // Draw QR modules at native high resolution
+    ctx.fillStyle = qr.fg_color || '#18181B'
+    for (let y = 0; y < gridSize; y++) {
+      for (let x = 0; x < gridSize; x++) {
+        if (!matrix[y][x]) continue
+        ctx.fillRect(x * modSize, y * modSize, modSize, modSize)
+      }
+    }
+
+    // CTA banner
+    if (ctaText) {
+      ctx.fillStyle = qr.fg_color || '#18181B'
+      ctx.fillRect(0, hiResSize, hiResSize, bannerHeight)
+      ctx.fillStyle = qr.bg_color || '#FFFFFF'
+      ctx.font = `bold ${bannerHeight * 0.5}px Inter, -apple-system, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(ctaText.toUpperCase(), hiResSize / 2, hiResSize + bannerHeight / 2)
+    }
+
+    const finishDownload = () => {
+      const link = document.createElement('a')
+      link.download = `${productName || shortId}-qr.png`
+      link.href = hiRes.toDataURL('image/png')
+      link.click()
+    }
+
+    // Draw logo if present
+    const logoUrl = qr.logo_url
+    if (logoUrl) {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        const logoScale = qr.logo_scale || 0.25
+        const logoSize = hiResSize * logoScale
+        const logoPos = (hiResSize - logoSize) / 2
+        const padding = logoSize * 0.12
+
+        ctx.fillStyle = qr.bg_color || '#FFFFFF'
+        roundRect(ctx, logoPos - padding, logoPos - padding,
+          logoSize + padding * 2, logoSize + padding * 2, 12)
+        ctx.fill()
+        ctx.drawImage(img, logoPos, logoPos, logoSize, logoSize)
+        finishDownload()
+      }
+      img.onerror = () => finishDownload()
+      img.src = logoUrl
+    } else {
+      finishDownload()
+    }
   }
 
   const downloadSVG = (shortId, productName, qr) => {
-    // Re-generate QR as SVG
     const code = generateQRCode(`${scanUrl}/s/${shortId}`)
     if (!code) return
     const matrix = code.modules
     const gridSize = matrix.length
     const modSize = 10
     const svgSize = gridSize * modSize
+    const fgColor = qr.fg_color || '#18181B'
+    const bgColor = qr.bg_color || '#FFFFFF'
+
+    const ctaText = qr.cta_text || ''
+    const bannerHeight = ctaText ? Math.round(svgSize * 0.12) : 0
+    const totalHeight = svgSize + bannerHeight
 
     let rects = ''
     for (let y = 0; y < gridSize; y++) {
       for (let x = 0; x < gridSize; x++) {
         if (!matrix[y][x]) continue
-        rects += `<rect x="${x * modSize}" y="${y * modSize}" width="${modSize}" height="${modSize}" fill="${qr.fg_color || '#18181B'}"/>`
+        rects += `<rect x="${x * modSize}" y="${y * modSize}" width="${modSize}" height="${modSize}" fill="${fgColor}"/>`
       }
     }
 
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgSize}" height="${svgSize}" viewBox="0 0 ${svgSize} ${svgSize}">
-      <rect width="${svgSize}" height="${svgSize}" fill="${qr.bg_color || '#FFFFFF'}"/>
-      ${rects}
-    </svg>`
+    let ctaSvg = ''
+    if (ctaText) {
+      ctaSvg = `<rect y="${svgSize}" width="${svgSize}" height="${bannerHeight}" fill="${fgColor}"/>
+        <text x="${svgSize / 2}" y="${svgSize + bannerHeight / 2}" fill="${bgColor}" font-family="Inter, -apple-system, sans-serif" font-weight="bold" font-size="${bannerHeight * 0.5}" text-anchor="middle" dominant-baseline="central">${ctaText.toUpperCase()}</text>`
+    }
 
-    const blob = new Blob([svg], { type: 'image/svg+xml' })
-    const link = document.createElement('a')
-    link.download = `${productName || shortId}-qr.svg`
-    link.href = URL.createObjectURL(blob)
-    link.click()
-    URL.revokeObjectURL(link.href)
+    const buildSVG = (logoData) => {
+      let logoSvg = ''
+      if (logoData) {
+        const logoScale = qr.logo_scale || 0.25
+        const logoSize = svgSize * logoScale
+        const logoPos = (svgSize - logoSize) / 2
+        const padding = logoSize * 0.12
+        logoSvg = `<rect x="${logoPos - padding}" y="${logoPos - padding}" width="${logoSize + padding * 2}" height="${logoSize + padding * 2}" rx="4" ry="4" fill="${bgColor}"/>
+          <image x="${logoPos}" y="${logoPos}" width="${logoSize}" height="${logoSize}" href="${logoData}"/>`
+      }
+
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${svgSize}" height="${totalHeight}" viewBox="0 0 ${svgSize} ${totalHeight}">
+        <rect width="${svgSize}" height="${totalHeight}" fill="${bgColor}"/>
+        ${rects}
+        ${logoSvg}
+        ${ctaSvg}
+      </svg>`
+
+      const blob = new Blob([svg], { type: 'image/svg+xml' })
+      const link = document.createElement('a')
+      link.download = `${productName || shortId}-qr.svg`
+      link.href = URL.createObjectURL(blob)
+      link.click()
+      URL.revokeObjectURL(link.href)
+    }
+
+    // Embed logo as base64 so it works offline
+    if (qr.logo_url) {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        const c = document.createElement('canvas')
+        c.width = img.naturalWidth
+        c.height = img.naturalHeight
+        c.getContext('2d').drawImage(img, 0, 0)
+        buildSVG(c.toDataURL('image/png'))
+      }
+      img.onerror = () => buildSVG(null)
+      img.src = qr.logo_url
+    } else {
+      buildSVG(null)
+    }
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath()
+    ctx.moveTo(x + r, y)
+    ctx.lineTo(x + w - r, y)
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+    ctx.lineTo(x + w, y + h - r)
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+    ctx.lineTo(x + r, y + h)
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+    ctx.lineTo(x, y + r)
+    ctx.quadraticCurveTo(x, y, x + r, y)
+    ctx.closePath()
   }
 
   // Preview logo: use new file preview, existing URL, or null
@@ -270,7 +384,7 @@ export default function QRCodes({ brand }) {
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 <button className="btn btn-primary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}
-                  onClick={() => downloadPNG(qr.short_id, qr.products?.name)}>
+                  onClick={() => downloadPNG(qr.short_id, qr.products?.name, qr)}>
                   PNG
                 </button>
                 <button className="btn btn-primary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}

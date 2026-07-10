@@ -142,7 +142,7 @@ export default function QRCodes({ brand }) {
       const { data, error } = await supabase.from('qr_codes')
         .update({ ...qrData, product_id: form.productId })
         .eq('id', editingQR.id)
-        .select('*, products(name, sku)').single()
+        .select('*, products(name, sku, gtin)').single()
 
       if (error) {
         alert(`Error updating QR code: ${error.message}`)
@@ -157,7 +157,7 @@ export default function QRCodes({ brand }) {
         product_id: form.productId,
         short_id: shortId,
         ...qrData,
-      }).select('*, products(name, sku)').single()
+      }).select('*, products(name, sku, gtin)').single()
 
       if (error) {
         alert(`Error creating QR code: ${error.message}`)

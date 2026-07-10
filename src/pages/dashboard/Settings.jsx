@@ -7,8 +7,6 @@ export default function Settings({ brand, onBrandUpdate }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [shopifyStore, setShopifyStore] = useState('')
-  const [shopifyToken, setShopifyToken] = useState('')
-  const [shopifyTesting, setShopifyTesting] = useState(false)
   const [shopifyStatus, setShopifyStatus] = useState(null) // 'connected', 'error', null
   const [shopifySaving, setShopifySaving] = useState(false)
   const [shopifyConnecting, setShopifyConnecting] = useState(false)
@@ -24,43 +22,24 @@ export default function Settings({ brand, onBrandUpdate }) {
         existingLogo: brand.logo_url || null,
       })
       setShopifyStore(brand.shopify_store || '')
-      setShopifyToken(brand.shopify_token || '')
-      setShopifyStatus(brand.shopify_store && brand.shopify_token ? 'connected' : null)
+      setShopifyStatus(brand.shopify_store ? 'connected' : null)
     }
   }, [brand])
 
-  // Handle OAuth callback - check URL for success flag or token
+  // Handle OAuth callback - check URL for success flag
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    const hash = window.location.hash
 
     if (params.get('shopify') === 'connected') {
-      // Token was saved server-side, reload brand data
       window.history.replaceState({}, '', window.location.pathname)
       if (onBrandUpdate) {
         supabase?.from('brands').select('*').eq('id', brand?.id).single().then(({ data }) => {
           if (data) {
             onBrandUpdate(data)
             setShopifyStore(data.shopify_store || '')
-            setShopifyToken(data.shopify_token || '')
             setShopifyStatus('connected')
           }
         })
-      }
-    } else if (hash.includes('shopify_token=')) {
-      // Fallback: token passed via hash fragment
-      const hashParams = new URLSearchParams(hash.replace('#', ''))
-      const token = hashParams.get('shopify_token')
-      const store = hashParams.get('shopify_store')
-      if (token && store && brand?.id) {
-        window.history.replaceState({}, '', window.location.pathname)
-        setShopifyStore(store)
-        setShopifyToken(token)
-        supabase?.from('brands').update({ shopify_store: store, shopify_token: token })
-          .eq('id', brand.id).select().single().then(({ data }) => {
-            if (data && onBrandUpdate) onBrandUpdate(data)
-            setShopifyStatus('connected')
-          })
       }
     }
   }, [brand?.id])
@@ -103,7 +82,7 @@ export default function Settings({ brand, onBrandUpdate }) {
     }
 
     const { data, error } = await supabase.from('brands')
-      .update({ name: form.name, industry: form.industry, logo_url: logoUrl, shopify_store: shopifyStore || null, shopify_token: shopifyToken || null })
+      .update({ name: form.name, industry: form.industry, logo_url: logoUrl })
       .eq('id', brand.id)
       .select().single()
 

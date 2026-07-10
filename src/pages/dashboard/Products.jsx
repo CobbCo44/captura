@@ -168,16 +168,20 @@ export default function Products({ brand }) {
   }
 
   const openShopifyPicker = async () => {
-    if (!brand?.shopify_store || !brand?.shopify_token) return
+    if (!brand?.shopify_store) return
     setPickerLoading(true)
     setShowPicker(true)
     setPickerSearch('')
     setSelectedIds(new Set())
     try {
+      const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch('/.netlify/functions/import-shopify-products', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ shopifyStore: brand.shopify_store, shopifyToken: brand.shopify_token }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ brandId: brand.id }),
       })
       if (!res.ok) throw new Error('Failed to fetch Shopify products')
       const { products: fetched } = await res.json()
@@ -419,7 +423,7 @@ export default function Products({ brand }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
         <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Products</h1>
         <div style={{ display: 'flex', gap: 10 }}>
-          {brand?.shopify_store && brand?.shopify_token && (
+          {brand?.shopify_store && (
             <button className="btn btn-secondary" onClick={openShopifyPicker} disabled={importing}
               style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>

@@ -1,20 +1,49 @@
+import { createClient } from '@supabase/supabase-js'
+
 export default async (req) => {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
   }
 
   try {
-    const { shopifyStore, shopifyToken, customer } = await req.json()
+    const { brandId, customer } = await req.json()
 
-    if (!shopifyStore || !shopifyToken || !customer) {
+    if (!brandId || !customer) {
       return new Response(JSON.stringify({ error: 'Missing required fields' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       })
     }
 
-    // Clean store name (handle "mystore" or "mystore.myshopify.com" or full URL)
-    const store = shopifyStore
+    // Look up Shopify credentials server-side using service role key
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return new Response(JSON.stringify({ error: 'Server not configured' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const { data: brand } = await supabase
+      .from('brands')
+      .select('shopify_store, shopify_token')
+      .eq('id', brandId)
+      .single()
+
+    if (!brand?.shopify_store || !brand?.shopify_token) {
+      // No Shopify connected, silently skip
+      return new Response(JSON.stringify({ skipped: true }), {
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const shopifyToken = brand.shopify_token
+
+    // Clean store name
+    const store = brand.shopify_store
       .replace(/^https?:\/\//, '')
       .replace(/\.myshopify\.com.*$/, '')
       .replace(/\/$/, '')
@@ -108,7 +137,7 @@ export default async (req) => {
 
     let response
     if (existingCustomerId) {
-      // Update existing customer - add tags
+      // Update existing customer - merge tags
       const getRes = await fetch(
         `https://${store}.myshopify.com/admin/api/2024-01/customers/${existingCustomerId}.json`,
         {
@@ -125,6 +154,9 @@ export default async (req) => {
         const mergedTags = [...new Set([...existingTags.split(',').map(t => t.trim()).filter(Boolean), ...newTags.split(',').map(t => t.trim())])].join(', ')
         customerData.tags = mergedTags
       }
+
+      // Don't send metafields on update (Shopify requires different endpoint for that)
+      delete customerData.metafields
 
       response = await fetch(
         `https://${store}.myshopify.com/admin/api/2024-01/customers/${existingCustomerId}.json`,
@@ -155,7 +187,7 @@ export default async (req) => {
     if (!response.ok) {
       const errText = await response.text()
       console.error('Shopify API error:', errText)
-      return new Response(JSON.stringify({ error: 'Shopify sync failed', details: errText }), {
+      return new Response(JSON.stringify({ error: 'Shopify sync failed' }), {
         status: response.status,
         headers: { 'Content-Type': 'application/json' },
       })
@@ -167,7 +199,7 @@ export default async (req) => {
     })
   } catch (err) {
     console.error('Shopify customer sync error:', err)
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     })

@@ -1,19 +1,74 @@
+import { createClient } from '@supabase/supabase-js'
+
 export default async (req) => {
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 })
   }
 
   try {
-    const { shopifyStore, shopifyToken } = await req.json()
+    const { brandId } = await req.json()
 
-    if (!shopifyStore || !shopifyToken) {
-      return new Response(JSON.stringify({ error: 'Missing store or token' }), {
+    if (!brandId) {
+      return new Response(JSON.stringify({ error: 'Missing brandId' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       })
     }
 
-    const store = shopifyStore
+    // Verify the user is authenticated and owns this brand
+    const authHeader = req.headers.get('Authorization')
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return new Response(JSON.stringify({ error: 'Server not configured' }), {
+        status: 500,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Verify JWT and check brand ownership
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const userClient = createClient(supabaseUrl, process.env.VITE_SUPABASE_ANON_KEY || supabaseServiceKey, {
+      global: { headers: { Authorization: authHeader } },
+    })
+    const { data: { user } } = await userClient.auth.getUser()
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Look up brand and verify ownership
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey)
+    const { data: brand } = await adminClient
+      .from('brands')
+      .select('shopify_store, shopify_token, user_id')
+      .eq('id', brandId)
+      .single()
+
+    if (!brand || brand.user_id !== user.id) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (!brand.shopify_store || !brand.shopify_token) {
+      return new Response(JSON.stringify({ error: 'Shopify not connected' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    const store = brand.shopify_store
       .replace(/^https?:\/\//, '')
       .replace(/\.myshopify\.com.*$/, '')
       .replace(/\/$/, '')
@@ -26,7 +81,7 @@ export default async (req) => {
     while (nextPageUrl) {
       const response = await fetch(nextPageUrl, {
         headers: {
-          'X-Shopify-Access-Token': shopifyToken,
+          'X-Shopify-Access-Token': brand.shopify_token,
           'Content-Type': 'application/json',
         },
       })
@@ -34,7 +89,7 @@ export default async (req) => {
       if (!response.ok) {
         const errText = await response.text()
         console.error('Shopify products error:', errText)
-        return new Response(JSON.stringify({ error: 'Failed to fetch Shopify products', details: errText }), {
+        return new Response(JSON.stringify({ error: 'Failed to fetch Shopify products' }), {
           status: response.status,
           headers: { 'Content-Type': 'application/json' },
         })
@@ -43,7 +98,6 @@ export default async (req) => {
       const data = await response.json()
       allProducts = allProducts.concat(data.products || [])
 
-      // Check for next page via Link header
       const linkHeader = response.headers.get('Link') || ''
       const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/)
       nextPageUrl = nextMatch ? nextMatch[1] : null
@@ -71,7 +125,7 @@ export default async (req) => {
     })
   } catch (err) {
     console.error('Shopify import error:', err)
-    return new Response(JSON.stringify({ error: err.message }), {
+    return new Response(JSON.stringify({ error: 'Internal error' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
     })

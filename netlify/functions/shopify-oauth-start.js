@@ -1,3 +1,5 @@
+import { createClient } from '@supabase/supabase-js'
+
 export default async (req) => {
   const url = new URL(req.url)
   const shop = url.searchParams.get('shop')
@@ -10,7 +12,6 @@ export default async (req) => {
     })
   }
 
-  // Clean store name
   const store = shop
     .replace(/^https?:\/\//, '')
     .replace(/\.myshopify\.com.*$/, '')
@@ -25,11 +26,26 @@ export default async (req) => {
     })
   }
 
+  // Generate a random nonce for CSRF protection
+  const nonce = crypto.randomUUID()
+
+  // Store the nonce and brand_id server-side so callback can verify
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (supabaseUrl && supabaseServiceKey && brandId) {
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    await supabase.from('brands').update({
+      shopify_nonce: nonce,
+    }).eq('id', brandId)
+  }
+
+  // State encodes both brand_id and nonce
+  const state = brandId ? `${brandId}:${nonce}` : ''
+
   const scopes = 'read_products,write_products,read_customers,write_customers'
   const redirectUri = 'https://captura44.netlify.app/.netlify/functions/shopify-oauth-callback'
-  const state = brandId || ''
 
-  const authUrl = `https://${store}.myshopify.com/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`
+  const authUrl = `https://${store}.myshopify.com/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`
 
   return new Response(null, {
     status: 302,

@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 
+function renderBold(text) {
+  const parts = text.split(/\*\*(.*?)\*\*/g)
+  return parts.map((part, i) => i % 2 === 1 ? <strong key={i} style={{ color: '#FAFAFA' }}>{part}</strong> : part)
+}
+
 export default function Insights({ brand }) {
   const [report, setReport] = useState(null)
   const [generating, setGenerating] = useState(false)
@@ -74,9 +79,13 @@ export default function Insights({ brand }) {
         ),
       ].join('\n')
 
+      const { data: { session } } = await supabase.auth.getSession()
       const res = await fetch('/.netlify/functions/generate-report', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
         body: JSON.stringify({ brandName: brand.name, summary }),
       })
 
@@ -113,12 +122,11 @@ export default function Insights({ brand }) {
         return <h3 key={i} style={{ fontSize: '1.05rem', fontWeight: 700, marginTop: 24, marginBottom: 8 }}>{cleaned}</h3>
       }
       if (line.startsWith('- ') || line.startsWith('* ')) {
-        const cleaned = line.slice(2).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        return <li key={i} style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.9rem', marginLeft: 16 }} dangerouslySetInnerHTML={{ __html: cleaned }} />
+        const text = line.slice(2)
+        return <li key={i} style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.9rem', marginLeft: 16 }}>{renderBold(text)}</li>
       }
       if (line.trim() === '') return <br key={i} />
-      const cleaned = line.replace(/\*\*(.*?)\*\*/g, '<strong style="color:#FAFAFA">$1</strong>')
-      return <p key={i} style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.9rem', marginBottom: 4 }} dangerouslySetInnerHTML={{ __html: cleaned }} />
+      return <p key={i} style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.9rem', marginBottom: 4 }}>{renderBold(line)}</p>
     })
   }
 

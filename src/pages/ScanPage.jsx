@@ -44,7 +44,7 @@ export default function ScanPage() {
 
     const { data: qr, error } = await supabase
       .from('qr_codes')
-      .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website, shopify_store, shopify_token)')
+      .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
       .eq('short_id', qrId)
       .single()
 
@@ -138,24 +138,18 @@ export default function ScanPage() {
   }
 
   async function syncToShopify(customerData) {
-    if (!brand?.shopify_store || !brand?.shopify_token) {
-      console.log('Shopify sync skipped - no store/token', { store: brand?.shopify_store, hasToken: !!brand?.shopify_token })
-      return
-    }
+    if (!qrCode?.brand_id) return
     try {
-      const res = await fetch('/.netlify/functions/sync-shopify-customer', {
+      await fetch('/.netlify/functions/sync-shopify-customer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          shopifyStore: brand.shopify_store,
-          shopifyToken: brand.shopify_token,
+          brandId: qrCode.brand_id,
           customer: customerData,
         }),
       })
-      const data = await res.json()
-      console.log('Shopify sync result:', res.status, data)
     } catch (err) {
-      console.error('Shopify sync error:', err)
+      // Shopify sync is best-effort, don't block the consumer experience
     }
   }
 

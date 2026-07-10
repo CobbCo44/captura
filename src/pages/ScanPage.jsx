@@ -137,6 +137,37 @@ export default function ScanPage() {
     return 'Unknown'
   }
 
+  async function logBillingEvent(brandId, consumerEmail, consumerPhone, sourceType, sourceId) {
+    if (!supabase || !brandId) return
+    // Build consumer key: prefer email, fall back to phone
+    const consumerKey = (consumerEmail || consumerPhone || '').trim().toLowerCase()
+    if (!consumerKey) return
+
+    const now = new Date()
+    const billingMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+
+    // Check for duplicate: same consumer + same brand within 24 hours
+    const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
+    const { data: recent } = await supabase
+      .from('billing_events')
+      .select('id')
+      .eq('brand_id', brandId)
+      .eq('consumer_key', consumerKey)
+      .gte('created_at', cutoff)
+      .limit(1)
+
+    const billable = !recent || recent.length === 0
+
+    await supabase.from('billing_events').insert({
+      brand_id: brandId,
+      consumer_key: consumerKey,
+      source_type: sourceType,
+      source_id: sourceId || null,
+      billable,
+      billing_month: billingMonth,
+    })
+  }
+
   async function syncToShopify(customerData) {
     if (!qrCode?.brand_id) return
     try {
@@ -156,7 +187,7 @@ export default function ScanPage() {
   const handleVIPSubmit = async (e) => {
     e.preventDefault()
     if (supabase && qrCode) {
-      await supabase.from('vip_members').insert({
+      const { data: inserted } = await supabase.from('vip_members').insert({
         brand_id: qrCode.brand_id,
         qr_code_id: qrCode.id,
         product_id: qrCode.product_id || null,
@@ -167,7 +198,8 @@ export default function ScanPage() {
         latitude: location?.lat || null,
         longitude: location?.lng || null,
         city: location?.city ? `${location.city}, ${location.region}` : null,
-      })
+      }).select('id').single()
+      logBillingEvent(qrCode.brand_id, vipForm.email, vipForm.phone, 'vip', inserted?.id)
       syncToShopify({
         firstName: vipForm.firstName,
         lastName: vipForm.lastName,
@@ -186,7 +218,7 @@ export default function ScanPage() {
   const handlePromoEntry = async (e) => {
     e.preventDefault()
     if (supabase && activePromo && qrCode) {
-      await supabase.from('promo_entries').insert({
+      const { data: inserted } = await supabase.from('promo_entries').insert({
         promo_id: activePromo.id,
         brand_id: qrCode.brand_id,
         qr_code_id: qrCode.id,
@@ -196,7 +228,8 @@ export default function ScanPage() {
         email: promoForm.email,
         phone: promoForm.phone,
         city: location?.city ? `${location.city}, ${location.region}` : null,
-      })
+      }).select('id').single()
+      logBillingEvent(qrCode.brand_id, promoForm.email, promoForm.phone, 'promo', inserted?.id)
       syncToShopify({
         firstName: promoForm.firstName,
         lastName: promoForm.lastName,
@@ -215,7 +248,7 @@ export default function ScanPage() {
   const handleWarrantySubmit = async (e) => {
     e.preventDefault()
     if (supabase && qrCode) {
-      await supabase.from('warranty_registrations').insert({
+      const { data: inserted } = await supabase.from('warranty_registrations').insert({
         brand_id: qrCode.brand_id,
         product_id: qrCode.product_id,
         qr_code_id: qrCode.id,
@@ -227,7 +260,8 @@ export default function ScanPage() {
         retailer: warrantyForm.retailer || null,
         city: location?.city ? `${location.city}, ${location.region}` : null,
         consent: warrantyForm.consent,
-      })
+      }).select('id').single()
+      logBillingEvent(qrCode.brand_id, warrantyForm.email, warrantyForm.phone, 'warranty', inserted?.id)
       syncToShopify({
         firstName: warrantyForm.firstName,
         lastName: warrantyForm.lastName,
@@ -246,7 +280,7 @@ export default function ScanPage() {
   const handleEventSubmit = async (e) => {
     e.preventDefault()
     if (supabase && event && qrCode) {
-      await supabase.from('event_entries').insert({
+      const { data: inserted } = await supabase.from('event_entries').insert({
         event_id: event.id,
         brand_id: qrCode.brand_id,
         qr_code_id: qrCode.id,
@@ -255,7 +289,8 @@ export default function ScanPage() {
         email: eventForm.email,
         phone: eventForm.phone,
         city: location?.city ? `${location.city}, ${location.region}` : null,
-      })
+      }).select('id').single()
+      logBillingEvent(qrCode.brand_id, eventForm.email, eventForm.phone, 'event', inserted?.id)
       syncToShopify({
         firstName: eventForm.firstName,
         lastName: eventForm.lastName,

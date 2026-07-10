@@ -53,60 +53,15 @@ const C = {
   bg: '#09090B',
 }
 
-/* Stylized QR graphic for hero */
+/* Hero image */
 function HeroQR() {
   return (
-    <div style={{
-      width: '100%', maxWidth: 340, aspectRatio: '1', margin: '0 auto',
-      background: C.cardBg, border: `1px solid ${C.border}`, borderRadius: 20,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      position: 'relative', overflow: 'hidden',
-    }}>
-      {/* QR grid pattern */}
-      <svg viewBox="0 0 200 200" width="70%" height="70%" style={{ opacity: 0.85 }}>
-        {/* Corner finder patterns */}
-        {[[10,10],[140,10],[10,140]].map(([x,y],i) => (
-          <g key={i}>
-            <rect x={x} y={y} width={50} height={50} rx={4} fill="none" stroke={C.heading} strokeWidth={4}/>
-            <rect x={x+10} y={y+10} width={30} height={30} rx={2} fill="none" stroke={C.heading} strokeWidth={3}/>
-            <rect x={x+18} y={y+18} width={14} height={14} rx={1} fill={C.heading}/>
-          </g>
-        ))}
-        {/* Data modules */}
-        {[
-          [70,12],[82,12],[94,12],[106,12],[118,12],
-          [70,24],[94,24],[118,24],
-          [70,36],[82,36],[94,36],[106,36],[118,36],
-          [12,70],[24,70],[36,70],[48,70],
-          [12,82],[36,82],
-          [12,94],[24,94],[36,94],[48,94],
-          [12,106],[36,106],
-          [12,118],[24,118],[36,118],[48,118],
-          [70,70],[82,70],[94,70],[106,70],[118,70],[142,70],[154,70],[166,70],[178,70],
-          [70,82],[106,82],[142,82],[178,82],
-          [70,94],[82,94],[94,94],[106,94],[118,94],[142,94],[154,94],[166,94],[178,94],
-          [70,106],[118,106],[142,106],[178,106],
-          [70,118],[82,118],[94,118],[106,118],[118,118],[142,118],[154,118],[166,118],[178,118],
-          [142,142],[154,142],[166,142],[178,142],
-          [142,154],[178,154],
-          [142,166],[154,166],[166,166],[178,166],
-          [142,178],[166,178],[178,178],
-          [70,142],[94,142],[118,142],
-          [70,154],[82,154],[106,154],[118,154],
-          [70,166],[94,166],[106,166],
-          [82,178],[94,178],[118,178],
-        ].map(([x,y],i) => (
-          <rect key={i} x={x} y={y} width={10} height={10} rx={1} fill={C.heading} opacity={0.7}/>
-        ))}
-        {/* Center brand circle */}
-        <circle cx={100} cy={100} r={18} fill={C.bg} stroke={C.accent} strokeWidth={2}/>
-        <text x={100} y={106} textAnchor="middle" fill={C.accent} fontSize={14} fontWeight={800} fontFamily="Inter, sans-serif">C</text>
-      </svg>
-      {/* Subtle glow */}
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: `radial-gradient(circle at center, rgba(250,204,21,0.04) 0%, transparent 70%)`,
-      }}/>
+    <div style={{ width: '100%', maxWidth: 420, margin: '0 auto' }}>
+      <img
+        src="/images/hero-qr-box.png"
+        alt="Product packaging with a branded Captura QR code"
+        style={{ width: '100%', height: 'auto', borderRadius: 16, display: 'block' }}
+      />
     </div>
   )
 }

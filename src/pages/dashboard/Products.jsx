@@ -5,7 +5,7 @@ export default function Products({ brand }) {
   const [products, setProducts] = useState([])
   const [view, setView] = useState('list') // 'list' or 'form'
   const [editingProduct, setEditingProduct] = useState(null)
-  const [form, setForm] = useState({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', images: [], existingImages: [] })
+  const [form, setForm] = useState({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', images: [], existingImages: [] })
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -37,7 +37,7 @@ export default function Products({ brand }) {
 
   const openAdd = () => {
     setEditingProduct(null)
-    setForm({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', images: [], existingImages: [] })
+    setForm({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', images: [], existingImages: [] })
     setView('form')
   }
 
@@ -46,6 +46,7 @@ export default function Products({ brand }) {
     setForm({
       name: p.name || '',
       sku: p.sku || '',
+      gtin: p.gtin || '',
       description: p.description || '',
       contentTitle: p.content_title || '',
       contentBody: p.content_body || '',
@@ -119,6 +120,7 @@ export default function Products({ brand }) {
       const productData = {
         name: form.name,
         sku: form.sku,
+        gtin: form.gtin || null,
         description: form.description,
         content_title: form.contentTitle,
         content_body: form.contentBody,
@@ -153,7 +155,7 @@ export default function Products({ brand }) {
       }
     }
 
-    setForm({ name: '', sku: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', images: [], existingImages: [] })
+    setForm({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', images: [], existingImages: [] })
     setEditingProduct(null)
     setView('list')
     setUploading(false)
@@ -247,6 +249,7 @@ export default function Products({ brand }) {
         brand_id: brand.id,
         name: sp.name,
         sku: sp.sku || null,
+        gtin: sp.barcode || null,
         description: sp.description || null,
         image_urls: sp.images.length > 0 ? sp.images : null,
         reorder_url: sp.shopify_url,
@@ -340,6 +343,11 @@ export default function Products({ brand }) {
                 onChange={e => setForm({ ...form, name: e.target.value })} required />
               <input className="input" placeholder="SKU (optional)" value={form.sku}
                 onChange={e => setForm({ ...form, sku: e.target.value })} />
+              <input className="input" placeholder="GTIN / UPC / Barcode (optional)" value={form.gtin}
+                onChange={e => setForm({ ...form, gtin: e.target.value })} />
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: -8 }}>
+                The product barcode number. When set, QR codes use a GS1 Digital Link URL that works at retail checkout.
+              </p>
               <textarea className="input" placeholder="Product Description" value={form.description}
                 onChange={e => setForm({ ...form, description: e.target.value })}
                 style={{ minHeight: 100, resize: 'vertical' }} />
@@ -462,7 +470,7 @@ export default function Products({ brand }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['', 'Product', 'SKU', 'Images', 'Status', ''].map((h, i) => (
+                {['', 'Product', 'SKU', 'GTIN', 'Images', 'Status', ''].map((h, i) => (
                   <th key={i} style={{
                     padding: '14px 20px', textAlign: 'left',
                     fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)',
@@ -494,6 +502,7 @@ export default function Products({ brand }) {
                     </td>
                     <td style={{ padding: '14px 20px', fontWeight: 500 }}>{p.name}</td>
                     <td style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>{p.sku || '-'}</td>
+                    <td style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>{p.gtin || '-'}</td>
                     <td style={{ padding: '14px 20px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                       {imgCount > 0 ? `${imgCount} image${imgCount > 1 ? 's' : ''}` : '-'}
                     </td>

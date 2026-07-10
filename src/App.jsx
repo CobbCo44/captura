@@ -16,6 +16,8 @@ export default function App() {
       <Route path="/dashboard/*" element={<Dashboard />} />
       <Route path="/admin" element={<Admin />} />
       <Route path="/pricing" element={<Pricing />} />
+      <Route path="/01/:gtin/21/:serial" element={<ScanPage />} />
+      <Route path="/01/:gtin" element={<ScanPage />} />
       <Route path="/s/:qrId" element={<ScanPage />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />

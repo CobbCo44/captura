@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase, generateShortId } from '../../lib/supabase'
 import BrandedQR from '../../components/BrandedQR'
 import generateQRCode from 'qr.js'
+import { buildGS1DigitalLink } from '../../lib/gs1'
 
 export default function QRCodes({ brand }) {
   const [qrCodes, setQrCodes] = useState([])
@@ -23,6 +24,15 @@ export default function QRCodes({ brand }) {
 
   const scanUrl = 'https://meetcaptura.com'
 
+  // Build the right URL: GS1 Digital Link when GTIN exists, plain /s/ otherwise.
+  // The short_id rides in the serial qualifier (/21/) so per-code tracking is preserved.
+  function buildScanUrl(shortId, gtin) {
+    if (gtin) {
+      return buildGS1DigitalLink(scanUrl, gtin, { serial: shortId })
+    }
+    return `${scanUrl}/s/${shortId}`
+  }
+
   useEffect(() => {
     loadData()
   }, [brand])
@@ -35,8 +45,8 @@ export default function QRCodes({ brand }) {
       return
     }
     const [qrRes, prodRes, scansRes] = await Promise.all([
-      supabase.from('qr_codes').select('*, products(name, sku)').eq('brand_id', brand.id).is('event_id', null).order('created_at', { ascending: false }),
-      supabase.from('products').select('id, name, sku').eq('brand_id', brand.id).order('name'),
+      supabase.from('qr_codes').select('*, products(name, sku, gtin)').eq('brand_id', brand.id).is('event_id', null).order('created_at', { ascending: false }),
+      supabase.from('products').select('id, name, sku, gtin').eq('brand_id', brand.id).order('name'),
       supabase.from('scans').select('qr_code_id').eq('brand_id', brand.id),
     ])
     // Count scans per QR code
@@ -171,7 +181,7 @@ export default function QRCodes({ brand }) {
   }
 
   const downloadPNG = (shortId, productName, qr) => {
-    const code = generateQRCode(`${scanUrl}/s/${shortId}`)
+    const code = generateQRCode(buildScanUrl(shortId, qr.products?.gtin))
     if (!code) return
     const matrix = code.modules
     const gridSize = matrix.length
@@ -244,7 +254,7 @@ export default function QRCodes({ brand }) {
   }
 
   const downloadSVG = (shortId, productName, qr) => {
-    const code = generateQRCode(`${scanUrl}/s/${shortId}`)
+    const code = generateQRCode(buildScanUrl(shortId, qr.products?.gtin))
     if (!code) return
     const matrix = code.modules
     const gridSize = matrix.length
@@ -365,7 +375,7 @@ export default function QRCodes({ brand }) {
                 display: 'flex', justifyContent: 'center', marginBottom: 16
               }}>
                 <BrandedQR
-                  url={`${scanUrl}/s/${qr.short_id}`}
+                  url={buildScanUrl(qr.short_id, qr.products?.gtin)}
                   fgColor={qr.fg_color}
                   bgColor={qr.bg_color}
                   logoSrc={qr.logo_url || null}
@@ -506,7 +516,7 @@ export default function QRCodes({ brand }) {
                       border: '1px solid var(--border)', minHeight: 280,
                     }}>
                       <BrandedQR
-                        url={`${scanUrl}/s/${editingQR?.short_id || 'preview'}`}
+                        url={editingQR ? buildScanUrl(editingQR.short_id, editingQR.products?.gtin) : `${scanUrl}/s/preview`}
                         fgColor={form.fgColor}
                         bgColor={form.bgColor}
                         logoSrc={previewLogo}

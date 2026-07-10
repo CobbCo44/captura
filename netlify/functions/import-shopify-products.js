@@ -112,11 +112,13 @@ export default async (req) => {
       images: (p.images || []).map(img => img.src),
       handle: p.handle,
       shopify_url: `https://${store}.myshopify.com/products/${p.handle}`,
+      barcode: (p.variants || []).find(v => v.barcode)?.barcode || null,
       variants: (p.variants || []).map(v => ({
         id: String(v.id),
         title: v.title,
         sku: v.sku,
         price: v.price,
+        barcode: v.barcode || null,
       })),
     }))
 

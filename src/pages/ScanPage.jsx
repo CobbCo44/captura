@@ -9,7 +9,11 @@ function getYouTubeId(url) {
 }
 
 export default function ScanPage() {
-  const { qrId } = useParams()
+  // Supports two URL shapes:
+  //   /s/:qrId             — legacy short_id lookup
+  //   /01/:gtin/21/:serial — GS1 Digital Link (serial = short_id for tracking)
+  //   /01/:gtin            — GS1 Digital Link without serial (no per-code tracking)
+  const { qrId, gtin, serial } = useParams()
   const [product, setProduct] = useState(null)
   const [qrCode, setQrCode] = useState(null)
   const [brand, setBrand] = useState(null)
@@ -31,9 +35,14 @@ export default function ScanPage() {
   const [eventSubmitted, setEventSubmitted] = useState(false)
   const scanLogged = useRef(false)
 
+  // Determine lookup mode: if we have a gtin param, it's a GS1 path.
+  // If we also have a serial, that's the short_id for per-code tracking.
+  const lookupShortId = qrId || serial || null
+  const lookupGtin = gtin ? gtin.replace(/\D/g, '').padStart(14, '0') : null
+
   useEffect(() => {
     loadQRCode()
-  }, [qrId])
+  }, [qrId, gtin, serial])
 
   async function loadQRCode() {
     if (!supabase) {
@@ -42,13 +51,55 @@ export default function ScanPage() {
       return
     }
 
-    const { data: qr, error } = await supabase
-      .from('qr_codes')
-      .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
-      .eq('short_id', qrId)
-      .single()
+    let qr = null
 
-    if (error || !qr) {
+    // Path 1: we have a short_id (either from /s/:qrId or from GS1 /21/:serial)
+    if (lookupShortId) {
+      const { data, error } = await supabase
+        .from('qr_codes')
+        .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
+        .eq('short_id', lookupShortId)
+        .single()
+      if (!error && data) qr = data
+    }
+
+    // Path 2: GS1 path with GTIN but no serial (or serial lookup failed).
+    // Look up the product by GTIN, then find any QR code for it.
+    if (!qr && lookupGtin) {
+      const { data: prod } = await supabase
+        .from('products')
+        .select('*')
+        .eq('gtin', lookupGtin)
+        .limit(1)
+        .single()
+
+      if (prod) {
+        // Try to find a QR code for this product so we get promo/event/brand data
+        const { data: qrData } = await supabase
+          .from('qr_codes')
+          .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
+          .eq('product_id', prod.id)
+          .limit(1)
+          .single()
+
+        if (qrData) {
+          qr = qrData
+        } else {
+          // Product exists but no QR code — show the product directly
+          const { data: brandData } = await supabase
+            .from('brands')
+            .select('name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website')
+            .eq('id', prod.brand_id)
+            .single()
+          setProduct(prod)
+          setBrand(brandData)
+          setLoading(false)
+          return
+        }
+      }
+    }
+
+    if (!qr) {
       setNotFound(true)
       setLoading(false)
       return

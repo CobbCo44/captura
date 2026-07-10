@@ -40,20 +40,34 @@ export default async (req) => {
       }
     }
 
+    // Format phone to E.164 (Shopify requires this)
+    let formattedPhone = undefined
+    if (customer.phone) {
+      let digits = customer.phone.replace(/\D/g, '')
+      if (digits.length === 10) digits = '1' + digits
+      if (digits.length === 11 && digits.startsWith('1')) {
+        formattedPhone = '+' + digits
+      } else if (digits.length > 0) {
+        formattedPhone = '+' + digits
+      }
+    }
+
     // Build customer data
     const customerData = {
       first_name: customer.firstName,
       last_name: customer.lastName,
       email: customer.email || undefined,
-      phone: customer.phone || undefined,
+      phone: formattedPhone,
       tags: customer.tags || 'captura',
       note: customer.note || 'Added via Captura QR scan',
       email_marketing_consent: customer.email ? {
         state: 'subscribed',
+        opt_in_level: 'single_opt_in',
         consent_updated_at: new Date().toISOString(),
       } : undefined,
-      sms_marketing_consent: customer.phone ? {
+      sms_marketing_consent: formattedPhone ? {
         state: 'subscribed',
+        opt_in_level: 'single_opt_in',
         consent_updated_at: new Date().toISOString(),
       } : undefined,
     }

@@ -29,12 +29,6 @@ export default function Landing() {
       }}>
         <div>
           <div style={{
-            display: 'inline-block', padding: '6px 14px', marginBottom: 20,
-            background: 'rgba(250, 204, 21, 0.08)', border: '1px solid rgba(250, 204, 21, 0.2)',
-            borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, color: '#FACC15',
-            letterSpacing: '1px',
-          }}>GS1 Sunrise 2027 Ready</div>
-          <div style={{
             fontSize: '0.75rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '3px',
             textTransform: 'uppercase', marginBottom: 20,
           }}>Consumer Intelligence Platform</div>
@@ -105,77 +99,6 @@ export default function Landing() {
               </div>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* GS1 Sunrise 2027 */}
-      <section style={{
-        padding: '100px 40px', maxWidth: 1200, margin: '0 auto',
-        borderTop: '1px solid #1C1C21',
-      }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
-          <div>
-            <div style={{ fontSize: '0.75rem', color: '#FACC15', fontWeight: 600, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 16 }}>
-              GS1 Sunrise 2027
-            </div>
-            <h2 style={{ fontSize: '2.2rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-1px', color: '#FAFAFA', marginBottom: 24 }}>
-              Every product in America is about to get a QR code. Make yours do more than scan at checkout.
-            </h2>
-            <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8, marginBottom: 16 }}>
-              GS1 Sunrise 2027 is the industry mandate requiring retailers to accept 2D barcodes at point of sale. Walmart, Kroger, Target, and others are already enforcing it. By the end of 2027, the traditional UPC barcode gets replaced by a QR code on every product you sell.
-            </p>
-            <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8, marginBottom: 16 }}>
-              That means you are putting a QR code on your packaging whether you planned to or not. The only question is whether that code just handles checkout, or whether it also captures consumer data, drives engagement, and builds your first-party database.
-            </p>
-            <p style={{ color: '#A1A1AA', fontSize: '1rem', lineHeight: 1.8, fontWeight: 500 }}>
-              Captura turns a compliance requirement into a growth channel. One code. Checkout and consumer intelligence.
-            </p>
-          </div>
-
-          {/* GS1 timeline visual */}
-          <div style={{
-            background: '#131316', border: '1px solid #27272A', borderRadius: 16,
-            padding: '36px',
-          }}>
-            <div style={{ fontSize: '0.7rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 28 }}>
-              The transition is already happening
-            </div>
-
-            {[
-              { year: '2024', event: 'Major retailers begin accepting 2D barcodes at checkout', status: 'done' },
-              { year: '2025', event: 'Walmart, Kroger require GS1 Digital Link codes on select categories', status: 'done' },
-              { year: '2026', event: 'Expanded category requirements. Brands retrofitting packaging', status: 'active' },
-              { year: '2027', event: 'Full mandate. All US retail checkout systems must read 2D barcodes', status: 'upcoming' },
-            ].map((item, i) => (
-              <div key={i} style={{
-                display: 'flex', gap: 16, alignItems: 'flex-start',
-                padding: '16px 0',
-                borderBottom: i < 3 ? '1px solid #1C1C21' : 'none',
-              }}>
-                <div style={{
-                  width: 10, height: 10, borderRadius: '50%', marginTop: 5, flexShrink: 0,
-                  background: item.status === 'done' ? '#22C55E'
-                    : item.status === 'active' ? '#FACC15'
-                    : '#3F3F46',
-                  boxShadow: item.status === 'active' ? '0 0 8px rgba(250, 204, 21, 0.4)' : 'none',
-                }} />
-                <div>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: item.status === 'active' ? '#FACC15' : '#FAFAFA', marginBottom: 2 }}>{item.year}</div>
-                  <div style={{ fontSize: '0.8rem', color: '#52525B', lineHeight: 1.5 }}>{item.event}</div>
-                </div>
-              </div>
-            ))}
-
-            <div style={{
-              marginTop: 24, padding: '16px', borderRadius: 8,
-              background: 'rgba(250, 204, 21, 0.06)', border: '1px solid rgba(250, 204, 21, 0.15)',
-            }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#FACC15', marginBottom: 4 }}>One code, two jobs</div>
-              <div style={{ fontSize: '0.75rem', color: '#71717A', lineHeight: 1.5 }}>
-                Your GS1 Digital Link QR handles checkout compliance and routes consumers to your Captura experience. No second code needed.
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -276,7 +199,7 @@ export default function Landing() {
             {
               num: '02',
               title: 'Deploy',
-              desc: 'Your GS1 Digital Link QR code goes on packaging, hang tags, or inserts. It handles checkout compliance and links consumers to your branded product experience. One code, no app required.',
+              desc: 'Print QR codes directly on packaging, hang tags, stickers, or inserts. The code links to your branded product page. No app required for the consumer.',
             },
             {
               num: '03',
@@ -600,13 +523,13 @@ export default function Landing() {
             The compounding effect
           </div>
           <h2 style={{ fontSize: '2.5rem', fontWeight: 800, lineHeight: 1.15, letterSpacing: '-1px', color: '#FAFAFA', marginBottom: 28 }}>
-            The QR code is mandatory. The consumer relationship is your advantage.
+            Demographic data tells you the market. Consumer data lets you own it.
           </h2>
           <p style={{ color: '#52525B', fontSize: '1.05rem', lineHeight: 1.8, marginBottom: 20 }}>
-            GS1 Sunrise means every product gets a QR code for checkout. That is the floor. Captura makes that same code capture consumer identity, location, and engagement data. Every unit you ship builds a first-party database that compounds over time.
+            You already spend on retail data, market research, and ad platforms to understand your buyer. That gives you insight. What it does not give you is a contact list. Every product you sell with a Captura QR code turns insight into a named, reachable person. That database compounds with every unit shipped.
           </p>
           <p style={{ color: '#52525B', fontSize: '1.05rem', lineHeight: 1.8 }}>
-            Brands that treat the GS1 mandate as just a compliance checkbox will get compliant. Brands that use it to build direct consumer relationships will pull ahead.
+            Brands that layer individual consumer data on top of their existing market intelligence will outpace competitors still relying on third-party reports and retailer POS summaries.
           </p>
         </div>
       </section>

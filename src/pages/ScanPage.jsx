@@ -508,7 +508,7 @@ export default function ScanPage() {
       <div style={{ padding: '0 20px' }}>
         {!isPromoOnly && product?.description && (
           <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
-            <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.95rem' }}>
+            <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.95rem', whiteSpace: 'pre-line' }}>
               {product.description}
             </p>
           </div>

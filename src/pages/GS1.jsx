@@ -90,6 +90,189 @@ function HeroQR() {
   )
 }
 
+/* "The standard" visual — 1D barcode → 2D GS1 Digital Link transition */
+function TransitionVisual() {
+  const mono = { fontFamily: MONO, letterSpacing: '0.5px' }
+  return (
+    <div style={{
+      background: `linear-gradient(180deg, ${C.cardHighlight} 0%, ${C.cardBg} 100%)`,
+      border: `1px solid ${C.border}`, borderTop: '1px solid #252A33',
+      borderRadius: 10, padding: '32px 28px', position: 'relative', overflow: 'hidden',
+    }}>
+      {/* Faint grid */}
+      <div style={{
+        position: 'absolute', inset: 0, opacity: 0.025, pointerEvents: 'none',
+        backgroundImage: `linear-gradient(${C.heading} 1px, transparent 1px), linear-gradient(90deg, ${C.heading} 1px, transparent 1px)`,
+        backgroundSize: '20px 20px',
+      }}/>
+      <div style={{ position: 'relative' }}>
+        {/* 1D barcode */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ ...mono, fontSize: '0.62rem', color: C.caption, textTransform: 'uppercase', marginBottom: 10, opacity: 0.7 }}>1D UPC barcode</div>
+          <div style={{
+            background: C.bg1, border: `1px solid ${C.border}`, borderRadius: 6,
+            padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16,
+          }}>
+            <svg width="100" height="44" viewBox="0 0 100 44">
+              {[0,4,7,10,12,16,18,21,24,27,30,33,36,38,41,44,46,49,52,55,58,60,63,66,69,72,75,78,80,83,86,89,92,95].map((x,i) => (
+                <rect key={i} x={x} y="0" width={i%3===0?3:1.5} height="36" fill={C.caption} opacity={0.5}/>
+              ))}
+              <text x="50" y="43" textAnchor="middle" fill={C.caption} fontSize="7" {...mono}>0 49000 04325 7</text>
+            </svg>
+            <div>
+              <div style={{ ...mono, fontSize: '0.65rem', color: C.caption, opacity: 0.6, lineHeight: 1.4 }}>PRODUCT ID ONLY</div>
+              <div style={{ ...mono, fontSize: '0.65rem', color: C.caption, opacity: 0.4, lineHeight: 1.4 }}>NO LINK CAPABILITY</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Arrow */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 28 }}>
+          <div style={{ width: 1, height: 0, borderLeft: `1px dashed ${C.accent}`, opacity: 0.4 }}/>
+          <svg width="24" height="24" viewBox="0 0 24 24" style={{ display: 'block' }}>
+            <path d="M12 4 L12 18 M7 14 L12 19 L17 14" stroke={C.accent} strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+
+        {/* 2D GS1 Digital Link */}
+        <div>
+          <div style={{ ...mono, fontSize: '0.62rem', color: C.accent, textTransform: 'uppercase', marginBottom: 10, opacity: 0.8 }}>GS1 Digital Link</div>
+          <div style={{
+            background: C.bg1, border: `1px solid ${C.accent}20`, borderRadius: 6,
+            padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16,
+          }}>
+            <svg width="56" height="56" viewBox="0 0 56 56">
+              {/* QR finder patterns */}
+              {[[2,2],[38,2],[2,38]].map(([x,y],i) => (
+                <g key={i}>
+                  <rect x={x} y={y} width={16} height={16} rx={1.5} fill="none" stroke={C.accent} strokeWidth="1.5" opacity="0.8"/>
+                  <rect x={x+4} y={y+4} width={8} height={8} rx={1} fill={C.accent} opacity="0.6"/>
+                </g>
+              ))}
+              {/* Data dots */}
+              {[[22,4],[26,4],[30,4],[34,4],[22,8],[30,8],[22,12],[26,12],[34,12],
+                [4,22],[8,22],[12,22],[4,26],[12,26],[4,30],[8,30],[12,30],
+                [22,22],[26,22],[30,22],[38,22],[42,22],[46,22],[50,22],
+                [22,26],[34,26],[42,26],[50,26],
+                [22,30],[26,30],[30,30],[42,30],[46,30],[50,30],
+                [38,38],[42,38],[46,38],[50,38],
+                [38,42],[50,42],[38,46],[42,46],[50,46],
+                [38,50],[46,50],[50,50],
+                [22,38],[30,38],[22,42],[26,42],[22,46],[30,46],[26,50],[30,50],
+              ].map(([x,y],i) => (
+                <rect key={i} x={x} y={y} width={3} height={3} rx={0.5} fill={C.accent} opacity={0.5}/>
+              ))}
+            </svg>
+            <div>
+              <div style={{ ...mono, fontSize: '0.65rem', color: C.accent, opacity: 0.8, lineHeight: 1.4 }}>GTIN + LINK IN ONE CODE</div>
+              <div style={{ ...mono, fontSize: '0.65rem', color: C.caption, opacity: 0.6, lineHeight: 1.4, marginTop: 2 }}>CHECKOUT + CONSUMER</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* "The opportunity" visual — scan outcome comparison */
+function OutcomeVisual() {
+  const mono = { fontFamily: MONO, letterSpacing: '0.5px' }
+  return (
+    <div style={{
+      background: `linear-gradient(180deg, ${C.cardHighlight} 0%, ${C.cardBg} 100%)`,
+      border: `1px solid ${C.border}`, borderTop: '1px solid #252A33',
+      borderRadius: 10, padding: '32px 28px', position: 'relative', overflow: 'hidden',
+    }}>
+      {/* Faint grid */}
+      <div style={{
+        position: 'absolute', inset: 0, opacity: 0.025, pointerEvents: 'none',
+        backgroundImage: `linear-gradient(${C.heading} 1px, transparent 1px), linear-gradient(90deg, ${C.heading} 1px, transparent 1px)`,
+        backgroundSize: '20px 20px',
+      }}/>
+      <div style={{ position: 'relative' }}>
+        {/* Without Captura */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ ...mono, fontSize: '0.62rem', color: C.caption, textTransform: 'uppercase', marginBottom: 10, opacity: 0.7 }}>Without Captura</div>
+          <div style={{
+            background: C.bg1, border: `1px solid ${C.border}`, borderRadius: 6, padding: '14px 18px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {/* Phone icon */}
+              <svg width="28" height="28" viewBox="0 0 28 28" style={{ flexShrink: 0 }}>
+                <rect x="6" y="2" width="16" height="24" rx="3" fill="none" stroke={C.caption} strokeWidth="1" opacity="0.4"/>
+                <line x1="11" y1="22" x2="17" y2="22" stroke={C.caption} strokeWidth="0.75" opacity="0.3"/>
+              </svg>
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  background: C.border, borderRadius: 3, padding: '8px 12px',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.caption, opacity: 0.3 }}/>
+                  <div style={{ ...mono, fontSize: '0.6rem', color: C.caption, opacity: 0.5 }}>brand.com</div>
+                </div>
+              </div>
+              <svg width="20" height="20" viewBox="0 0 20 20" style={{ flexShrink: 0 }}>
+                <path d="M6 10 L14 10" stroke={C.caption} strokeWidth="1" opacity="0.3"/>
+                <path d="M11 7 L14 10 L11 13" stroke={C.caption} strokeWidth="1" fill="none" opacity="0.3"/>
+              </svg>
+              <div style={{ ...mono, fontSize: '0.6rem', color: C.caption, opacity: 0.4 }}>DEAD END</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+          <div style={{ flex: 1, height: 1, background: C.border }}/>
+          <div style={{ ...mono, fontSize: '0.58rem', color: C.caption, opacity: 0.4 }}>VS</div>
+          <div style={{ flex: 1, height: 1, background: C.border }}/>
+        </div>
+
+        {/* With Captura */}
+        <div>
+          <div style={{ ...mono, fontSize: '0.62rem', color: C.accent, textTransform: 'uppercase', marginBottom: 10, opacity: 0.8 }}>With Captura</div>
+          <div style={{
+            background: C.bg1, border: `1px solid ${C.accent}20`, borderRadius: 6, padding: '14px 18px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+              <svg width="28" height="28" viewBox="0 0 28 28" style={{ flexShrink: 0 }}>
+                <rect x="6" y="2" width="16" height="24" rx="3" fill="none" stroke={C.accent} strokeWidth="1" opacity="0.6"/>
+                <line x1="11" y1="22" x2="17" y2="22" stroke={C.accent} strokeWidth="0.75" opacity="0.4"/>
+              </svg>
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  background: `${C.accent}10`, border: `1px solid ${C.accent}18`,
+                  borderRadius: 3, padding: '8px 12px',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.accent, opacity: 0.6 }}/>
+                  <div style={{ ...mono, fontSize: '0.6rem', color: C.accent, opacity: 0.7 }}>Branded experience</div>
+                </div>
+              </div>
+            </div>
+            {/* Data captured rows */}
+            {[
+              { label: 'IDENTITY', value: 'Name, email, phone' },
+              { label: 'LOCATION', value: 'City-level geo' },
+              { label: 'PRODUCT', value: 'Exact GTIN scanned' },
+            ].map((row, i) => (
+              <div key={i} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '6px 0',
+                borderTop: i === 0 ? `1px solid ${C.border}` : 'none',
+                borderBottom: `1px solid ${C.border}`,
+              }}>
+                <span style={{ ...mono, fontSize: '0.58rem', color: C.caption, opacity: 0.6 }}>{row.label}</span>
+                <span style={{ ...mono, fontSize: '0.6rem', color: C.body, opacity: 0.8 }}>{row.value}</span>
+              </div>
+            ))}
+            <div style={{ ...mono, fontSize: '0.58rem', color: C.accent, opacity: 0.6, marginTop: 8, textAlign: 'right' }}>OWNED RELATIONSHIP &rarr;</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* Spec-sheet wiring diagram for "One code, two jobs" */
 function TwoJobsDiagram() {
   const mono = { fontFamily: MONO, letterSpacing: '0.5px' }
@@ -232,40 +415,48 @@ export default function GS1() {
 
       {/* Section 2: What Sunrise 2027 is */}
       <FadeSection style={{ ...SEC, ...RULE }} className="gs1-section">
-        <div style={{ maxWidth: '62ch' }}>
-          <Eyebrow>The standard</Eyebrow>
-          <h2 style={{
-            fontFamily: DISPLAY, fontSize: '1.9rem', fontWeight: 700, lineHeight: 1.08,
-            letterSpacing: '-0.02em', color: C.heading, marginBottom: 18,
-          }}>
-            What is GS1 Sunrise 2027?
-          </h2>
-          <p style={{ fontFamily: BODY, color: C.body, fontSize: '1.06rem', lineHeight: 1.6, marginBottom: 16 }}>
-            Retail is moving from the old striped UPC barcode to a single 2D smart code called a GS1 Digital Link. By the end of 2027, retail point-of-sale systems must be able to read it, and major retailers like Walmart, Kroger, and Target are already preparing. The standard lets one code carry two things at once: the GTIN a checkout scanner reads to ring up the sale, and a link a shopper's phone can open.
-          </p>
-          <p style={{
-            fontFamily: MONO, color: C.caption, fontSize: '0.72rem', lineHeight: 1.55,
-            marginTop: 18, paddingTop: 14, borderTop: `1px solid ${C.border}`,
-            letterSpacing: '0.2px',
-          }}>
-            Source: GS1 US, Sunrise 2027. GS1 Sunrise 2027 is an industry initiative, not a government mandate; 1D barcodes keep working through the transition.
-          </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 56, alignItems: 'center' }} className="gs1-twocol">
+          <div style={{ maxWidth: '62ch' }}>
+            <Eyebrow>The standard</Eyebrow>
+            <h2 style={{
+              fontFamily: DISPLAY, fontSize: '1.9rem', fontWeight: 700, lineHeight: 1.08,
+              letterSpacing: '-0.02em', color: C.heading, marginBottom: 18,
+            }}>
+              What is GS1 Sunrise 2027?
+            </h2>
+            <p style={{ fontFamily: BODY, color: C.body, fontSize: '1.06rem', lineHeight: 1.6, marginBottom: 16 }}>
+              Retail is moving from the old striped UPC barcode to a single 2D smart code called a GS1 Digital Link. By the end of 2027, retail point-of-sale systems must be able to read it, and major retailers like Walmart, Kroger, and Target are already preparing. The standard lets one code carry two things at once: the GTIN a checkout scanner reads to ring up the sale, and a link a shopper's phone can open.
+            </p>
+            <p style={{
+              fontFamily: MONO, color: C.caption, fontSize: '0.72rem', lineHeight: 1.55,
+              marginTop: 18, paddingTop: 14, borderTop: `1px solid ${C.border}`,
+              letterSpacing: '0.2px',
+            }}>
+              Source: GS1 US, Sunrise 2027. GS1 Sunrise 2027 is an industry initiative, not a government mandate; 1D barcodes keep working through the transition.
+            </p>
+          </div>
+          {/* Barcode transition visual */}
+          <TransitionVisual />
         </div>
       </FadeSection>
 
       {/* Section 3: Why it matters */}
       <FadeSection style={{ ...SEC, ...RULE }} className="gs1-section">
-        <div style={{ maxWidth: '62ch' }}>
-          <Eyebrow>The opportunity</Eyebrow>
-          <h2 style={{
-            fontFamily: DISPLAY, fontSize: '1.9rem', fontWeight: 700, lineHeight: 1.08,
-            letterSpacing: '-0.02em', color: C.heading, marginBottom: 18,
-          }}>
-            Why it matters
-          </h2>
-          <p style={{ fontFamily: BODY, color: C.body, fontSize: '1.06rem', lineHeight: 1.6 }}>
-            This is a tailwind, not a threat. A smart code is going on your packaging regardless, the standard is arriving with or without you. The only open question is what happens when a customer scans it. For most brands, that scan leads to a dead-end homepage. With Captura, it becomes an owned, consented customer relationship, tied to the exact product that was scanned.
-          </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 56, alignItems: 'center' }} className="gs1-twocol">
+          <div style={{ maxWidth: '62ch' }}>
+            <Eyebrow>The opportunity</Eyebrow>
+            <h2 style={{
+              fontFamily: DISPLAY, fontSize: '1.9rem', fontWeight: 700, lineHeight: 1.08,
+              letterSpacing: '-0.02em', color: C.heading, marginBottom: 18,
+            }}>
+              Why it matters
+            </h2>
+            <p style={{ fontFamily: BODY, color: C.body, fontSize: '1.06rem', lineHeight: 1.6 }}>
+              This is a tailwind, not a threat. A smart code is going on your packaging regardless, the standard is arriving with or without you. The only open question is what happens when a customer scans it. For most brands, that scan leads to a dead-end homepage. With Captura, it becomes an owned, consented customer relationship, tied to the exact product that was scanned.
+            </p>
+          </div>
+          {/* Scan outcome visual */}
+          <OutcomeVisual />
         </div>
       </FadeSection>
 

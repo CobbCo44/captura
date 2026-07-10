@@ -573,17 +573,17 @@ export default function Products({ brand }) {
                   </div>
 
                   {filteredShopifyProducts.map(sp => (
-                    <div key={sp.shopify_id} style={{
+                    <label key={sp.shopify_id} style={{
                       padding: '12px 24px', borderBottom: '1px solid var(--border)',
                       display: 'flex', alignItems: 'center', gap: 14,
                       opacity: sp.alreadyImported ? 0.4 : 1,
                       cursor: sp.alreadyImported ? 'default' : 'pointer',
-                    }} onClick={() => !sp.alreadyImported && toggleProduct(sp.shopify_id)}>
+                    }}>
                       <input type="checkbox"
                         checked={sp.alreadyImported || selectedIds.has(sp.shopify_id)}
                         disabled={sp.alreadyImported}
                         onChange={() => !sp.alreadyImported && toggleProduct(sp.shopify_id)}
-                        style={{ width: 18, height: 18, cursor: sp.alreadyImported ? 'default' : 'pointer' }} />
+                        style={{ width: 18, height: 18, cursor: sp.alreadyImported ? 'default' : 'pointer', flexShrink: 0 }} />
                       {sp.image_url ? (
                         <img src={sp.image_url} alt={sp.name}
                           style={{ width: 44, height: 44, borderRadius: 6, objectFit: 'cover' }} />
@@ -605,7 +605,7 @@ export default function Products({ brand }) {
                           {sp.alreadyImported && ' · Already imported'}
                         </div>
                       </div>
-                    </div>
+                    </label>
                   ))}
                 </>
               )}

@@ -52,14 +52,27 @@ export default async (req) => {
       }
     }
 
+    // Build tags with product name included
+    let tags = customer.tags || 'captura'
+    if (customer.product) {
+      const productTag = customer.product.replace(/[,]/g, '').trim()
+      tags += `, ${productTag}`
+    }
+
+    // Build note with full details
+    const noteLines = [customer.note || 'Added via Captura QR scan']
+    if (customer.product) noteLines.push(`Product: ${customer.product}`)
+    if (customer.city) noteLines.push(`City: ${customer.city}`)
+    noteLines.push(`Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`)
+
     // Build customer data
     const customerData = {
       first_name: customer.firstName,
       last_name: customer.lastName,
       email: customer.email || undefined,
       phone: formattedPhone,
-      tags: customer.tags || 'captura',
-      note: customer.note || 'Added via Captura QR scan',
+      tags,
+      note: noteLines.join('\n'),
       email_marketing_consent: customer.email ? {
         state: 'subscribed',
         opt_in_level: 'single_opt_in',
@@ -70,7 +83,28 @@ export default async (req) => {
         opt_in_level: 'single_opt_in',
         consent_updated_at: new Date().toISOString(),
       } : undefined,
+      metafields: [
+        customer.product && {
+          key: 'product_scanned',
+          value: customer.product,
+          type: 'single_line_text_field',
+          namespace: 'captura',
+        },
+        customer.source && {
+          key: 'source',
+          value: customer.source,
+          type: 'single_line_text_field',
+          namespace: 'captura',
+        },
+        customer.city && {
+          key: 'city',
+          value: customer.city,
+          type: 'single_line_text_field',
+          namespace: 'captura',
+        },
+      ].filter(Boolean),
     }
+    if (customerData.metafields.length === 0) delete customerData.metafields
 
     let response
     if (existingCustomerId) {

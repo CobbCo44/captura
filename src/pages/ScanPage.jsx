@@ -180,7 +180,10 @@ export default function ScanPage() {
         email: vipForm.email,
         phone: vipForm.phone,
         tags: 'captura, vip',
-        note: `VIP signup via Captura QR scan - ${product?.name || 'Unknown product'}`,
+        note: `VIP signup via Captura QR scan`,
+        product: product?.name || null,
+        source: 'VIP Signup',
+        city: location?.city ? `${location.city}, ${location.region}` : null,
       })
     }
     setVipSubmitted(true)
@@ -206,7 +209,10 @@ export default function ScanPage() {
         email: promoForm.email,
         phone: promoForm.phone,
         tags: 'captura, promo',
-        note: `Promo entry via Captura - ${activePromo.title} - ${product?.name || 'Event QR'}`,
+        note: `Promo entry via Captura - ${activePromo.title}`,
+        product: product?.name || null,
+        source: 'Promo Entry',
+        city: location?.city ? `${location.city}, ${location.region}` : null,
       })
     }
     setPromoEntered(true)
@@ -234,7 +240,10 @@ export default function ScanPage() {
         email: warrantyForm.email,
         phone: warrantyForm.phone,
         tags: 'captura, warranty',
-        note: `Warranty registration via Captura - ${product?.name || 'Unknown product'}`,
+        note: `Warranty registration via Captura`,
+        product: product?.name || null,
+        source: 'Warranty Registration',
+        city: location?.city ? `${location.city}, ${location.region}` : null,
       })
     }
     setWarrantyRegistered(true)
@@ -260,6 +269,9 @@ export default function ScanPage() {
         phone: eventForm.phone,
         tags: 'captura, event',
         note: `Event signup via Captura - ${event.name}${event.giveaway ? ` - Giveaway: ${event.giveaway}` : ''}`,
+        product: null,
+        source: 'Event Signup',
+        city: location?.city ? `${location.city}, ${location.region}` : null,
       })
     }
     setEventSubmitted(true)

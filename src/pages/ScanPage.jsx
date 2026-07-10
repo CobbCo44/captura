@@ -138,9 +138,12 @@ export default function ScanPage() {
   }
 
   async function syncToShopify(customerData) {
-    if (!brand?.shopify_store || !brand?.shopify_token) return
+    if (!brand?.shopify_store || !brand?.shopify_token) {
+      console.log('Shopify sync skipped - no store/token', { store: brand?.shopify_store, hasToken: !!brand?.shopify_token })
+      return
+    }
     try {
-      await fetch('/.netlify/functions/sync-shopify-customer', {
+      const res = await fetch('/.netlify/functions/sync-shopify-customer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -149,8 +152,10 @@ export default function ScanPage() {
           customer: customerData,
         }),
       })
+      const data = await res.json()
+      console.log('Shopify sync result:', res.status, data)
     } catch (err) {
-      // Shopify sync is best-effort, don't block the consumer experience
+      console.error('Shopify sync error:', err)
     }
   }
 

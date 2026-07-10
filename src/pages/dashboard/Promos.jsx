@@ -8,7 +8,8 @@ export default function Promos({ brand }) {
   const [editingPromo, setEditingPromo] = useState(null)
   const [viewingEntries, setViewingEntries] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ title: '', description: '', prize: '' })
+  const [form, setForm] = useState({ title: '', description: '', prize: '', image: null, existingImage: '' })
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     loadPromos()
@@ -41,23 +42,44 @@ export default function Promos({ brand }) {
 
   const openCreate = () => {
     setEditingPromo(null)
-    setForm({ title: '', description: '', prize: '' })
+    setForm({ title: '', description: '', prize: '', image: null, existingImage: '' })
     setShowModal(true)
   }
 
   const openEdit = (p) => {
     setEditingPromo(p)
-    setForm({ title: p.title, description: p.description || '', prize: p.prize || '' })
+    setForm({ title: p.title, description: p.description || '', prize: p.prize || '', image: null, existingImage: p.image_url || '' })
     setShowModal(true)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!supabase || !brand?.id) return
+    setUploading(true)
+
+    let imageUrl = form.existingImage || null
+
+    // Upload new image if selected
+    if (form.image && supabase && brand?.id && brand.id !== 'demo') {
+      const fileExt = form.image.name.split('.').pop()
+      const fileName = `${brand.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(fileName, form.image)
+
+      if (uploadError) {
+        console.error('Image upload error:', uploadError)
+      } else {
+        const { data: urlData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(fileName)
+        imageUrl = urlData.publicUrl
+      }
+    }
 
     if (editingPromo) {
       const { data, error } = await supabase.from('promos')
-        .update({ title: form.title, description: form.description, prize: form.prize })
+        .update({ title: form.title, description: form.description, prize: form.prize, image_url: imageUrl })
         .eq('id', editingPromo.id)
         .select().single()
       if (!error && data) {
@@ -69,6 +91,7 @@ export default function Promos({ brand }) {
         title: form.title,
         description: form.description,
         prize: form.prize,
+        image_url: imageUrl,
         active: false,
       }).select().single()
       if (error) {
@@ -77,6 +100,7 @@ export default function Promos({ brand }) {
         setPromos([data, ...promos])
       }
     }
+    setUploading(false)
     setShowModal(false)
     setEditingPromo(null)
   }
@@ -252,11 +276,35 @@ export default function Promos({ brand }) {
                 <input className="input" placeholder="e.g. Free pair of 44 Pro gloves" value={form.prize}
                   onChange={e => setForm({ ...form, prize: e.target.value })} />
               </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                  Background Image (optional)
+                </label>
+                <input type="file" accept="image/*"
+                  onChange={e => {
+                    const file = e.target.files?.[0] || null
+                    setForm({ ...form, image: file, existingImage: file ? '' : form.existingImage })
+                  }}
+                  style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }} />
+                {(form.image || form.existingImage) && (
+                  <div style={{ marginTop: 10 }}>
+                    <img
+                      src={form.image ? URL.createObjectURL(form.image) : form.existingImage}
+                      alt="Preview"
+                      style={{ height: 120, borderRadius: 8, objectFit: 'cover', display: 'block' }}
+                    />
+                    <button type="button" onClick={() => setForm({ ...form, image: null, existingImage: '' })}
+                      style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.8rem', cursor: 'pointer', marginTop: 6, padding: 0 }}>
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
               <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
                 <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
                   onClick={() => { setShowModal(false); setEditingPromo(null) }}>Cancel</button>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                  {editingPromo ? 'Save Changes' : 'Create Promo'}
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={uploading}>
+                  {uploading ? 'Saving...' : editingPromo ? 'Save Changes' : 'Create Promo'}
                 </button>
               </div>
             </form>

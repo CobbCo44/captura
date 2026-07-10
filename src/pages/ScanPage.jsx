@@ -360,13 +360,20 @@ export default function ScanPage() {
           {event.giveaway && (
             <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border)' }}>
               <div style={{
-                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(245, 158, 11, 0.1))',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: 'var(--radius)', padding: '24px 20px', textAlign: 'center',
+                ...(event.image_url
+                  ? { backgroundImage: `url(${event.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                  : { background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(245, 158, 11, 0.1))' }),
+                border: event.image_url ? 'none' : '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 'var(--radius)', overflow: 'hidden',
               }}>
-                <div style={{ fontSize: '1.3rem', marginBottom: 6 }}>🎁</div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 6 }}>Giveaway</h3>
-                <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#FAFAFA' }}>{event.giveaway}</p>
+                <div style={{
+                  padding: '24px 20px', textAlign: 'center',
+                  ...(event.image_url ? { background: 'rgba(0,0,0,0.55)' } : {}),
+                }}>
+                  <div style={{ fontSize: '1.3rem', marginBottom: 6 }}>🎁</div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 6 }}>Giveaway</h3>
+                  <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#FAFAFA' }}>{event.giveaway}</p>
+                </div>
               </div>
             </div>
           )}
@@ -652,28 +659,36 @@ export default function ScanPage() {
           <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border)' }}>
             {!showPromoEntry && !promoEntered && (
               <div style={{
-                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(245, 158, 11, 0.1))',
-                border: '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: 'var(--radius)', padding: '28px 20px', textAlign: 'center'
+                background: activePromo.image_url ? 'none' : 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(245, 158, 11, 0.1))',
+                backgroundImage: activePromo.image_url ? `url(${activePromo.image_url})` : undefined,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                border: activePromo.image_url ? 'none' : '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: 'var(--radius)', overflow: 'hidden',
               }}>
-                <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>🎉</div>
-                <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: 8 }}>
-                  {activePromo.title}
-                </h3>
-                {activePromo.description && (
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 8, lineHeight: 1.5 }}>
-                    {activePromo.description}
-                  </p>
-                )}
-                {activePromo.prize && (
-                  <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#FAFAFA', marginBottom: 20 }}>
-                    Prize: {activePromo.prize}
-                  </p>
-                )}
-                <button className="btn btn-primary" style={{ padding: '14px 32px' }}
-                  onClick={() => setShowPromoEntry(true)}>
-                  Enter to Win
-                </button>
+                <div style={{
+                  background: activePromo.image_url ? 'rgba(0,0,0,0.55)' : 'transparent',
+                  borderRadius: 'var(--radius)', padding: '28px 20px', textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>🎉</div>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: 8, color: '#FAFAFA' }}>
+                    {activePromo.title}
+                  </h3>
+                  {activePromo.description && (
+                    <p style={{ color: activePromo.image_url ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 8, lineHeight: 1.5 }}>
+                      {activePromo.description}
+                    </p>
+                  )}
+                  {activePromo.prize && (
+                    <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#FAFAFA', marginBottom: 20 }}>
+                      Prize: {activePromo.prize}
+                    </p>
+                  )}
+                  <button className="btn btn-primary" style={{ padding: '14px 32px' }}
+                    onClick={() => setShowPromoEntry(true)}>
+                    Enter to Win
+                  </button>
+                </div>
               </div>
             )}
 

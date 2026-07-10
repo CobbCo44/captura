@@ -26,7 +26,8 @@ export default function Events({ brand }) {
     ctaText: '',
   })
 
-  const [form, setForm] = useState({ name: '', description: '', giveaway: '' })
+  const [form, setForm] = useState({ name: '', description: '', giveaway: '', image: null, existingImage: '' })
+  const [uploading, setUploading] = useState(false)
 
   const scanUrl = 'https://meetcaptura.com'
 
@@ -74,23 +75,43 @@ export default function Events({ brand }) {
   // Event CRUD
   const openCreate = () => {
     setEditingEvent(null)
-    setForm({ name: '', description: '', giveaway: '' })
+    setForm({ name: '', description: '', giveaway: '', image: null, existingImage: '' })
     setShowModal(true)
   }
 
   const openEdit = (ev) => {
     setEditingEvent(ev)
-    setForm({ name: ev.name, description: ev.description || '', giveaway: ev.giveaway || '' })
+    setForm({ name: ev.name, description: ev.description || '', giveaway: ev.giveaway || '', image: null, existingImage: ev.image_url || '' })
     setShowModal(true)
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!supabase || !brand?.id) return
+    setUploading(true)
+
+    let imageUrl = form.existingImage || null
+
+    if (form.image && supabase && brand?.id && brand.id !== 'demo') {
+      const fileExt = form.image.name.split('.').pop()
+      const fileName = `${brand.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(fileName, form.image)
+
+      if (uploadError) {
+        console.error('Image upload error:', uploadError)
+      } else {
+        const { data: urlData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(fileName)
+        imageUrl = urlData.publicUrl
+      }
+    }
 
     if (editingEvent) {
       const { data, error } = await supabase.from('events')
-        .update({ name: form.name, description: form.description, giveaway: form.giveaway })
+        .update({ name: form.name, description: form.description, giveaway: form.giveaway, image_url: imageUrl })
         .eq('id', editingEvent.id)
         .select('*, qr_codes(*)').single()
       if (!error && data) {
@@ -102,6 +123,7 @@ export default function Events({ brand }) {
         name: form.name,
         description: form.description,
         giveaway: form.giveaway,
+        image_url: imageUrl,
       }).select('*, qr_codes(*)').single()
       if (error) {
         alert(`Error: ${error.message}`)
@@ -109,6 +131,7 @@ export default function Events({ brand }) {
         setEvents([{ ...data, total_scans: 0 }, ...events])
       }
     }
+    setUploading(false)
     setShowModal(false)
     setEditingEvent(null)
   }
@@ -421,11 +444,35 @@ export default function Events({ brand }) {
                   What are you giving away at this event? This shows on the scan page.
                 </p>
               </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                  Background Image (optional)
+                </label>
+                <input type="file" accept="image/*"
+                  onChange={e => {
+                    const file = e.target.files?.[0] || null
+                    setForm({ ...form, image: file, existingImage: file ? '' : form.existingImage })
+                  }}
+                  style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }} />
+                {(form.image || form.existingImage) && (
+                  <div style={{ marginTop: 10 }}>
+                    <img
+                      src={form.image ? URL.createObjectURL(form.image) : form.existingImage}
+                      alt="Preview"
+                      style={{ height: 120, borderRadius: 8, objectFit: 'cover', display: 'block' }}
+                    />
+                    <button type="button" onClick={() => setForm({ ...form, image: null, existingImage: '' })}
+                      style={{ fontSize: '0.75rem', color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 6 }}>
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
               <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
                 <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
                   onClick={() => { setShowModal(false); setEditingEvent(null) }}>Cancel</button>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-                  {editingEvent ? 'Save Changes' : 'Create Event'}
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={uploading}>
+                  {uploading ? 'Saving...' : editingEvent ? 'Save Changes' : 'Create Event'}
                 </button>
               </div>
             </form>

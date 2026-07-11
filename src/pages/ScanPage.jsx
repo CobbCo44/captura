@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { getKit } from '../lib/kits'
+import { buildTokens } from '../lib/tokens'
+import { resolvePrimary } from '../lib/resolvePrimary'
 
 function getYouTubeId(url) {
   if (!url) return null
@@ -34,6 +36,8 @@ export default function ScanPage({ previewData } = {}) {
   const [event, setEvent] = useState(null)
   const [eventForm, setEventForm] = useState({ firstName: '', lastName: '', email: '', phone: '', consent: false })
   const [eventSubmitted, setEventSubmitted] = useState(false)
+  const [countdown, setCountdown] = useState('')
+  const [descExpanded, setDescExpanded] = useState(false)
   const scanLogged = useRef(false)
   const isPreview = !!previewData
 
@@ -372,6 +376,31 @@ export default function ScanPage({ previewData } = {}) {
     setEventSubmitted(true)
   }
 
+  // Countdown timer — must be before early returns (hooks can't be conditional)
+  const countdownTarget = useMemo(() => {
+    if (!activePromo?.active) return null
+    const now = new Date()
+    const start = activePromo.start_at ? new Date(activePromo.start_at) : null
+    const end = activePromo.end_at ? new Date(activePromo.end_at) : null
+    if (end && now >= start && now <= end) return activePromo.end_at   // PROMO_LIVE
+    if (start && now < start) return activePromo.start_at              // PROMO_NEXT
+    return null
+  }, [activePromo])
+
+  useEffect(() => {
+    if (!countdownTarget) { setCountdown(''); return }
+    const calc = () => {
+      const diff = Math.max(0, new Date(countdownTarget) - new Date())
+      const d = Math.floor(diff / 86400000)
+      const h = Math.floor((diff % 86400000) / 3600000)
+      const m = Math.floor((diff % 3600000) / 60000)
+      setCountdown(`${d}d ${h}h ${m}m`)
+    }
+    calc()
+    const id = setInterval(calc, 60000)
+    return () => clearInterval(id)
+  }, [countdownTarget])
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -393,16 +422,35 @@ export default function ScanPage({ previewData } = {}) {
   const isEventQR = !!event
   const isPromoOnly = !product && !isEventQR
 
-  // Brand tokens: kit colors + accent
-  const kit = getKit(brand?.kit)
-  const accentBg = brand?.accent_hex || '#FAFAFA'
-  const accentInk = brand?.accent_ink_hex || '#09090B'
-  const tokenVars = {
-    '--scan-bg': kit.bg,
-    '--scan-card': kit.card,
-    '--scan-border': kit.border,
+  // Brand tokens — single source for every CSS value
+  const tokens = buildTokens(brand)
+  const primaryState = resolvePrimary({ promo: activePromo, product, warrantyRegistered, knownVisitor: false })
+
+  // Ghost button style object
+  const ghostBtn = {
+    background: 'transparent',
+    border: '1px solid var(--t-border)',
+    color: 'var(--t-text)',
+    borderRadius: 'var(--t-radius)',
+    padding: '12px 16px',
+    fontWeight: 600,
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    textDecoration: 'none',
+    textAlign: 'center',
   }
-  const btnStyle = { background: accentBg, color: accentInk }
+
+  // Accent CTA style
+  const accentBtn = {
+    background: 'var(--t-accent)',
+    color: 'var(--t-accent-ink)',
+    border: 'none',
+    borderRadius: 'var(--t-radius)',
+    padding: '14px 32px',
+    fontWeight: 700,
+    fontSize: '0.95rem',
+    cursor: 'pointer',
+  }
 
   // Event scan page
   if (isEventQR) {
@@ -557,32 +605,107 @@ export default function ScanPage({ previewData } = {}) {
     )
   }
 
+  // --- Secondary rail buttons ---
+  const railButtons = []
+  if (product?.warranty_enabled && primaryState !== 'WARRANTY') {
+    railButtons.push({ label: 'Warranty', action: () => setShowWarranty(true) })
+  }
+  if (product?.content_url) {
+    railButtons.push({ label: 'Setup', href: product.content_url })
+  }
+  if (product?.reorder_url) {
+    railButtons.push({ label: 'Reorder', href: product.reorder_url })
+  }
+
+  // --- Primary card content map ---
+  const primaryContent = (() => {
+    switch (primaryState) {
+      case 'PROMO_LIVE':
+        return {
+          pill: <><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#22C55E', marginRight: 6, animation: 'captura-pulse 2s ease-in-out infinite' }} />Live now</>,
+          copy: <><div style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 6, color: '#fff' }}>{activePromo?.title}</div>{activePromo?.description && <div style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.85)', marginBottom: 6, lineHeight: 1.5 }}>{activePromo.description}</div>}{activePromo?.prize && <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#fff', marginBottom: 8 }}>Prize: {activePromo.prize}</div>}<div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)', marginBottom: 8 }}>Ends in {countdown}</div></>,
+          cta: 'Enter to win',
+          action: () => setShowPromoEntry(true),
+        }
+      case 'PROMO_CLOSED':
+        return {
+          pill: 'Entries closed',
+          copy: <div style={{ fontSize: '1rem', color: '#fff', marginBottom: 8 }}>Winner announced soon</div>,
+          cta: 'Get notified',
+          action: () => setShowVIP(true),
+        }
+      case 'PROMO_WINNER':
+        return {
+          pill: 'Winner announced',
+          copy: <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fff', marginBottom: 8 }}>{activePromo?.winner_name}{activePromo?.winner_city ? `, ${activePromo.winner_city}` : ''}</div>,
+          cta: 'Get the next one',
+          action: () => setShowVIP(true),
+        }
+      case 'PROMO_NEXT':
+        return {
+          pill: 'Next drop',
+          copy: <div style={{ fontSize: '0.95rem', color: '#fff', marginBottom: 8 }}>Starts in {countdown}</div>,
+          cta: 'Get the alert',
+          action: () => setShowVIP(true),
+        }
+      case 'WARRANTY':
+        return {
+          pill: 'Lifetime coverage',
+          copy: <div style={{ fontSize: '0.95rem', color: '#fff', marginBottom: 8, lineHeight: 1.5 }}>Activate coverage and get support when you need it</div>,
+          cta: 'Register warranty',
+          action: () => setShowWarranty(true),
+        }
+      case 'WELCOME_BACK':
+        return {
+          pill: "You're registered",
+          copy: <div style={{ fontSize: '0.95rem', color: '#fff', marginBottom: 8, lineHeight: 1.5 }}>{warrantyRegistered ? `Your ${product?.warranty_duration || ''} warranty is active` : 'Welcome back'}</div>,
+          cta: 'Reorder',
+          action: product?.reorder_url ? () => window.open(product.reorder_url, '_blank') : undefined,
+        }
+      case 'VIP':
+      default:
+        return {
+          pill: 'Owner list',
+          copy: <div style={{ fontSize: '0.95rem', color: '#fff', marginBottom: 8, lineHeight: 1.5 }}>Drops, deals, and first access for people who already own one</div>,
+          cta: 'Join the list',
+          action: () => setShowVIP(true),
+        }
+    }
+  })()
+
+  // Does the primary card use a promo image?
+  const primaryHasImage = ['PROMO_LIVE', 'PROMO_CLOSED', 'PROMO_WINNER', 'PROMO_NEXT'].includes(primaryState) && activePromo?.image_url
+
   return (
-    <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', padding: '0 0 40px', background: tokenVars['--scan-bg'], color: '#FAFAFA', ...tokenVars }}>
-      {/* Brand Header */}
+    <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', padding: '0 0 40px', background: 'var(--t-bg)', color: 'var(--t-text)', ...tokens }}>
+      <style>{`@keyframes captura-pulse { 0%, 100% { opacity: 1 } 50% { opacity: 0.3 } }`}</style>
+
+      {/* 1. Brand bar */}
       {(brand?.logo_dark_url || brand?.logo_url) && (
         <div style={{
-          width: '100%', height: 80, padding: '0 20px', overflow: 'hidden',
-          background: tokenVars['--scan-card'], borderBottom: `1px solid ${tokenVars['--scan-border']}`,
+          width: '100%', height: 46, padding: '0 16px', overflow: 'hidden',
+          background: 'var(--t-accent)',
+          position: 'sticky', top: 0, zIndex: 10,
           display: 'flex', alignItems: 'center',
           justifyContent: brand?.logo_align === 'center' ? 'center' : brand?.logo_align === 'right' ? 'flex-end' : 'flex-start',
         }}>
           <img src={brand.logo_dark_url || brand.logo_url} alt={brand.name} style={{
-            height: Math.round(80 * (brand?.logo_size || 40) / 100), objectFit: 'contain',
+            height: Math.round(46 * (brand?.logo_size || 40) / 100), objectFit: 'contain',
           }} />
         </div>
       )}
 
-      {/* Product Images */}
+      {/* 2. Product hero image carousel */}
       {!isPromoOnly && product?.image_urls?.length > 0 && (
         <div style={{
-          width: '100%', overflow: 'auto', background: '#000',
+          width: '100%', overflow: 'auto',
           display: 'flex', scrollSnapType: 'x mandatory',
         }}>
           {product.image_urls.map((url, i) => (
             <div key={i} style={{
               minWidth: '100%', height: 300, scrollSnapAlign: 'start',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'var(--t-card)',
             }}>
               <img src={url} alt={`${product.name} ${i + 1}`}
                 style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
@@ -591,264 +714,165 @@ export default function ScanPage({ previewData } = {}) {
         </div>
       )}
 
-      {/* Product Title */}
-      <div style={{
-        width: '100%', padding: '20px 20px 16px',
-        background: tokenVars['--scan-card'], borderBottom: `1px solid ${tokenVars['--scan-border']}`
-      }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-          {isPromoOnly ? (activePromo?.title || brand?.name || 'Event') : (product?.name || 'Product')}
+      {/* 3. Product name + orientation copy */}
+      <div style={{ padding: '20px 20px 12px' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--t-text)', margin: 0 }}>
+          {isPromoOnly ? (activePromo?.title || brand?.name || 'Product') : (product?.name || 'Product')}
         </h1>
+        {!isPromoOnly && product?.description && (
+          <p style={{
+            color: 'var(--t-muted)', fontSize: '0.9rem', marginTop: 6, lineHeight: 1.4,
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {product.description}
+          </p>
+        )}
       </div>
 
       <div style={{ padding: '0 20px' }}>
-        {!isPromoOnly && product?.description && (
-          <div style={{ padding: '20px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
-            <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.95rem', whiteSpace: 'pre-line' }}>
-              {product.description}
+
+        {/* 4. PRIMARY CARD */}
+        <div style={{
+          borderRadius: 'var(--t-radius)', overflow: 'hidden',
+          ...(primaryHasImage
+            ? { backgroundImage: `url(${activePromo.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+            : { background: 'var(--t-card)' }),
+        }}>
+          <div style={{
+            background: 'linear-gradient(180deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.82) 100%)',
+            padding: '32px 20px', textAlign: 'center',
+          }}>
+            {/* Pill badge */}
+            <div style={{
+              display: 'inline-block', padding: '4px 14px',
+              borderRadius: 999, fontSize: '0.75rem', fontWeight: 600,
+              background: 'rgba(255,255,255,0.15)', color: '#fff',
+              marginBottom: 16,
+            }}>
+              {primaryContent.pill}
+            </div>
+
+            {/* Copy */}
+            {primaryContent.copy}
+
+            {/* Accent CTA */}
+            {primaryContent.action && (
+              <button style={accentBtn} onClick={primaryContent.action}>
+                {primaryContent.cta}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Inline forms below primary card */}
+
+        {/* Promo entry form */}
+        {showPromoEntry && !promoEntered && (
+          <div style={{ paddingTop: 20 }}>
+            <form onSubmit={handlePromoEntry} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--t-text)' }}>Enter to Win</h3>
+              <input className="input" placeholder="First Name" value={promoForm.firstName}
+                onChange={e => setPromoForm({ ...promoForm, firstName: e.target.value })} required />
+              <input className="input" placeholder="Last Name" value={promoForm.lastName}
+                onChange={e => setPromoForm({ ...promoForm, lastName: e.target.value })} required />
+              <input className="input" type="email" placeholder="Email" value={promoForm.email}
+                onChange={e => setPromoForm({ ...promoForm, email: e.target.value })} />
+              <input className="input" type="tel" placeholder="Phone Number" value={promoForm.phone}
+                onChange={e => setPromoForm({ ...promoForm, phone: e.target.value })} required />
+              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                <input type="checkbox" checked={promoForm.consent} required
+                  onChange={e => setPromoForm({ ...promoForm, consent: e.target.checked })}
+                  style={{ marginTop: 3, accentColor: 'var(--t-accent)' }} />
+                <span style={{ color: 'var(--t-muted)', fontSize: '0.75rem', lineHeight: 1.5 }}>
+                  I am 18 years or older and agree to receive communications from this brand via text, email, or phone. I understand my data will be used in accordance with the <a href="/privacy" target="_blank" style={{ color: 'var(--t-muted)', textDecoration: 'underline' }}>Privacy Policy</a>. Message and data rates may apply. Reply STOP to opt out.
+                </span>
+              </label>
+              <button type="submit" className="btn" style={{ width: '100%', padding: 14, background: 'var(--t-accent)', color: 'var(--t-accent-ink)', border: 'none', borderRadius: 'var(--t-radius)', fontWeight: 700, cursor: 'pointer' }}>
+                Submit Entry
+              </button>
+            </form>
+          </div>
+        )}
+
+        {promoEntered && (
+          <div style={{
+            textAlign: 'center', padding: 28, marginTop: 20,
+            background: 'rgba(34, 197, 94, 0.1)',
+            border: '1px solid var(--success)',
+            borderRadius: 'var(--t-radius)'
+          }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>
+              You're Entered!
+            </h3>
+            <p style={{ color: 'var(--t-muted)', fontSize: '0.9rem' }}>
+              Good luck, {promoForm.firstName}! We'll contact winners directly.
             </p>
           </div>
         )}
 
-        {!isPromoOnly && (product?.content_title || product?.content_body || product?.content_url) && (
-          <div style={{ padding: '24px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
-            {product.content_title && (
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12 }}>
-                {product.content_title}
-              </h2>
-            )}
-            {product.content_body && (
-              <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.95rem' }}>
-                {product.content_body}
-              </p>
-            )}
-            {product.content_url && getYouTubeId(product.content_url) && (
-              <div style={{
-                marginTop: 16, borderRadius: 8, overflow: 'hidden',
-                position: 'relative', paddingBottom: '56.25%', height: 0,
-              }}>
-                <iframe
-                  src={`https://www.youtube.com/embed/${getYouTubeId(product.content_url)}`}
-                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-            )}
-            {product.content_url && !getYouTubeId(product.content_url) && (
-              <a href={product.content_url} target="_blank" rel="noopener noreferrer"
-                className="btn btn-secondary" style={{ marginTop: 16, display: 'inline-flex' }}>
-                View More
-              </a>
-            )}
-          </div>
-        )}
-
-        {/* Warranty Registration */}
-        {!isPromoOnly && product?.warranty_enabled && (
-          <div style={{ padding: '24px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
-            {!showWarranty && !warrantyRegistered && (
-              <div style={{
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: `1px solid ${tokenVars['--scan-border']}`,
-                borderRadius: 'var(--radius)', padding: '28px 20px', textAlign: 'center'
-              }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 8 }}>
-                  Register Your Warranty
-                </h3>
-                {product.warranty_duration && (
-                  <p style={{ color: '#FAFAFA', fontSize: '0.95rem', fontWeight: 600, marginBottom: 8 }}>
-                    {product.warranty_duration} Coverage
-                  </p>
-                )}
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 20, lineHeight: 1.5 }}>
-                  Activate your product warranty and get support when you need it.
-                </p>
-                <button className="btn" style={{ padding: '14px 32px', ...btnStyle }}
-                  onClick={() => setShowWarranty(true)}>
-                  Register Now
-                </button>
-              </div>
-            )}
-
-            {showWarranty && !warrantyRegistered && (
-              <form onSubmit={handleWarrantySubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Warranty Registration</h3>
-                <input className="input" placeholder="First Name" value={warrantyForm.firstName}
-                  onChange={e => setWarrantyForm({ ...warrantyForm, firstName: e.target.value })} required />
-                <input className="input" placeholder="Last Name" value={warrantyForm.lastName}
-                  onChange={e => setWarrantyForm({ ...warrantyForm, lastName: e.target.value })} required />
-                <input className="input" type="email" placeholder="Email" value={warrantyForm.email}
-                  onChange={e => setWarrantyForm({ ...warrantyForm, email: e.target.value })} />
-                <input className="input" type="tel" placeholder="Phone Number" value={warrantyForm.phone}
-                  onChange={e => setWarrantyForm({ ...warrantyForm, phone: e.target.value })} required />
-                <input className="input" type="date" value={warrantyForm.purchaseDate}
-                  onChange={e => setWarrantyForm({ ...warrantyForm, purchaseDate: e.target.value })}
-                  style={{ colorScheme: 'dark' }} />
-                <input className="input" placeholder="Where did you purchase? (store name)" value={warrantyForm.retailer}
-                  onChange={e => setWarrantyForm({ ...warrantyForm, retailer: e.target.value })} />
-                {product.warranty_terms && (
-                  <div style={{
-                    padding: '12px', borderRadius: 8, background: 'var(--bg)',
-                    border: '1px solid var(--border)', fontSize: '0.8rem',
-                    color: 'var(--text-muted)', lineHeight: 1.6, maxHeight: 120, overflow: 'auto',
-                  }}>
-                    {product.warranty_terms}
-                  </div>
-                )}
-                <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={warrantyForm.consent} required
-                    onChange={e => setWarrantyForm({ ...warrantyForm, consent: e.target.checked })}
-                    style={{ marginTop: 3, accentColor: '#FAFAFA' }} />
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', lineHeight: 1.5 }}>
-                    I am 18 years or older and agree to the warranty terms. I consent to receiving communications about my warranty and product updates. <a href="/privacy" target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Privacy Policy</a>
-                  </span>
-                </label>
-                <button type="submit" className="btn" style={{ width: '100%', padding: 14, ...btnStyle }}>
-                  Register Warranty
-                </button>
-              </form>
-            )}
-
-            {warrantyRegistered && (
-              <div style={{
-                textAlign: 'center', padding: 28,
-                background: 'rgba(34, 197, 94, 0.1)',
-                border: '1px solid var(--success)',
-                borderRadius: 'var(--radius)'
-              }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>
-                  Warranty Registered
-                </h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  Your {product.warranty_duration || ''} warranty is now active, {warrantyForm.firstName}. Keep this confirmation for your records.
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Reorder Button */}
-        {!isPromoOnly && product?.reorder_url && (
-          <div style={{ padding: '20px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
-            <a href={product.reorder_url} target="_blank" rel="noopener noreferrer"
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: '100%', padding: '16px', borderRadius: 'var(--radius)',
-                ...btnStyle, fontWeight: 700,
-                fontSize: '1rem', textDecoration: 'none', gap: 8,
-              }}>
-              Reorder This Product
-            </a>
-          </div>
-        )}
-
-        {/* Active Promo */}
-        {activePromo && (
-          <div style={{ padding: '24px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
-            {!showPromoEntry && !promoEntered && (
-              <div style={{
-                background: activePromo.image_url ? 'none' : 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(245, 158, 11, 0.1))',
-                backgroundImage: activePromo.image_url ? `url(${activePromo.image_url})` : undefined,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                border: activePromo.image_url ? 'none' : '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: 'var(--radius)', overflow: 'hidden',
-              }}>
+        {/* Warranty form */}
+        {showWarranty && !warrantyRegistered && (
+          <div style={{ paddingTop: 20 }}>
+            <form onSubmit={handleWarrantySubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--t-text)' }}>Warranty Registration</h3>
+              <input className="input" placeholder="First Name" value={warrantyForm.firstName}
+                onChange={e => setWarrantyForm({ ...warrantyForm, firstName: e.target.value })} required />
+              <input className="input" placeholder="Last Name" value={warrantyForm.lastName}
+                onChange={e => setWarrantyForm({ ...warrantyForm, lastName: e.target.value })} required />
+              <input className="input" type="email" placeholder="Email" value={warrantyForm.email}
+                onChange={e => setWarrantyForm({ ...warrantyForm, email: e.target.value })} />
+              <input className="input" type="tel" placeholder="Phone Number" value={warrantyForm.phone}
+                onChange={e => setWarrantyForm({ ...warrantyForm, phone: e.target.value })} required />
+              <input className="input" type="date" value={warrantyForm.purchaseDate}
+                onChange={e => setWarrantyForm({ ...warrantyForm, purchaseDate: e.target.value })}
+                style={{ colorScheme: 'dark' }} />
+              <input className="input" placeholder="Where did you purchase? (store name)" value={warrantyForm.retailer}
+                onChange={e => setWarrantyForm({ ...warrantyForm, retailer: e.target.value })} />
+              {product?.warranty_terms && (
                 <div style={{
-                  background: activePromo.image_url ? 'rgba(0,0,0,0.55)' : 'transparent',
-                  borderRadius: 'var(--radius)', padding: '28px 20px', textAlign: 'center',
+                  padding: '12px', borderRadius: 8, background: 'var(--t-bg)',
+                  border: '1px solid var(--t-border)', fontSize: '0.8rem',
+                  color: 'var(--t-muted)', lineHeight: 1.6, maxHeight: 120, overflow: 'auto',
                 }}>
-                    <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: 8, color: '#FAFAFA' }}>
-                    {activePromo.title}
-                  </h3>
-                  {activePromo.description && (
-                    <p style={{ color: activePromo.image_url ? 'rgba(255,255,255,0.85)' : 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 8, lineHeight: 1.5 }}>
-                      {activePromo.description}
-                    </p>
-                  )}
-                  {activePromo.prize && (
-                    <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#FAFAFA', marginBottom: 20 }}>
-                      Prize: {activePromo.prize}
-                    </p>
-                  )}
-                  <button className="btn" style={{ padding: '14px 32px', ...btnStyle }}
-                    onClick={() => setShowPromoEntry(true)}>
-                    Enter to Win
-                  </button>
+                  {product.warranty_terms}
                 </div>
-              </div>
-            )}
-
-            {showPromoEntry && !promoEntered && (
-              <form onSubmit={handlePromoEntry} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Enter to Win</h3>
-                <input className="input" placeholder="First Name" value={promoForm.firstName}
-                  onChange={e => setPromoForm({ ...promoForm, firstName: e.target.value })} required />
-                <input className="input" placeholder="Last Name" value={promoForm.lastName}
-                  onChange={e => setPromoForm({ ...promoForm, lastName: e.target.value })} required />
-                <input className="input" type="email" placeholder="Email" value={promoForm.email}
-                  onChange={e => setPromoForm({ ...promoForm, email: e.target.value })} />
-                <input className="input" type="tel" placeholder="Phone Number" value={promoForm.phone}
-                  onChange={e => setPromoForm({ ...promoForm, phone: e.target.value })} required />
-                <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={promoForm.consent} required
-                    onChange={e => setPromoForm({ ...promoForm, consent: e.target.checked })}
-                    style={{ marginTop: 3, accentColor: '#FAFAFA' }} />
-                  <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', lineHeight: 1.5 }}>
-                    I am 18 years or older and agree to receive communications from this brand via text, email, or phone. I understand my data will be used in accordance with the <a href="/privacy" target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Privacy Policy</a>. Message and data rates may apply. Reply STOP to opt out.
-                  </span>
-                </label>
-                <button type="submit" className="btn" style={{ width: '100%', padding: 14, ...btnStyle }}>
-                  Submit Entry
-                </button>
-              </form>
-            )}
-
-            {promoEntered && (
-              <div style={{
-                textAlign: 'center', padding: 28,
-                background: 'rgba(34, 197, 94, 0.1)',
-                border: '1px solid var(--success)',
-                borderRadius: 'var(--radius)'
-              }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>
-                  You're Entered!
-                </h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  Good luck, {promoForm.firstName}! We'll contact winners directly.
-                </p>
-              </div>
-            )}
+              )}
+              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                <input type="checkbox" checked={warrantyForm.consent} required
+                  onChange={e => setWarrantyForm({ ...warrantyForm, consent: e.target.checked })}
+                  style={{ marginTop: 3, accentColor: 'var(--t-accent)' }} />
+                <span style={{ color: 'var(--t-muted)', fontSize: '0.75rem', lineHeight: 1.5 }}>
+                  I am 18 years or older and agree to the warranty terms. I consent to receiving communications about my warranty and product updates. <a href="/privacy" target="_blank" style={{ color: 'var(--t-muted)', textDecoration: 'underline' }}>Privacy Policy</a>
+                </span>
+              </label>
+              <button type="submit" className="btn" style={{ width: '100%', padding: 14, background: 'var(--t-accent)', color: 'var(--t-accent-ink)', border: 'none', borderRadius: 'var(--t-radius)', fontWeight: 700, cursor: 'pointer' }}>
+                Register Warranty
+              </button>
+            </form>
           </div>
         )}
 
-        {/* VIP Signup */}
-        <div style={{ padding: '24px 0' }}>
-          {!showVIP && !vipSubmitted && (
-            <div style={{ textAlign: 'center' }}>
-              <div style={{
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: `1px solid ${tokenVars['--scan-border']}`,
-                borderRadius: 'var(--radius)', padding: '28px 20px'
-              }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 8 }}>
-                  Join the VIP List
-                </h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 20, lineHeight: 1.5 }}>
-                  Get exclusive access to deals, early product drops, and insider content.
-                </p>
-                <button className="btn" style={{ padding: '14px 32px', ...btnStyle }}
-                  onClick={() => setShowVIP(true)}>
-                  Sign Me Up
-                </button>
-              </div>
-            </div>
-          )}
+        {warrantyRegistered && (
+          <div style={{
+            textAlign: 'center', padding: 28, marginTop: 20,
+            background: 'rgba(34, 197, 94, 0.1)',
+            border: '1px solid var(--success)',
+            borderRadius: 'var(--t-radius)'
+          }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>
+              Warranty Registered
+            </h3>
+            <p style={{ color: 'var(--t-muted)', fontSize: '0.9rem' }}>
+              Your {product?.warranty_duration || ''} warranty is now active, {warrantyForm.firstName}. Keep this confirmation for your records.
+            </p>
+          </div>
+        )}
 
-          {showVIP && !vipSubmitted && (
+        {/* VIP form */}
+        {showVIP && !vipSubmitted && (
+          <div style={{ paddingTop: 20 }}>
             <form onSubmit={handleVIPSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Join VIP</h3>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--t-text)' }}>Join VIP</h3>
               <input className="input" placeholder="First Name" value={vipForm.firstName}
                 onChange={e => setVipForm({ ...vipForm, firstName: e.target.value })} required />
               <input className="input" placeholder="Last Name" value={vipForm.lastName}
@@ -860,35 +884,138 @@ export default function ScanPage({ previewData } = {}) {
               <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
                 <input type="checkbox" checked={vipForm.consent} required
                   onChange={e => setVipForm({ ...vipForm, consent: e.target.checked })}
-                  style={{ marginTop: 3, accentColor: '#FAFAFA' }} />
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', lineHeight: 1.5 }}>
-                  I am 18 years or older and agree to receive communications from this brand via text, email, or phone. I understand my data will be used in accordance with the <a href="/privacy" target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Privacy Policy</a>. Message and data rates may apply. Reply STOP to opt out.
+                  style={{ marginTop: 3, accentColor: 'var(--t-accent)' }} />
+                <span style={{ color: 'var(--t-muted)', fontSize: '0.75rem', lineHeight: 1.5 }}>
+                  I am 18 years or older and agree to receive communications from this brand via text, email, or phone. I understand my data will be used in accordance with the <a href="/privacy" target="_blank" style={{ color: 'var(--t-muted)', textDecoration: 'underline' }}>Privacy Policy</a>. Message and data rates may apply. Reply STOP to opt out.
                 </span>
               </label>
-              <button type="submit" className="btn" style={{ width: '100%', padding: 14, ...btnStyle }}>
+              <button type="submit" className="btn" style={{ width: '100%', padding: 14, background: 'var(--t-accent)', color: 'var(--t-accent-ink)', border: 'none', borderRadius: 'var(--t-radius)', fontWeight: 700, cursor: 'pointer' }}>
                 Join VIP List
               </button>
             </form>
-          )}
+          </div>
+        )}
 
-          {vipSubmitted && (
+        {vipSubmitted && (
+          <div style={{
+            textAlign: 'center', padding: 28, marginTop: 20,
+            background: 'rgba(34, 197, 94, 0.1)',
+            border: '1px solid var(--success)',
+            borderRadius: 'var(--t-radius)'
+          }}>
+            <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>
+              You're In!
+            </h3>
+            <p style={{ color: 'var(--t-muted)', fontSize: '0.9rem' }}>
+              Welcome to the VIP list, {vipForm.firstName}. We'll be in touch soon.
+            </p>
+          </div>
+        )}
+
+        {/* 5. SECONDARY RAIL */}
+        {railButtons.length > 0 && (
+          <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+            {railButtons.map(btn => (
+              btn.href ? (
+                <a key={btn.label} href={btn.href} target="_blank" rel="noopener noreferrer"
+                  style={{ ...ghostBtn, flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {btn.label}
+                </a>
+              ) : (
+                <button key={btn.label} style={{ ...ghostBtn, flex: 1 }} onClick={btn.action}>
+                  {btn.label}
+                </button>
+              )
+            ))}
+          </div>
+        )}
+
+        {/* 6. Content section */}
+
+        {/* Description with clamp */}
+        {!isPromoOnly && product?.description && (
+          <div style={{ padding: '24px 0', borderBottom: `1px solid var(--t-border)` }}>
             <div style={{
-              textAlign: 'center', padding: 28,
-              background: 'rgba(34, 197, 94, 0.1)',
-              border: '1px solid var(--success)',
-              borderRadius: 'var(--radius)'
+              color: 'var(--t-muted)', lineHeight: 1.7, fontSize: '0.95rem', whiteSpace: 'pre-line',
+              ...(!descExpanded ? {
+                display: '-webkit-box',
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              } : {}),
             }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>
-                You're In!
-              </h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                Welcome to the VIP list, {vipForm.firstName}. We'll be in touch soon.
-              </p>
+              {product.description}
             </div>
-          )}
-        </div>
+            <button
+              onClick={() => setDescExpanded(!descExpanded)}
+              style={{
+                background: 'none', border: 'none', color: 'var(--t-accent)',
+                fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', padding: '8px 0 0', marginTop: 4,
+              }}>
+              {descExpanded ? 'Show less' : 'Read more'}
+            </button>
+          </div>
+        )}
 
-        {/* Social Links */}
+        {/* Features list */}
+        {!isPromoOnly && product?.features && product.features.length > 0 && (
+          <div style={{ padding: '20px 0', borderBottom: `1px solid var(--t-border)` }}>
+            <ul style={{ color: 'var(--t-muted)', paddingLeft: 20, margin: 0, listStyleType: 'disc', lineHeight: 1.8, fontSize: '0.9rem' }}>
+              {product.features.map((f, i) => (
+                <li key={i}>{f}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Embedded video */}
+        {!isPromoOnly && product?.content_url && getYouTubeId(product.content_url) && (
+          <div style={{ padding: '24px 0', borderBottom: `1px solid var(--t-border)` }}>
+            {product.content_title && (
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12, color: 'var(--t-text)' }}>
+                {product.content_title}
+              </h2>
+            )}
+            {product.content_body && (
+              <p style={{ color: 'var(--t-muted)', lineHeight: 1.7, fontSize: '0.95rem', marginBottom: 12 }}>
+                {product.content_body}
+              </p>
+            )}
+            <div style={{
+              borderRadius: 'var(--t-radius)', overflow: 'hidden',
+              position: 'relative', paddingBottom: '56.25%', height: 0,
+            }}>
+              <iframe
+                src={`https://www.youtube.com/embed/${getYouTubeId(product.content_url)}`}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Non-YouTube content link */}
+        {!isPromoOnly && product?.content_url && !getYouTubeId(product.content_url) && (
+          <div style={{ padding: '24px 0', borderBottom: `1px solid var(--t-border)` }}>
+            {product.content_title && (
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12, color: 'var(--t-text)' }}>
+                {product.content_title}
+              </h2>
+            )}
+            {product.content_body && (
+              <p style={{ color: 'var(--t-muted)', lineHeight: 1.7, fontSize: '0.95rem', marginBottom: 12 }}>
+                {product.content_body}
+              </p>
+            )}
+            <a href={product.content_url} target="_blank" rel="noopener noreferrer"
+              style={{ ...ghostBtn, display: 'inline-flex' }}>
+              View More
+            </a>
+          </div>
+        )}
+
+        {/* 7. Socials */}
         {brand && (() => {
           const socials = [
             { key: 'social_instagram', label: 'Instagram', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>' },
@@ -900,8 +1027,8 @@ export default function ScanPage({ previewData } = {}) {
           ].filter(s => brand[s.key])
           if (socials.length === 0) return null
           return (
-            <div style={{ padding: '20px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
-              <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>
+            <div style={{ padding: '20px 0', borderBottom: `1px solid var(--t-border)` }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 12, textAlign: 'center', color: 'var(--t-text)' }}>
                 Follow Us
               </div>
               <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -910,8 +1037,8 @@ export default function ScanPage({ previewData } = {}) {
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       width: 44, height: 44, borderRadius: '50%',
-                      background: tokenVars['--scan-card'], border: `1px solid ${tokenVars['--scan-border']}`,
-                      color: '#FAFAFA', textDecoration: 'none',
+                      background: 'var(--t-card)', border: '1px solid var(--t-border)',
+                      color: 'var(--t-text)', textDecoration: 'none',
                     }}>
                     <span style={{ width: 20, height: 20 }} dangerouslySetInnerHTML={{ __html: s.svg }} />
                   </a>
@@ -921,16 +1048,17 @@ export default function ScanPage({ previewData } = {}) {
           )
         })()}
 
+        {/* 8. Footer */}
         <div style={{
           textAlign: 'center', padding: '20px 0',
-          color: 'var(--text-muted)', fontSize: '0.75rem',
+          color: 'var(--t-muted)', fontSize: '0.75rem',
         }}>
           <div style={{ marginBottom: 8 }}>
-            Powered by <span style={{ color: '#FAFAFA', fontWeight: 600 }}>Captura</span>
+            Powered by <span style={{ color: 'var(--t-text)', fontWeight: 600 }}>Captura</span>
           </div>
-          <div style={{ fontSize: '0.65rem', color: '#3F3F46', lineHeight: 1.5 }}>
+          <div style={{ fontSize: '0.65rem', color: 'var(--t-muted)', lineHeight: 1.5 }}>
             By scanning this code, approximate location data may be collected to improve your experience.{' '}
-            <a href="/privacy" target="_blank" style={{ color: '#52525B', textDecoration: 'underline' }}>Privacy Policy</a>
+            <a href="/privacy" target="_blank" style={{ color: 'var(--t-muted)', textDecoration: 'underline' }}>Privacy Policy</a>
           </div>
         </div>
       </div>

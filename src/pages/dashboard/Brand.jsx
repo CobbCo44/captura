@@ -19,8 +19,7 @@ export default function Brand({ brand, onBrandUpdate }) {
     logo_url: '',
     logo_dark_url: '',
     logo_align: 'left',
-    logo_size: 60,
-    logo_header_h: 64,
+    logo_size: 40,
     accent_hex: '#FFFFFF',
     accent_ink_hex: '#000000',
     kit: 'clean',
@@ -47,8 +46,7 @@ export default function Brand({ brand, onBrandUpdate }) {
       logo_url: brand.logo_url || '',
       logo_dark_url: brand.logo_dark_url || '',
       logo_align: brand.logo_align || 'left',
-      logo_size: brand.logo_size || 60,
-      logo_header_h: brand.logo_header_h || 64,
+      logo_size: brand.logo_size || 40,
       accent_hex: brand.accent_hex || '#FFFFFF',
       accent_ink_hex: brand.accent_ink_hex || '#000000',
       kit: brand.kit || 'clean',
@@ -123,7 +121,6 @@ export default function Brand({ brand, onBrandUpdate }) {
       logo_dark_url: form.logo_dark_url,
       logo_align: form.logo_align,
       logo_size: form.logo_size,
-      logo_header_h: form.logo_header_h,
       accent_hex: form.accent_hex,
       accent_ink_hex: form.accent_ink_hex,
       kit: form.kit,
@@ -250,38 +247,14 @@ export default function Brand({ brand, onBrandUpdate }) {
               </div>
             </div>
 
-            {/* Header height */}
+            {/* Logo size */}
             <div>
               <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                Header Height
+                Logo Size
               </label>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {[{ label: 'S', value: 46 }, { label: 'M', value: 64 }, { label: 'L', value: 88 }].map(s => (
-                  <button key={s.value} type="button" onClick={() => setForm({ ...form, logo_header_h: s.value })}
-                    style={{
-                      flex: 1, padding: '8px 0', borderRadius: 6, cursor: 'pointer',
-                      fontSize: '0.8rem', fontWeight: 600,
-                      border: (form.logo_header_h || 64) === s.value ? '2px solid #FAFAFA' : '1px solid var(--border)',
-                      background: (form.logo_header_h || 64) === s.value ? 'rgba(255,255,255,0.06)' : 'var(--bg)',
-                      color: (form.logo_header_h || 64) === s.value ? '#FAFAFA' : 'var(--text-muted)',
-                    }}>
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Logo scale within header */}
-            <div>
-              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                Logo Scale ({form.logo_size || 60}%)
-              </label>
-              <input type="range" min={20} max={100} value={form.logo_size || 60}
+              <input type="range" min={20} max={200} value={form.logo_size || 40}
                 onChange={e => setForm({ ...form, logo_size: parseInt(e.target.value) })}
                 style={{ width: '100%', accentColor: '#FAFAFA' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                <span>Small</span><span>Full</span>
-              </div>
             </div>
           </div>
 

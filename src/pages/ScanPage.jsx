@@ -560,22 +560,18 @@ export default function ScanPage({ previewData } = {}) {
   return (
     <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', padding: '0 0 40px', background: tokenVars['--scan-bg'], color: '#FAFAFA', ...tokenVars }}>
       {/* Brand Header */}
-      {(brand?.logo_dark_url || brand?.logo_url) && (() => {
-        const headerH = brand?.logo_header_h || 64
-        const scale = (brand?.logo_size || 60) / 100
-        return (
-          <div style={{
-            width: '100%', height: headerH, padding: '0 20px',
-            background: tokenVars['--scan-card'], borderBottom: `1px solid ${tokenVars['--scan-border']}`,
-            display: 'flex', alignItems: 'center',
-            justifyContent: brand?.logo_align === 'center' ? 'center' : brand?.logo_align === 'right' ? 'flex-end' : 'flex-start',
-          }}>
-            <img src={brand.logo_dark_url || brand.logo_url} alt={brand.name} style={{
-              height: headerH * scale, maxWidth: '80%', objectFit: 'contain',
-            }} />
-          </div>
-        )
-      })()}
+      {(brand?.logo_dark_url || brand?.logo_url) && (
+        <div style={{
+          width: '100%', padding: '12px 20px',
+          background: tokenVars['--scan-card'], borderBottom: `1px solid ${tokenVars['--scan-border']}`,
+          display: 'flex', alignItems: 'center',
+          justifyContent: brand?.logo_align === 'center' ? 'center' : brand?.logo_align === 'right' ? 'flex-end' : 'flex-start',
+        }}>
+          <img src={brand.logo_dark_url || brand.logo_url} alt={brand.name} style={{
+            height: brand?.logo_size || 40, maxWidth: '90%', objectFit: 'contain',
+          }} />
+        </div>
+      )}
 
       {/* Product Images */}
       {!isPromoOnly && product?.image_urls?.length > 0 && (

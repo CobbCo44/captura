@@ -19,7 +19,7 @@ export default function Brand({ brand, onBrandUpdate }) {
     logo_url: '',
     logo_dark_url: '',
     logo_align: 'left',
-    logo_size: 48,
+    logo_display: 'fit',
     accent_hex: '#FFFFFF',
     accent_ink_hex: '#000000',
     kit: 'clean',
@@ -46,7 +46,7 @@ export default function Brand({ brand, onBrandUpdate }) {
       logo_url: brand.logo_url || '',
       logo_dark_url: brand.logo_dark_url || '',
       logo_align: brand.logo_align || 'left',
-      logo_size: brand.logo_size || 32,
+      logo_display: brand.logo_display || 'fit',
       accent_hex: brand.accent_hex || '#FFFFFF',
       accent_ink_hex: brand.accent_ink_hex || '#000000',
       kit: brand.kit || 'clean',
@@ -120,7 +120,7 @@ export default function Brand({ brand, onBrandUpdate }) {
       logo_url: form.logo_url,
       logo_dark_url: form.logo_dark_url,
       logo_align: form.logo_align,
-      logo_size: form.logo_size,
+      logo_display: form.logo_display,
       accent_hex: form.accent_hex,
       accent_ink_hex: form.accent_ink_hex,
       kit: form.kit,
@@ -247,22 +247,26 @@ export default function Brand({ brand, onBrandUpdate }) {
               </div>
             </div>
 
-            {/* Logo size */}
+            {/* Logo display */}
             <div>
               <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                Logo Size
+                Logo Display
               </label>
               <div style={{ display: 'flex', gap: 6 }}>
-                {[{ label: 'S', value: 40 }, { label: 'M', value: 56 }, { label: 'L', value: 72 }, { label: 'XL', value: 96 }].map(s => (
-                  <button key={s.value} type="button" onClick={() => setForm({ ...form, logo_size: s.value })}
+                {[
+                  { value: 'fit', label: 'Fit', desc: 'Contained in bar' },
+                  { value: 'fill', label: 'Fill', desc: 'Full width, natural height' },
+                  { value: 'cover', label: 'Cover', desc: 'Full width, fixed height' },
+                ].map(d => (
+                  <button key={d.value} type="button" onClick={() => setForm({ ...form, logo_display: d.value })}
                     style={{
                       flex: 1, padding: '8px 0', borderRadius: 6, cursor: 'pointer',
                       fontSize: '0.8rem', fontWeight: 600,
-                      border: form.logo_size === s.value ? '2px solid #FAFAFA' : '1px solid var(--border)',
-                      background: form.logo_size === s.value ? 'rgba(255,255,255,0.06)' : 'var(--bg)',
-                      color: form.logo_size === s.value ? '#FAFAFA' : 'var(--text-muted)',
+                      border: (form.logo_display || 'fit') === d.value ? '2px solid #FAFAFA' : '1px solid var(--border)',
+                      background: (form.logo_display || 'fit') === d.value ? 'rgba(255,255,255,0.06)' : 'var(--bg)',
+                      color: (form.logo_display || 'fit') === d.value ? '#FAFAFA' : 'var(--text-muted)',
                     }}>
-                    {s.label}
+                    {d.label}
                   </button>
                 ))}
               </div>

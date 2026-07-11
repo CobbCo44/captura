@@ -68,7 +68,7 @@ export default function ScanPage({ previewData } = {}) {
     if (lookupShortId) {
       const { data, error } = await supabase
         .from('qr_codes')
-        .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
+        .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, logo_dark_url, logo_align, logo_display, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
         .eq('short_id', lookupShortId)
         .single()
       if (!error && data) qr = data
@@ -88,7 +88,7 @@ export default function ScanPage({ previewData } = {}) {
         // Try to find a QR code for this product so we get promo/event/brand data
         const { data: qrData } = await supabase
           .from('qr_codes')
-          .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
+          .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, logo_dark_url, logo_align, logo_display, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
           .eq('product_id', prod.id)
           .limit(1)
           .single()
@@ -99,7 +99,7 @@ export default function ScanPage({ previewData } = {}) {
           // Product exists but no QR code — show the product directly
           const { data: brandData } = await supabase
             .from('brands')
-            .select('name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website')
+            .select('name, logo_url, logo_dark_url, logo_align, logo_display, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website')
             .eq('id', prod.brand_id)
             .single()
           setProduct(prod)
@@ -560,18 +560,36 @@ export default function ScanPage({ previewData } = {}) {
   return (
     <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', padding: '0 0 40px', background: tokenVars['--scan-bg'], color: '#FAFAFA', ...tokenVars }}>
       {/* Brand Header */}
-      {(brand?.logo_dark_url || brand?.logo_url) && (
-        <div style={{
-          width: '100%', padding: '20px',
-          background: tokenVars['--scan-card'], borderBottom: `1px solid ${tokenVars['--scan-border']}`,
-          display: 'flex', alignItems: 'center',
-          justifyContent: brand?.logo_align === 'center' ? 'center' : brand?.logo_align === 'right' ? 'flex-end' : 'flex-start',
-        }}>
-          <img src={brand.logo_dark_url || brand.logo_url} alt={brand.name} style={{
-            maxHeight: brand?.logo_size || 48, maxWidth: '60%', objectFit: 'contain',
+      {(brand?.logo_dark_url || brand?.logo_url) && (() => {
+        const logoSrc = brand.logo_dark_url || brand.logo_url
+        const display = brand?.logo_display || 'fit'
+        const align = brand?.logo_align === 'center' ? 'center' : brand?.logo_align === 'right' ? 'flex-end' : 'flex-start'
+
+        if (display === 'cover') return (
+          <div style={{
+            width: '100%', height: 80,
+            backgroundImage: `url(${logoSrc})`, backgroundSize: 'cover', backgroundPosition: 'center',
+            borderBottom: `1px solid ${tokenVars['--scan-border']}`,
           }} />
-        </div>
-      )}
+        )
+        if (display === 'fill') return (
+          <div style={{
+            width: '100%',
+            background: tokenVars['--scan-card'], borderBottom: `1px solid ${tokenVars['--scan-border']}`,
+          }}>
+            <img src={logoSrc} alt={brand.name} style={{ width: '100%', display: 'block', objectFit: 'contain' }} />
+          </div>
+        )
+        return (
+          <div style={{
+            width: '100%', padding: '16px 20px',
+            background: tokenVars['--scan-card'], borderBottom: `1px solid ${tokenVars['--scan-border']}`,
+            display: 'flex', alignItems: 'center', justifyContent: align,
+          }}>
+            <img src={logoSrc} alt={brand.name} style={{ maxHeight: 48, maxWidth: '50%', objectFit: 'contain' }} />
+          </div>
+        )
+      })()}
 
       {/* Product Images */}
       {!isPromoOnly && product?.image_urls?.length > 0 && (

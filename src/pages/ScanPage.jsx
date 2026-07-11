@@ -447,7 +447,6 @@ export default function ScanPage({ previewData } = {}) {
                   padding: '24px 20px', textAlign: 'center',
                   ...(event.image_url ? { background: 'rgba(0,0,0,0.55)' } : {}),
                 }}>
-                  <div style={{ fontSize: '1.3rem', marginBottom: 6 }}>🎁</div>
                   <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 6 }}>Giveaway</h3>
                   <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#FAFAFA' }}>{event.giveaway}</p>
                 </div>
@@ -500,7 +499,6 @@ export default function ScanPage({ previewData } = {}) {
                 border: '1px solid var(--success)',
                 borderRadius: 'var(--radius)'
               }}>
-                <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>🎉</div>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>
                   You're In!
                 </h3>
@@ -567,6 +565,7 @@ export default function ScanPage({ previewData } = {}) {
           width: '100%', padding: '16px 20px',
           background: tokenVars['--scan-card'], borderBottom: `1px solid ${tokenVars['--scan-border']}`,
           display: 'flex', alignItems: 'center', gap: 10,
+          justifyContent: brand?.logo_align === 'center' ? 'center' : brand?.logo_align === 'right' ? 'flex-end' : 'flex-start',
         }}>
           <img src={brand.logo_url} alt={brand.name} style={{
             height: 32, borderRadius: 6, objectFit: 'contain',
@@ -763,8 +762,7 @@ export default function ScanPage({ previewData } = {}) {
                   background: activePromo.image_url ? 'rgba(0,0,0,0.55)' : 'transparent',
                   borderRadius: 'var(--radius)', padding: '28px 20px', textAlign: 'center',
                 }}>
-                  <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>🎉</div>
-                  <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: 8, color: '#FAFAFA' }}>
+                    <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: 8, color: '#FAFAFA' }}>
                     {activePromo.title}
                   </h3>
                   {activePromo.description && (
@@ -817,7 +815,6 @@ export default function ScanPage({ previewData } = {}) {
                 border: '1px solid var(--success)',
                 borderRadius: 'var(--radius)'
               }}>
-                <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>🎉</div>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>
                   You're Entered!
                 </h3>

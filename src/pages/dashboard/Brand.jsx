@@ -18,6 +18,7 @@ export default function Brand({ brand, onBrandUpdate }) {
     name: '',
     logo_url: '',
     logo_dark_url: '',
+    logo_align: 'left',
     accent_hex: '#FFFFFF',
     accent_ink_hex: '#000000',
     kit: 'clean',
@@ -43,6 +44,7 @@ export default function Brand({ brand, onBrandUpdate }) {
       name: brand.name || '',
       logo_url: brand.logo_url || '',
       logo_dark_url: brand.logo_dark_url || '',
+      logo_align: brand.logo_align || 'left',
       accent_hex: brand.accent_hex || '#FFFFFF',
       accent_ink_hex: brand.accent_ink_hex || '#000000',
       kit: brand.kit || 'clean',
@@ -114,6 +116,7 @@ export default function Brand({ brand, onBrandUpdate }) {
     brand: {
       name: form.name,
       logo_url: form.logo_url,
+      logo_align: form.logo_align,
       accent_hex: form.accent_hex,
       accent_ink_hex: form.accent_ink_hex,
       kit: form.kit,
@@ -216,6 +219,27 @@ export default function Brand({ brand, onBrandUpdate }) {
                     Remove
                   </button>
                 )}
+              </div>
+            </div>
+
+            {/* Logo alignment */}
+            <div>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                Logo Alignment
+              </label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {['left', 'center', 'right'].map(a => (
+                  <button key={a} type="button" onClick={() => setForm({ ...form, logo_align: a })}
+                    style={{
+                      flex: 1, padding: '8px 0', borderRadius: 6, cursor: 'pointer',
+                      fontSize: '0.8rem', fontWeight: 600, textTransform: 'capitalize',
+                      border: form.logo_align === a ? '2px solid #FAFAFA' : '1px solid var(--border)',
+                      background: form.logo_align === a ? 'rgba(255,255,255,0.06)' : 'var(--bg)',
+                      color: form.logo_align === a ? '#FAFAFA' : 'var(--text-muted)',
+                    }}>
+                    {a}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

@@ -562,13 +562,13 @@ export default function ScanPage({ previewData } = {}) {
       {/* Brand Header */}
       {(brand?.logo_dark_url || brand?.logo_url) && (
         <div style={{
-          width: '100%', padding: '16px 20px',
+          width: '100%', padding: '20px',
           background: tokenVars['--scan-card'], borderBottom: `1px solid ${tokenVars['--scan-border']}`,
-          display: 'flex', alignItems: 'center', gap: 10,
+          display: 'flex', alignItems: 'center',
           justifyContent: brand?.logo_align === 'center' ? 'center' : brand?.logo_align === 'right' ? 'flex-end' : 'flex-start',
         }}>
           <img src={brand.logo_dark_url || brand.logo_url} alt={brand.name} style={{
-            height: brand?.logo_size || 48, borderRadius: 6, objectFit: 'contain',
+            maxHeight: brand?.logo_size || 48, maxWidth: '60%', objectFit: 'contain',
           }} />
         </div>
       )}

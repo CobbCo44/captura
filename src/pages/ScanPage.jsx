@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { getKit } from '../lib/kits'
 
 function getYouTubeId(url) {
   if (!url) return null
@@ -392,6 +393,17 @@ export default function ScanPage({ previewData } = {}) {
   const isEventQR = !!event
   const isPromoOnly = !product && !isEventQR
 
+  // Brand tokens: kit colors + accent
+  const kit = getKit(brand?.kit)
+  const accentBg = brand?.accent_hex || '#FAFAFA'
+  const accentInk = brand?.accent_ink_hex || '#09090B'
+  const tokenVars = {
+    '--scan-bg': kit.bg,
+    '--scan-card': kit.card,
+    '--scan-border': kit.border,
+  }
+  const btnStyle = { background: accentBg, color: accentInk }
+
   // Event scan page
   if (isEventQR) {
     return (
@@ -548,7 +560,7 @@ export default function ScanPage({ previewData } = {}) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', padding: '0 0 40px' }}>
+    <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', padding: '0 0 40px', background: tokenVars['--scan-bg'], color: '#FAFAFA', ...tokenVars }}>
       {/* Product Images */}
       {!isPromoOnly && product?.image_urls?.length > 0 && (
         <div style={{
@@ -570,8 +582,14 @@ export default function ScanPage({ previewData } = {}) {
       {/* Header */}
       <div style={{
         width: '100%', padding: '20px 20px 16px',
-        background: 'var(--bg-card)', borderBottom: '1px solid var(--border)'
+        background: tokenVars['--scan-card'], borderBottom: `1px solid ${tokenVars['--scan-border']}`
       }}>
+        {brand?.logo_url && (
+          <img src={brand.logo_url} alt={brand.name} style={{
+            width: 40, height: 40, borderRadius: 8, objectFit: 'contain',
+            background: '#fff', padding: 3, marginBottom: 10,
+          }} />
+        )}
         <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>
           {isPromoOnly ? (activePromo?.title || brand?.name || 'Event') : (product?.name || 'Product')}
         </h1>
@@ -579,7 +597,7 @@ export default function ScanPage({ previewData } = {}) {
 
       <div style={{ padding: '0 20px' }}>
         {!isPromoOnly && product?.description && (
-          <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ padding: '20px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
             <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.95rem', whiteSpace: 'pre-line' }}>
               {product.description}
             </p>
@@ -587,7 +605,7 @@ export default function ScanPage({ previewData } = {}) {
         )}
 
         {!isPromoOnly && (product?.content_title || product?.content_body || product?.content_url) && (
-          <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ padding: '24px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
             {product.content_title && (
               <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12 }}>
                 {product.content_title}
@@ -622,11 +640,11 @@ export default function ScanPage({ previewData } = {}) {
 
         {/* Warranty Registration */}
         {!isPromoOnly && product?.warranty_enabled && (
-          <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ padding: '24px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
             {!showWarranty && !warrantyRegistered && (
               <div style={{
                 background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid #3F3F46',
+                border: `1px solid ${tokenVars['--scan-border']}`,
                 borderRadius: 'var(--radius)', padding: '28px 20px', textAlign: 'center'
               }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 8 }}>
@@ -640,7 +658,7 @@ export default function ScanPage({ previewData } = {}) {
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 20, lineHeight: 1.5 }}>
                   Activate your product warranty and get support when you need it.
                 </p>
-                <button className="btn btn-primary" style={{ padding: '14px 32px' }}
+                <button className="btn" style={{ padding: '14px 32px', ...btnStyle }}
                   onClick={() => setShowWarranty(true)}>
                   Register Now
                 </button>
@@ -680,7 +698,7 @@ export default function ScanPage({ previewData } = {}) {
                     I am 18 years or older and agree to the warranty terms. I consent to receiving communications about my warranty and product updates. <a href="/privacy" target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Privacy Policy</a>
                   </span>
                 </label>
-                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 14 }}>
+                <button type="submit" className="btn" style={{ width: '100%', padding: 14, ...btnStyle }}>
                   Register Warranty
                 </button>
               </form>
@@ -706,12 +724,12 @@ export default function ScanPage({ previewData } = {}) {
 
         {/* Reorder Button */}
         {!isPromoOnly && product?.reorder_url && (
-          <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ padding: '20px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
             <a href={product.reorder_url} target="_blank" rel="noopener noreferrer"
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: '100%', padding: '16px', borderRadius: 'var(--radius)',
-                background: '#FAFAFA', color: '#09090B', fontWeight: 700,
+                ...btnStyle, fontWeight: 700,
                 fontSize: '1rem', textDecoration: 'none', gap: 8,
               }}>
               Reorder This Product
@@ -721,7 +739,7 @@ export default function ScanPage({ previewData } = {}) {
 
         {/* Active Promo */}
         {activePromo && (
-          <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ padding: '24px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
             {!showPromoEntry && !promoEntered && (
               <div style={{
                 background: activePromo.image_url ? 'none' : 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(245, 158, 11, 0.1))',
@@ -749,7 +767,7 @@ export default function ScanPage({ previewData } = {}) {
                       Prize: {activePromo.prize}
                     </p>
                   )}
-                  <button className="btn btn-primary" style={{ padding: '14px 32px' }}
+                  <button className="btn" style={{ padding: '14px 32px', ...btnStyle }}
                     onClick={() => setShowPromoEntry(true)}>
                     Enter to Win
                   </button>
@@ -776,7 +794,7 @@ export default function ScanPage({ previewData } = {}) {
                     I am 18 years or older and agree to receive communications from this brand via text, email, or phone. I understand my data will be used in accordance with the <a href="/privacy" target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Privacy Policy</a>. Message and data rates may apply. Reply STOP to opt out.
                   </span>
                 </label>
-                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 14 }}>
+                <button type="submit" className="btn" style={{ width: '100%', padding: 14, ...btnStyle }}>
                   Submit Entry
                 </button>
               </form>
@@ -807,7 +825,7 @@ export default function ScanPage({ previewData } = {}) {
             <div style={{ textAlign: 'center' }}>
               <div style={{
                 background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid #3F3F46',
+                border: `1px solid ${tokenVars['--scan-border']}`,
                 borderRadius: 'var(--radius)', padding: '28px 20px'
               }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 8 }}>
@@ -816,7 +834,7 @@ export default function ScanPage({ previewData } = {}) {
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 20, lineHeight: 1.5 }}>
                   Get exclusive access to deals, early product drops, and insider content.
                 </p>
-                <button className="btn btn-primary" style={{ padding: '14px 32px' }}
+                <button className="btn" style={{ padding: '14px 32px', ...btnStyle }}
                   onClick={() => setShowVIP(true)}>
                   Sign Me Up
                 </button>
@@ -843,7 +861,7 @@ export default function ScanPage({ previewData } = {}) {
                   I am 18 years or older and agree to receive communications from this brand via text, email, or phone. I understand my data will be used in accordance with the <a href="/privacy" target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Privacy Policy</a>. Message and data rates may apply. Reply STOP to opt out.
                 </span>
               </label>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 14 }}>
+              <button type="submit" className="btn" style={{ width: '100%', padding: 14, ...btnStyle }}>
                 Join VIP List
               </button>
             </form>
@@ -878,7 +896,7 @@ export default function ScanPage({ previewData } = {}) {
           ].filter(s => brand[s.key])
           if (socials.length === 0) return null
           return (
-            <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ padding: '20px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
               <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>
                 Follow Us
               </div>
@@ -888,7 +906,7 @@ export default function ScanPage({ previewData } = {}) {
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       width: 44, height: 44, borderRadius: '50%',
-                      background: 'var(--bg-card)', border: '1px solid var(--border)',
+                      background: tokenVars['--scan-card'], border: `1px solid ${tokenVars['--scan-border']}`,
                       color: '#FAFAFA', textDecoration: 'none',
                     }}>
                     <span style={{ width: 20, height: 20 }} dangerouslySetInnerHTML={{ __html: s.svg }} />

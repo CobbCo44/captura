@@ -284,8 +284,11 @@ export default function Products({ brand }) {
           {editingProduct ? 'Edit Product' : 'Add Product'}
         </h1>
 
-        <div style={{ maxWidth: 560 }}>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{ maxWidth: 1000 }}>
+          <form onSubmit={handleSubmit} className="product-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, alignItems: 'start' }}>
+
+            {/* LEFT COLUMN */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
             {/* Image Upload */}
             <div className="card">
@@ -353,6 +356,11 @@ export default function Products({ brand }) {
                 style={{ minHeight: 100, resize: 'vertical' }} />
             </div>
 
+            </div>{/* END LEFT COLUMN */}
+
+            {/* RIGHT COLUMN */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+
             {/* Scan Page Content */}
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Scan Page Content</label>
@@ -411,8 +419,10 @@ export default function Products({ brand }) {
               )}
             </div>
 
+            </div>{/* END RIGHT COLUMN */}
+
             {/* Actions */}
-            <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ display: 'flex', gap: 12, gridColumn: '1 / -1' }}>
               <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
                 onClick={goBack}>Cancel</button>
               <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={uploading}>

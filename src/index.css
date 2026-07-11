@@ -113,3 +113,9 @@ input, textarea, select {
   border-radius: var(--radius);
   padding: 24px;
 }
+
+@media (max-width: 700px) {
+  .product-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

@@ -68,7 +68,7 @@ export default function ScanPage({ previewData } = {}) {
     if (lookupShortId) {
       const { data, error } = await supabase
         .from('qr_codes')
-        .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
+        .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, logo_align, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
         .eq('short_id', lookupShortId)
         .single()
       if (!error && data) qr = data
@@ -88,7 +88,7 @@ export default function ScanPage({ previewData } = {}) {
         // Try to find a QR code for this product so we get promo/event/brand data
         const { data: qrData } = await supabase
           .from('qr_codes')
-          .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
+          .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, logo_align, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
           .eq('product_id', prod.id)
           .limit(1)
           .single()
@@ -99,7 +99,7 @@ export default function ScanPage({ previewData } = {}) {
           // Product exists but no QR code — show the product directly
           const { data: brandData } = await supabase
             .from('brands')
-            .select('name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website')
+            .select('name, logo_url, logo_align, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website')
             .eq('id', prod.brand_id)
             .single()
           setProduct(prod)

@@ -19,6 +19,7 @@ export default function Brand({ brand, onBrandUpdate }) {
     logo_url: '',
     logo_dark_url: '',
     logo_align: 'left',
+    logo_size: 32,
     accent_hex: '#FFFFFF',
     accent_ink_hex: '#000000',
     kit: 'clean',
@@ -45,6 +46,7 @@ export default function Brand({ brand, onBrandUpdate }) {
       logo_url: brand.logo_url || '',
       logo_dark_url: brand.logo_dark_url || '',
       logo_align: brand.logo_align || 'left',
+      logo_size: brand.logo_size || 32,
       accent_hex: brand.accent_hex || '#FFFFFF',
       accent_ink_hex: brand.accent_ink_hex || '#000000',
       kit: brand.kit || 'clean',
@@ -117,6 +119,7 @@ export default function Brand({ brand, onBrandUpdate }) {
       name: form.name,
       logo_url: form.logo_url,
       logo_align: form.logo_align,
+      logo_size: form.logo_size,
       accent_hex: form.accent_hex,
       accent_ink_hex: form.accent_ink_hex,
       kit: form.kit,
@@ -242,9 +245,30 @@ export default function Brand({ brand, onBrandUpdate }) {
                 ))}
               </div>
             </div>
+
+            {/* Logo size */}
+            <div>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                Logo Size
+              </label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[{ label: 'S', value: 24 }, { label: 'M', value: 32 }, { label: 'L', value: 44 }, { label: 'XL', value: 56 }].map(s => (
+                  <button key={s.value} type="button" onClick={() => setForm({ ...form, logo_size: s.value })}
+                    style={{
+                      flex: 1, padding: '8px 0', borderRadius: 6, cursor: 'pointer',
+                      fontSize: '0.8rem', fontWeight: 600,
+                      border: form.logo_size === s.value ? '2px solid #FAFAFA' : '1px solid var(--border)',
+                      background: form.logo_size === s.value ? 'rgba(255,255,255,0.06)' : 'var(--bg)',
+                      color: form.logo_size === s.value ? '#FAFAFA' : 'var(--text-muted)',
+                    }}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {/* Color */}
+          {/* Buttons */}
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Buttons</label>
 

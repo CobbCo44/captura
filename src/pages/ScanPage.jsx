@@ -561,6 +561,22 @@ export default function ScanPage({ previewData } = {}) {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', padding: '0 0 40px', background: tokenVars['--scan-bg'], color: '#FAFAFA', ...tokenVars }}>
+      {/* Brand Header */}
+      {brand?.logo_url && (
+        <div style={{
+          width: '100%', padding: '16px 20px',
+          background: tokenVars['--scan-card'], borderBottom: `1px solid ${tokenVars['--scan-border']}`,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <img src={brand.logo_url} alt={brand.name} style={{
+            height: 32, borderRadius: 6, objectFit: 'contain',
+          }} />
+          {brand.name && (
+            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#FAFAFA' }}>{brand.name}</span>
+          )}
+        </div>
+      )}
+
       {/* Product Images */}
       {!isPromoOnly && product?.image_urls?.length > 0 && (
         <div style={{
@@ -579,17 +595,11 @@ export default function ScanPage({ previewData } = {}) {
         </div>
       )}
 
-      {/* Header */}
+      {/* Product Title */}
       <div style={{
         width: '100%', padding: '20px 20px 16px',
         background: tokenVars['--scan-card'], borderBottom: `1px solid ${tokenVars['--scan-border']}`
       }}>
-        {brand?.logo_url && (
-          <img src={brand.logo_url} alt={brand.name} style={{
-            width: 40, height: 40, borderRadius: 8, objectFit: 'contain',
-            background: '#fff', padding: 3, marginBottom: 10,
-          }} />
-        )}
         <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>
           {isPromoOnly ? (activePromo?.title || brand?.name || 'Event') : (product?.name || 'Product')}
         </h1>

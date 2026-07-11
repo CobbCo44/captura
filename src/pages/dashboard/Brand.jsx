@@ -19,7 +19,7 @@ export default function Brand({ brand, onBrandUpdate }) {
     logo_url: '',
     logo_dark_url: '',
     logo_align: 'left',
-    logo_display: 'fit',
+    logo_size: 48,
     accent_hex: '#FFFFFF',
     accent_ink_hex: '#000000',
     kit: 'clean',
@@ -46,7 +46,7 @@ export default function Brand({ brand, onBrandUpdate }) {
       logo_url: brand.logo_url || '',
       logo_dark_url: brand.logo_dark_url || '',
       logo_align: brand.logo_align || 'left',
-      logo_display: brand.logo_display || 'fit',
+      logo_size: brand.logo_size || 48,
       accent_hex: brand.accent_hex || '#FFFFFF',
       accent_ink_hex: brand.accent_ink_hex || '#000000',
       kit: brand.kit || 'clean',
@@ -120,7 +120,7 @@ export default function Brand({ brand, onBrandUpdate }) {
       logo_url: form.logo_url,
       logo_dark_url: form.logo_dark_url,
       logo_align: form.logo_align,
-      logo_display: form.logo_display,
+      logo_size: form.logo_size,
       accent_hex: form.accent_hex,
       accent_ink_hex: form.accent_ink_hex,
       kit: form.kit,
@@ -247,34 +247,17 @@ export default function Brand({ brand, onBrandUpdate }) {
               </div>
             </div>
 
-            {/* Logo display */}
+            {/* Logo size */}
             <div>
               <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                Logo Display
+                Logo Height ({form.logo_size || 48}px)
               </label>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {[
-                  { value: 'fit', label: 'Fit', desc: 'Contained in bar' },
-                  { value: 'fill', label: 'Fill', desc: 'Full width, natural height' },
-                  { value: 'cover', label: 'Cover', desc: 'Full width, fixed height' },
-                ].map(d => (
-                  <button key={d.value} type="button" onClick={() => setForm({ ...form, logo_display: d.value })}
-                    style={{
-                      flex: 1, padding: '8px 0', borderRadius: 6, cursor: 'pointer',
-                      fontSize: '0.8rem', fontWeight: 600,
-                      border: (form.logo_display || 'fit') === d.value ? '2px solid #FAFAFA' : '1px solid var(--border)',
-                      background: (form.logo_display || 'fit') === d.value ? 'rgba(255,255,255,0.06)' : 'var(--bg)',
-                      color: (form.logo_display || 'fit') === d.value ? '#FAFAFA' : 'var(--text-muted)',
-                    }}>
-                    {d.label}
-                  </button>
-                ))}
+              <input type="range" min={24} max={120} value={form.logo_size || 48}
+                onChange={e => setForm({ ...form, logo_size: parseInt(e.target.value) })}
+                style={{ width: '100%', accentColor: '#FAFAFA' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                <span>Small</span><span>Large</span>
               </div>
-              {(form.logo_display === 'fill' || form.logo_display === 'cover') && !form.logo_dark_url && (
-                <p style={{ color: '#F59E0B', fontSize: '0.75rem', marginTop: 6 }}>
-                  Fill and Cover require a dark background logo. Upload one above or the scan page will fall back to Fit.
-                </p>
-              )}
             </div>
           </div>
 

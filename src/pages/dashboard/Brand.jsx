@@ -118,6 +118,7 @@ export default function Brand({ brand, onBrandUpdate }) {
     brand: {
       name: form.name,
       logo_url: form.logo_url,
+      logo_dark_url: form.logo_dark_url,
       logo_align: form.logo_align,
       logo_size: form.logo_size,
       accent_hex: form.accent_hex,

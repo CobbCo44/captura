@@ -246,11 +246,11 @@ export default function Brand({ brand, onBrandUpdate }) {
 
           {/* Color */}
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Color</label>
+            <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Buttons</label>
 
             <div>
               <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                Accent Color
+                Button Color
               </label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <input type="color" value={form.accent_hex} onChange={e => handleAccentChange(e.target.value)}
@@ -269,7 +269,7 @@ export default function Brand({ brand, onBrandUpdate }) {
 
             <div>
               <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                Ink Color (auto-computed for contrast)
+                Button Text Color (auto-computed for contrast)
               </label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{

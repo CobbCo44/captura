@@ -19,7 +19,7 @@ export default function Brand({ brand, onBrandUpdate }) {
     logo_url: '',
     logo_dark_url: '',
     logo_align: 'left',
-    logo_size: 32,
+    logo_size: 48,
     accent_hex: '#FFFFFF',
     accent_ink_hex: '#000000',
     kit: 'clean',
@@ -253,7 +253,7 @@ export default function Brand({ brand, onBrandUpdate }) {
                 Logo Size
               </label>
               <div style={{ display: 'flex', gap: 6 }}>
-                {[{ label: 'S', value: 24 }, { label: 'M', value: 32 }, { label: 'L', value: 44 }, { label: 'XL', value: 56 }].map(s => (
+                {[{ label: 'S', value: 32 }, { label: 'M', value: 48 }, { label: 'L', value: 64 }, { label: 'XL', value: 80 }].map(s => (
                   <button key={s.value} type="button" onClick={() => setForm({ ...form, logo_size: s.value })}
                     style={{
                       flex: 1, padding: '8px 0', borderRadius: 6, cursor: 'pointer',

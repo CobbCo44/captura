@@ -270,6 +270,11 @@ export default function Brand({ brand, onBrandUpdate }) {
                   </button>
                 ))}
               </div>
+              {(form.logo_display === 'fill' || form.logo_display === 'cover') && !form.logo_dark_url && (
+                <p style={{ color: '#F59E0B', fontSize: '0.75rem', marginTop: 6 }}>
+                  Fill and Cover require a dark background logo. Upload one above or the scan page will fall back to Fit.
+                </p>
+              )}
             </div>
           </div>
 

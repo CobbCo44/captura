@@ -562,7 +562,8 @@ export default function ScanPage({ previewData } = {}) {
       {/* Brand Header */}
       {(brand?.logo_dark_url || brand?.logo_url) && (() => {
         const logoSrc = brand.logo_dark_url || brand.logo_url
-        const display = brand?.logo_display || 'fit'
+        const hasDarkLogo = !!brand.logo_dark_url
+        const display = (hasDarkLogo ? (brand?.logo_display || 'fit') : 'fit')
         const align = brand?.logo_align === 'center' ? 'center' : brand?.logo_align === 'right' ? 'flex-end' : 'flex-start'
 
         if (display === 'cover') return (

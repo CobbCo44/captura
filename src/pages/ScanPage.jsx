@@ -570,9 +570,6 @@ export default function ScanPage({ previewData } = {}) {
           <img src={brand.logo_url} alt={brand.name} style={{
             height: 32, borderRadius: 6, objectFit: 'contain',
           }} />
-          {brand.name && (
-            <span style={{ fontSize: '0.9rem', fontWeight: 600, color: '#FAFAFA' }}>{brand.name}</span>
-          )}
         </div>
       )}
 

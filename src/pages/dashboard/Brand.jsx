@@ -252,7 +252,7 @@ export default function Brand({ brand, onBrandUpdate }) {
               <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
                 Logo Size
               </label>
-              <input type="range" min={20} max={200} value={form.logo_size || 40}
+              <input type="range" min={10} max={100} value={form.logo_size || 40}
                 onChange={e => setForm({ ...form, logo_size: parseInt(e.target.value) })}
                 style={{ width: '100%', accentColor: '#FAFAFA' }} />
             </div>

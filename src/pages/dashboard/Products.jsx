@@ -346,7 +346,7 @@ export default function Products({ brand }) {
               <input className="input" placeholder="GTIN / UPC / Barcode (optional)" value={form.gtin}
                 onChange={e => setForm({ ...form, gtin: e.target.value })} />
               <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: -8 }}>
-                The product barcode number. When set, QR codes use a GS1 Digital Link URL that works at retail checkout.
+                The product barcode number. When set, QR codes are generated as GS1 Digital Link URLs structured around the GTIN.
               </p>
               <textarea className="input" placeholder="Product Description" value={form.description}
                 onChange={e => setForm({ ...form, description: e.target.value })}

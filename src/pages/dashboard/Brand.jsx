@@ -76,9 +76,9 @@ export default function Brand({ brand, onBrandUpdate }) {
     setter(true)
     const ext = file.name.split('.').pop()
     const path = `logos/${brand.id}/${variant === 'dark' ? 'dark' : 'light'}_${Date.now()}.${ext}`
-    const { error } = await supabase.storage.from('brand-assets').upload(path, file, { upsert: true })
+    const { error } = await supabase.storage.from('product-images').upload(path, file, { upsert: true })
     if (error) { alert(error.message); setter(false); return }
-    const { data: { publicUrl } } = supabase.storage.from('brand-assets').getPublicUrl(path)
+    const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(path)
     const key = variant === 'dark' ? 'logo_dark_url' : 'logo_url'
     setForm(f => ({ ...f, [key]: publicUrl }))
     setter(false)

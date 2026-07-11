@@ -277,7 +277,7 @@ export default function Promos({ brand }) {
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50
         }} onClick={() => { setShowModal(false); setEditingPromo(null) }}>
-          <div className="card" style={{ width: 440, maxWidth: '90vw' }} onClick={e => e.stopPropagation()}>
+          <div className="card" style={{ width: 520, maxWidth: '90vw' }} onClick={e => e.stopPropagation()}>
             <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20 }}>
               {editingPromo ? 'Edit Promo' : 'Create Promo'}
             </h2>
@@ -328,23 +328,21 @@ export default function Promos({ brand }) {
                   </div>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                    Start Date
-                  </label>
-                  <input className="input" type="datetime-local" value={form.start_at}
-                    onChange={e => setForm({ ...form, start_at: e.target.value })} required
-                    style={{ colorScheme: 'dark' }} />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                    End Date
-                  </label>
-                  <input className="input" type="datetime-local" value={form.end_at}
-                    onChange={e => setForm({ ...form, end_at: e.target.value })} required
-                    style={{ colorScheme: 'dark' }} />
-                </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                  Start Date
+                </label>
+                <input className="input" type="datetime-local" value={form.start_at}
+                  onChange={e => setForm({ ...form, start_at: e.target.value })} required
+                  style={{ colorScheme: 'dark', width: '100%' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                  End Date
+                </label>
+                <input className="input" type="datetime-local" value={form.end_at}
+                  onChange={e => setForm({ ...form, end_at: e.target.value })} required
+                  style={{ colorScheme: 'dark', width: '100%' }} />
               </div>
               {editingPromo && (
                 <div style={{ display: 'flex', gap: 12 }}>

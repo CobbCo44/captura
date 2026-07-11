@@ -119,3 +119,12 @@ input, textarea, select {
     grid-template-columns: 1fr !important;
   }
 }
+
+@media (max-width: 900px) {
+  .brand-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .brand-preview-col {
+    display: none !important;
+  }
+}

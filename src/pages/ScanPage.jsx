@@ -8,22 +8,22 @@ function getYouTubeId(url) {
   return match ? match[1] : null
 }
 
-export default function ScanPage() {
+export default function ScanPage({ previewData } = {}) {
   // Supports two URL shapes:
   //   /s/:qrId             — legacy short_id lookup
   //   /01/:gtin/21/:serial — GS1 Digital Link (serial = short_id for tracking)
   //   /01/:gtin            — GS1 Digital Link without serial (no per-code tracking)
   const { qrId, gtin, serial } = useParams()
-  const [product, setProduct] = useState(null)
+  const [product, setProduct] = useState(previewData?.product || null)
   const [qrCode, setQrCode] = useState(null)
-  const [brand, setBrand] = useState(null)
+  const [brand, setBrand] = useState(previewData?.brand || null)
   const [location, setLocation] = useState(null)
   const [showVIP, setShowVIP] = useState(false)
   const [vipForm, setVipForm] = useState({ firstName: '', lastName: '', email: '', phone: '', consent: false })
   const [vipSubmitted, setVipSubmitted] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!previewData)
   const [notFound, setNotFound] = useState(false)
-  const [activePromo, setActivePromo] = useState(null)
+  const [activePromo, setActivePromo] = useState(previewData?.promo || null)
   const [showPromoEntry, setShowPromoEntry] = useState(false)
   const [promoForm, setPromoForm] = useState({ firstName: '', lastName: '', email: '', phone: '', consent: false })
   const [promoEntered, setPromoEntered] = useState(false)
@@ -34,6 +34,15 @@ export default function ScanPage() {
   const [eventForm, setEventForm] = useState({ firstName: '', lastName: '', email: '', phone: '', consent: false })
   const [eventSubmitted, setEventSubmitted] = useState(false)
   const scanLogged = useRef(false)
+  const isPreview = !!previewData
+
+  // Keep preview data in sync when props change
+  useEffect(() => {
+    if (!previewData) return
+    setProduct(previewData.product || null)
+    setBrand(previewData.brand || null)
+    setActivePromo(previewData.promo || null)
+  }, [previewData])
 
   // Determine lookup mode: if we have a gtin param, it's a GS1 path.
   // If we also have a serial, that's the short_id for per-code tracking.
@@ -41,6 +50,7 @@ export default function ScanPage() {
   const lookupGtin = gtin ? gtin.replace(/\D/g, '').padStart(14, '0') : null
 
   useEffect(() => {
+    if (isPreview) return
     loadQRCode()
   }, [qrId, gtin, serial])
 
@@ -237,6 +247,7 @@ export default function ScanPage() {
 
   const handleVIPSubmit = async (e) => {
     e.preventDefault()
+    if (isPreview) { setVipSubmitted(true); return }
     if (supabase && qrCode) {
       const { data: inserted } = await supabase.from('vip_members').insert({
         brand_id: qrCode.brand_id,
@@ -268,6 +279,7 @@ export default function ScanPage() {
 
   const handlePromoEntry = async (e) => {
     e.preventDefault()
+    if (isPreview) { setPromoEntered(true); return }
     if (supabase && activePromo && qrCode) {
       const { data: inserted } = await supabase.from('promo_entries').insert({
         promo_id: activePromo.id,
@@ -298,6 +310,7 @@ export default function ScanPage() {
 
   const handleWarrantySubmit = async (e) => {
     e.preventDefault()
+    if (isPreview) { setWarrantyRegistered(true); return }
     if (supabase && qrCode) {
       const { data: inserted } = await supabase.from('warranty_registrations').insert({
         brand_id: qrCode.brand_id,
@@ -330,6 +343,7 @@ export default function ScanPage() {
 
   const handleEventSubmit = async (e) => {
     e.preventDefault()
+    if (isPreview) { setEventSubmitted(true); return }
     if (supabase && event && qrCode) {
       const { data: inserted } = await supabase.from('event_entries').insert({
         event_id: event.id,

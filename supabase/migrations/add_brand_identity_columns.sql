@@ -1,0 +1,6 @@
+-- Brand identity columns for the new Brand tab
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS accent_hex TEXT DEFAULT '#FFFFFF';
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS accent_ink_hex TEXT DEFAULT '#000000';
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS kit TEXT DEFAULT 'clean';
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS logo_dark_url TEXT;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS social_privacy TEXT;

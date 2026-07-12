@@ -712,11 +712,6 @@ export default function ScanPage({ previewData } = {}) {
           <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, position: 'relative', zIndex: 1 }}>
             <div>
               {promoConfig.sub && <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.74)', margin: 0 }}>{promoConfig.sub}</p>}
-              {promoConfig.showCountdown && countdown && (
-                <p style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: '10.5px', letterSpacing: '0.07em', color: 'rgba(255,255,255,0.72)', margin: '3px 0 0', fontVariantNumeric: 'tabular-nums' }}>
-                  {promoState === 'live' ? `Closes in ${countdown}` : `Starts in ${countdown}`}
-                </p>
-              )}
             </div>
             <button onClick={e => { e.stopPropagation(); promoConfig.formAction() }} style={{
               flex: 'none', border: 'none', cursor: 'pointer',

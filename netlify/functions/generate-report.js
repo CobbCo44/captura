@@ -43,16 +43,19 @@ export default async (req) => {
 
     const prompt = `You are an analytics expert for Captura, a consumer engagement platform where brands use QR codes on products to track engagement.
 
-Analyze this pre-summarized data for "${brandName}" and generate a concise weekly insights report. Be direct and actionable. Do not use em dashes. Use commas, periods, or short sentences instead.
+Analyze this pre-summarized data for "${brandName}" and generate a concise insights report. Be direct and actionable. Do not use em dashes. Use commas, periods, or short sentences instead.
+
+IMPORTANT: Conversions are measured by Promo Entries, NOT VIP signups. A conversion happens when a consumer scans a QR code and enters a promo. Do not mention VIP conversion or VIP membership anywhere in the report. The data also includes Event Entries (consumers who entered via brand events) and Warranty Registrations (consumers who registered a product warranty).
 
 ${summary}
 
 Generate a report with these sections:
-1. **Performance Summary** - Key numbers and what they mean
+1. **Performance Summary** - Key numbers and what they mean (scans, promo entries, event entries, warranty registrations)
 2. **Top Products** - Which products are getting the most engagement and why that matters
 3. **Geographic Hotspots** - Where scans are concentrated and what to do about it
-4. **VIP Conversion** - How well scans are converting to VIP signups, with suggestions to improve
-5. **Recommendations** - 3 specific, actionable things the brand should do this week
+4. **Promo Conversion** - How well scans are converting to promo entries (Promo Entries / Total Scans), with suggestions to improve
+5. **Engagement Channels** - Break down performance across promos, events, and warranty registrations. Which channel is strongest and where to invest more
+6. **Recommendations** - 3 specific, actionable things the brand should do this week
 
 Keep it concise. No fluff. Write like you are advising a brand owner who wants to grow.`
 

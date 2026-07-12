@@ -6,76 +6,138 @@ function renderBold(text) {
   return parts.map((part, i) => i % 2 === 1 ? <strong key={i} style={{ color: '#FAFAFA' }}>{part}</strong> : part)
 }
 
+const DATE_RANGES = [
+  { label: '7 Days', value: 7 },
+  { label: '30 Days', value: 30 },
+  { label: '90 Days', value: 90 },
+  { label: 'All Time', value: null },
+]
+
 export default function Insights({ brand }) {
   const [report, setReport] = useState(null)
   const [generating, setGenerating] = useState(false)
-  const [scans, setScans] = useState([])
-  const [vipMembers, setVipMembers] = useState([])
-  const [promoEntries, setPromoEntries] = useState([])
-  const [products, setProducts] = useState([])
+  const [stats, setStats] = useState(null)
   const [loaded, setLoaded] = useState(false)
+  const [range, setRange] = useState(30)
 
   useEffect(() => {
     loadData()
-  }, [brand])
+  }, [brand, range])
 
   async function loadData() {
     if (!supabase || !brand?.id || brand.id === 'demo') {
       setLoaded(true)
       return
     }
-    const [scansRes, vipRes, promoRes, prodRes] = await Promise.all([
-      supabase.from('scans').select('*, products(name, sku)').eq('brand_id', brand.id).order('scanned_at', { ascending: false }).limit(500),
-      supabase.from('vip_members').select('*').eq('brand_id', brand.id),
-      supabase.from('promo_entries').select('*').eq('brand_id', brand.id),
-      supabase.from('products').select('name, sku').eq('brand_id', brand.id),
+
+    const since = range
+      ? new Date(Date.now() - range * 24 * 60 * 60 * 1000).toISOString()
+      : null
+
+    const { data, error } = await supabase.rpc('get_insights_rollup', {
+      p_brand_id: brand.id,
+      p_since: since,
+    })
+
+    if (error) {
+      // Fallback to client-side if the function doesn't exist yet
+      await loadDataFallback(since)
+      return
+    }
+
+    setStats(data)
+    setLoaded(true)
+  }
+
+  async function loadDataFallback(since) {
+    let scansQuery = supabase.from('scans').select('*, products(name, sku)').eq('brand_id', brand.id)
+    let vipQuery = supabase.from('vip_members').select('id').eq('brand_id', brand.id)
+    let promoQuery = supabase.from('promo_entries').select('id').eq('brand_id', brand.id)
+    let eventQuery = supabase.from('event_entries').select('id').eq('brand_id', brand.id)
+    let warrantyQuery = supabase.from('contact_warranties').select('id, contacts!inner(brand_id)').eq('contacts.brand_id', brand.id)
+
+    if (since) {
+      scansQuery = scansQuery.gte('scanned_at', since)
+      vipQuery = vipQuery.gte('joined_at', since)
+      promoQuery = promoQuery.gte('entered_at', since)
+      eventQuery = eventQuery.gte('entered_at', since)
+      warrantyQuery = warrantyQuery.gte('created_at', since)
+    }
+
+    const [scansRes, vipRes, promoRes, eventRes, warrantyRes] = await Promise.all([
+      scansQuery.order('scanned_at', { ascending: false }).limit(500),
+      vipQuery,
+      promoQuery,
+      eventQuery,
+      warrantyQuery,
     ])
-    setScans(scansRes.data || [])
-    setVipMembers(vipRes.data || [])
-    setPromoEntries(promoRes.data || [])
-    setProducts(prodRes.data || [])
+
+    const scans = scansRes.data || []
+    const byProduct = {}
+    scans.forEach(s => {
+      const name = s.products?.name || 'Unknown'
+      if (!byProduct[name]) byProduct[name] = { scan_count: 0, city_count: new Set() }
+      byProduct[name].scan_count++
+      if (s.city) byProduct[name].city_count.add(s.city)
+    })
+    const byCity = {}
+    scans.forEach(s => { if (s.city) byCity[s.city] = (byCity[s.city] || 0) + 1 })
+
+    setStats({
+      total_scans: scans.length,
+      vip_members: (vipRes.data || []).length,
+      promo_entries: (promoRes.data || []).length,
+      event_entries: (eventRes.data || []).length,
+      warranty_registrations: (warrantyRes.data || []).length,
+      scans_by_product: Object.entries(byProduct).map(([product_name, d]) => ({
+        product_name,
+        scan_count: d.scan_count,
+        city_count: d.city_count.size,
+      })),
+      scans_by_city: Object.entries(byCity)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 20)
+        .map(([city, scan_count]) => ({ city, scan_count })),
+      recent_scans: scans.slice(0, 10).map(s => ({
+        scanned_at: s.scanned_at,
+        product_name: s.products?.name || 'Unknown',
+        city: s.city,
+      })),
+    })
     setLoaded(true)
   }
 
   const generateReport = async () => {
-    if (scans.length === 0) {
+    if (!stats || stats.total_scans === 0) {
       alert('You need some scan data before generating a report. Go scan some QR codes!')
       return
     }
 
     setGenerating(true)
     try {
-      // Summarize data locally so the serverless function gets a small payload
-      const byProduct = {}
-      scans.forEach(s => {
-        const name = s.products?.name || 'Unknown'
-        if (!byProduct[name]) byProduct[name] = { scans: 0, cities: new Set() }
-        byProduct[name].scans++
-        if (s.city) byProduct[name].cities.add(s.city)
-      })
-      const byCity = {}
-      scans.forEach(s => { if (s.city) byCity[s.city] = (byCity[s.city] || 0) + 1 })
+      const conversionRate = stats.total_scans > 0
+        ? Math.round((stats.promo_entries / stats.total_scans) * 100)
+        : 0
 
       const summary = [
-        `Total Scans: ${scans.length}`,
-        `VIP Members: ${vipMembers.length}`,
-        `Promo Entries: ${promoEntries.length}`,
-        `VIP Conversion Rate: ${scans.length > 0 ? Math.round((vipMembers.length / scans.length) * 100) : 0}%`,
-        `Products: ${products.map(p => p.name).join(', ')}`,
+        `Total Scans: ${stats.total_scans}`,
+        `Promo Entries: ${stats.promo_entries}`,
+        `Event Entries: ${stats.event_entries || 0}`,
+        `Warranty Registrations: ${stats.warranty_registrations || 0}`,
+        `Promo Conversion Rate (Promo Entries / Scans): ${conversionRate}%`,
+        `Date Range: ${range ? `Last ${range} days` : 'All time'}`,
         '',
         'Scans by product:',
-        ...Object.entries(byProduct).map(([name, data]) =>
-          `  ${name}: ${data.scans} scans in ${data.cities.size} cities (${[...data.cities].join(', ')})`
+        ...stats.scans_by_product.map(p =>
+          `  ${p.product_name}: ${p.scan_count} scans in ${p.city_count} cities`
         ),
         '',
         'Scans by city:',
-        ...Object.entries(byCity).sort((a, b) => b[1] - a[1]).map(([city, count]) =>
-          `  ${city}: ${count}`
-        ),
+        ...stats.scans_by_city.map(c => `  ${c.city}: ${c.scan_count}`),
         '',
         'Recent scans (last 10):',
-        ...scans.slice(0, 10).map(s =>
-          `  ${s.scanned_at} - ${s.products?.name || 'Unknown'} - ${s.city || 'Unknown'}`
+        ...stats.recent_scans.map(s =>
+          `  ${s.scanned_at} - ${s.product_name} - ${s.city || 'Unknown'}`
         ),
       ].join('\n')
 
@@ -134,6 +196,10 @@ export default function Insights({ brand }) {
     return <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>Loading...</div>
   }
 
+  const conversionRate = stats && stats.total_scans > 0
+    ? `${Math.round((stats.promo_entries / stats.total_scans) * 100)}%`
+    : '0%'
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
@@ -148,13 +214,37 @@ export default function Insights({ brand }) {
         </button>
       </div>
 
+      {/* Date Range Picker */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+        {DATE_RANGES.map(r => (
+          <button
+            key={r.label}
+            onClick={() => { setRange(r.value); setReport(null) }}
+            style={{
+              padding: '6px 14px',
+              borderRadius: 6,
+              border: 'none',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              background: range === r.value ? 'var(--primary, #6C63FF)' : 'var(--card-bg, #1E1E2E)',
+              color: range === r.value ? '#fff' : 'var(--text-muted)',
+            }}
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
+
       {/* Quick Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 28 }}>
         {[
-          { label: 'Total Scans', value: scans.length },
-          { label: 'VIP Members', value: vipMembers.length },
-          { label: 'Promo Entries', value: promoEntries.length },
-          { label: 'VIP Conversion', value: scans.length > 0 ? `${Math.round((vipMembers.length / scans.length) * 100)}%` : '0%' },
+          { label: 'Total Scans', value: stats?.total_scans || 0 },
+          { label: 'Promo Entries', value: stats?.promo_entries || 0 },
+          { label: 'Event Entries', value: stats?.event_entries || 0 },
+          { label: 'Warranty Reg.', value: stats?.warranty_registrations || 0 },
+          { label: 'VIP Members', value: stats?.vip_members || 0 },
+          { label: 'Promo Conversion', value: conversionRate },
         ].map(s => (
           <div key={s.label} className="card" style={{ padding: '16px 20px' }}>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>{s.label}</div>
@@ -169,7 +259,7 @@ export default function Insights({ brand }) {
           <div style={{ fontSize: '1.5rem', marginBottom: 12 }}>🔍</div>
           <div style={{ fontWeight: 600, marginBottom: 8 }}>Analyzing your data...</div>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            Analyzing your scans, VIP signups, and engagement patterns.
+            Analyzing your scans, promo entries, and engagement patterns.
           </p>
         </div>
       )}
@@ -177,7 +267,7 @@ export default function Insights({ brand }) {
       {!generating && report && (
         <div className="card" style={{ maxWidth: 720 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Weekly Insights Report</h2>
+            <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Insights Report</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -198,7 +288,7 @@ export default function Insights({ brand }) {
         </div>
       )}
 
-      {!generating && !report && scans.length === 0 && (
+      {!generating && !report && (!stats || stats.total_scans === 0) && (
         <div className="card" style={{ textAlign: 'center', padding: 60 }}>
           <div style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 8 }}>No data yet</div>
           <p style={{ color: 'var(--text-muted)' }}>
@@ -207,12 +297,12 @@ export default function Insights({ brand }) {
         </div>
       )}
 
-      {!generating && !report && scans.length > 0 && (
+      {!generating && !report && stats && stats.total_scans > 0 && (
         <div className="card" style={{ textAlign: 'center', padding: 60 }}>
           <div style={{ fontSize: '1.5rem', marginBottom: 12 }}>📊</div>
           <div style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 8 }}>Ready to analyze</div>
           <p style={{ color: 'var(--text-muted)', marginBottom: 20 }}>
-            You have {scans.length} scans and {vipMembers.length} VIP members to analyze.
+            You have {stats.total_scans} scans and {stats.promo_entries} promo entries to analyze.
           </p>
           <button className="btn btn-primary" onClick={generateReport}>Generate Report</button>
         </div>

@@ -37,7 +37,6 @@ export default function Brand({ brand, onBrandUpdate }) {
   const [logoDarkUploading, setLogoDarkUploading] = useState(false)
   const [products, setProducts] = useState([])
   const [previewProductId, setPreviewProductId] = useState('')
-  const [promoState, setPromoState] = useState('live')
   const [promos, setPromos] = useState([])
 
   useEffect(() => {
@@ -106,13 +105,8 @@ export default function Brand({ brand, onBrandUpdate }) {
   const previewProduct = products.find(p => p.id === previewProductId) || null
 
   const previewPromo = useMemo(() => {
-    const live = promos.find(p => p.active)
-    if (promoState === 'live') return live || null
-    if (promoState === 'closed') return null
-    if (promoState === 'winner') return live ? { ...live, _winner: true } : null
-    if (promoState === 'next') return promos.find(p => !p.active) || null
-    return null
-  }, [promos, promoState])
+    return promos.find(p => p.active) || null
+  }, [promos])
 
   const previewData = useMemo(() => ({
     product: previewProduct,
@@ -360,14 +354,6 @@ export default function Brand({ brand, onBrandUpdate }) {
               {products.map(p => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
-            </select>
-            <select className="input" value={promoState}
-              onChange={e => setPromoState(e.target.value)}
-              style={{ width: 120, padding: '8px 10px', fontSize: '0.8rem' }}>
-              <option value="live">Live</option>
-              <option value="closed">Closed</option>
-              <option value="winner">Winner</option>
-              <option value="next">Next up</option>
             </select>
           </div>
 

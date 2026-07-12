@@ -353,17 +353,14 @@ export default function Products({ brand }) {
                 style={{ minHeight: 100, resize: 'vertical' }} />
             </div>
 
-            {/* Scan Page Content */}
+            {/* Marketing Content */}
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Scan Page Content</label>
+              <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Marketing Content</label>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: -8 }}>
-                This content shows when a consumer scans the QR code.
+                Video and content shown on the scan page.
               </p>
               <input className="input" placeholder="Heading (e.g. Setup Guide, How to Use)" value={form.contentTitle}
                 onChange={e => setForm({ ...form, contentTitle: e.target.value })} />
-              <textarea className="input" placeholder="Content body" value={form.contentBody}
-                onChange={e => setForm({ ...form, contentBody: e.target.value })}
-                style={{ minHeight: 80, resize: 'vertical' }} />
               <input className="input" placeholder="Link URL (video, tutorial, etc.)" value={form.contentUrl}
                 onChange={e => setForm({ ...form, contentUrl: e.target.value })} />
             </div>

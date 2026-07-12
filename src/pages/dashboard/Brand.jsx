@@ -242,9 +242,19 @@ export default function Brand({ brand, onBrandUpdate }) {
                 ))}
               </div>
             </div>
+
+            {/* Logo size */}
+            <div>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                Logo Size
+              </label>
+              <input type="range" min={20} max={100} value={form.logo_size || 70}
+                onChange={e => setForm({ ...form, logo_size: parseInt(e.target.value) })}
+                style={{ width: '100%', accentColor: '#FAFAFA' }} />
+            </div>
           </div>
 
-          {/* Color */}
+          {/* Buttons */}
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Buttons</label>
 

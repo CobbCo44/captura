@@ -126,4 +126,5 @@ function escapeHtml(str) {
 
 export const config = {
   path: ['/s/*', '/01/*'],
+  onError: 'bypass',
 }

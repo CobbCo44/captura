@@ -728,23 +728,16 @@ export default function ScanPage({ previewData } = {}) {
           <div style={{
             gridColumn: 'span 4', gridRow: 'span 2',
             background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
-            position: 'relative', overflow: 'hidden', cursor: 'pointer',
-          }} onClick={() => window.open(`https://www.youtube.com/watch?v=${getYouTubeId(product.content_url)}`, '_blank')}>
-            <img src={`https://img.youtube.com/vi/${getYouTubeId(product.content_url)}/maxresdefault.jpg`}
-              alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.1), rgba(0,0,0,0.68))' }} />
-            <div style={{
-              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -58%)',
-              width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,0.93)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <div style={{ width: 0, height: 0, borderLeft: '13px solid #111', borderTop: '8px solid transparent', borderBottom: '8px solid transparent', marginLeft: 3 }} />
+            position: 'relative', overflow: 'hidden',
+          }}>
+            <div style={{ position: 'absolute', inset: 0 }}>
+              <iframe
+                src={`https://www.youtube.com/embed/${getYouTubeId(product.content_url)}?playsinline=1`}
+                style={{ width: '100%', height: '100%', border: 'none' }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
             </div>
-            {product.content_title && (
-              <div style={{ position: 'absolute', left: 12, right: 12, bottom: 10, fontSize: '12.5px', fontWeight: 600, color: '#fff', zIndex: 1 }}>
-                {product.content_title}
-              </div>
-            )}
           </div>
         )}
 

@@ -284,11 +284,8 @@ export default function Products({ brand }) {
           {editingProduct ? 'Edit Product' : 'Add Product'}
         </h1>
 
-        <div style={{ maxWidth: 1000 }}>
-          <form onSubmit={handleSubmit} className="product-form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18, alignItems: 'start' }}>
-
-            {/* LEFT COLUMN */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <div style={{ maxWidth: 560 }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
             {/* Image Upload */}
             <div className="card">
@@ -349,17 +346,12 @@ export default function Products({ brand }) {
               <input className="input" placeholder="GTIN / UPC / Barcode (optional)" value={form.gtin}
                 onChange={e => setForm({ ...form, gtin: e.target.value })} />
               <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: -8 }}>
-                The product barcode number. When set, QR codes are generated as GS1 Digital Link URLs structured around the GTIN.
+                The product barcode number. When set, QR codes use a GS1 Digital Link URL that works at retail checkout.
               </p>
               <textarea className="input" placeholder="Product Description" value={form.description}
                 onChange={e => setForm({ ...form, description: e.target.value })}
                 style={{ minHeight: 100, resize: 'vertical' }} />
             </div>
-
-            </div>{/* END LEFT COLUMN */}
-
-            {/* RIGHT COLUMN */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
             {/* Scan Page Content */}
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -419,10 +411,8 @@ export default function Products({ brand }) {
               )}
             </div>
 
-            </div>{/* END RIGHT COLUMN */}
-
             {/* Actions */}
-            <div style={{ display: 'flex', gap: 12, gridColumn: '1 / -1' }}>
+            <div style={{ display: 'flex', gap: 12 }}>
               <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
                 onClick={goBack}>Cancel</button>
               <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={uploading}>

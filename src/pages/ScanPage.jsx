@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { getKit } from '../lib/kits'
 
 function getYouTubeId(url) {
   if (!url) return null
@@ -9,22 +8,22 @@ function getYouTubeId(url) {
   return match ? match[1] : null
 }
 
-export default function ScanPage({ previewData } = {}) {
+export default function ScanPage() {
   // Supports two URL shapes:
   //   /s/:qrId             — legacy short_id lookup
   //   /01/:gtin/21/:serial — GS1 Digital Link (serial = short_id for tracking)
   //   /01/:gtin            — GS1 Digital Link without serial (no per-code tracking)
   const { qrId, gtin, serial } = useParams()
-  const [product, setProduct] = useState(previewData?.product || null)
+  const [product, setProduct] = useState(null)
   const [qrCode, setQrCode] = useState(null)
-  const [brand, setBrand] = useState(previewData?.brand || null)
+  const [brand, setBrand] = useState(null)
   const [location, setLocation] = useState(null)
   const [showVIP, setShowVIP] = useState(false)
   const [vipForm, setVipForm] = useState({ firstName: '', lastName: '', email: '', phone: '', consent: false })
   const [vipSubmitted, setVipSubmitted] = useState(false)
-  const [loading, setLoading] = useState(!previewData)
+  const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
-  const [activePromo, setActivePromo] = useState(previewData?.promo || null)
+  const [activePromo, setActivePromo] = useState(null)
   const [showPromoEntry, setShowPromoEntry] = useState(false)
   const [promoForm, setPromoForm] = useState({ firstName: '', lastName: '', email: '', phone: '', consent: false })
   const [promoEntered, setPromoEntered] = useState(false)
@@ -35,15 +34,6 @@ export default function ScanPage({ previewData } = {}) {
   const [eventForm, setEventForm] = useState({ firstName: '', lastName: '', email: '', phone: '', consent: false })
   const [eventSubmitted, setEventSubmitted] = useState(false)
   const scanLogged = useRef(false)
-  const isPreview = !!previewData
-
-  // Keep preview data in sync when props change
-  useEffect(() => {
-    if (!previewData) return
-    setProduct(previewData.product || null)
-    setBrand(previewData.brand || null)
-    setActivePromo(previewData.promo || null)
-  }, [previewData])
 
   // Determine lookup mode: if we have a gtin param, it's a GS1 path.
   // If we also have a serial, that's the short_id for per-code tracking.
@@ -51,7 +41,6 @@ export default function ScanPage({ previewData } = {}) {
   const lookupGtin = gtin ? gtin.replace(/\D/g, '').padStart(14, '0') : null
 
   useEffect(() => {
-    if (isPreview) return
     loadQRCode()
   }, [qrId, gtin, serial])
 
@@ -68,7 +57,7 @@ export default function ScanPage({ previewData } = {}) {
     if (lookupShortId) {
       const { data, error } = await supabase
         .from('qr_codes')
-        .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
+        .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
         .eq('short_id', lookupShortId)
         .single()
       if (!error && data) qr = data
@@ -88,7 +77,7 @@ export default function ScanPage({ previewData } = {}) {
         // Try to find a QR code for this product so we get promo/event/brand data
         const { data: qrData } = await supabase
           .from('qr_codes')
-          .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
+          .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
           .eq('product_id', prod.id)
           .limit(1)
           .single()
@@ -99,7 +88,7 @@ export default function ScanPage({ previewData } = {}) {
           // Product exists but no QR code — show the product directly
           const { data: brandData } = await supabase
             .from('brands')
-            .select('name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website')
+            .select('name, logo_url, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website')
             .eq('id', prod.brand_id)
             .single()
           setProduct(prod)
@@ -248,7 +237,6 @@ export default function ScanPage({ previewData } = {}) {
 
   const handleVIPSubmit = async (e) => {
     e.preventDefault()
-    if (isPreview) { setVipSubmitted(true); return }
     if (supabase && qrCode) {
       const { data: inserted } = await supabase.from('vip_members').insert({
         brand_id: qrCode.brand_id,
@@ -280,7 +268,6 @@ export default function ScanPage({ previewData } = {}) {
 
   const handlePromoEntry = async (e) => {
     e.preventDefault()
-    if (isPreview) { setPromoEntered(true); return }
     if (supabase && activePromo && qrCode) {
       const { data: inserted } = await supabase.from('promo_entries').insert({
         promo_id: activePromo.id,
@@ -311,7 +298,6 @@ export default function ScanPage({ previewData } = {}) {
 
   const handleWarrantySubmit = async (e) => {
     e.preventDefault()
-    if (isPreview) { setWarrantyRegistered(true); return }
     if (supabase && qrCode) {
       const { data: inserted } = await supabase.from('warranty_registrations').insert({
         brand_id: qrCode.brand_id,
@@ -344,7 +330,6 @@ export default function ScanPage({ previewData } = {}) {
 
   const handleEventSubmit = async (e) => {
     e.preventDefault()
-    if (isPreview) { setEventSubmitted(true); return }
     if (supabase && event && qrCode) {
       const { data: inserted } = await supabase.from('event_entries').insert({
         event_id: event.id,
@@ -393,17 +378,6 @@ export default function ScanPage({ previewData } = {}) {
   const isEventQR = !!event
   const isPromoOnly = !product && !isEventQR
 
-  // Brand tokens: kit colors + accent
-  const kit = getKit(brand?.kit)
-  const accentBg = brand?.accent_hex || '#FAFAFA'
-  const accentInk = brand?.accent_ink_hex || '#09090B'
-  const tokenVars = {
-    '--scan-bg': kit.bg,
-    '--scan-card': kit.card,
-    '--scan-border': kit.border,
-  }
-  const btnStyle = { background: accentBg, color: accentInk }
-
   // Event scan page
   if (isEventQR) {
     return (
@@ -447,6 +421,7 @@ export default function ScanPage({ previewData } = {}) {
                   padding: '24px 20px', textAlign: 'center',
                   ...(event.image_url ? { background: 'rgba(0,0,0,0.55)' } : {}),
                 }}>
+                  <div style={{ fontSize: '1.3rem', marginBottom: 6 }}>🎁</div>
                   <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 6 }}>Giveaway</h3>
                   <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#FAFAFA' }}>{event.giveaway}</p>
                 </div>
@@ -499,6 +474,7 @@ export default function ScanPage({ previewData } = {}) {
                 border: '1px solid var(--success)',
                 borderRadius: 'var(--radius)'
               }}>
+                <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>🎉</div>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>
                   You're In!
                 </h3>
@@ -558,21 +534,7 @@ export default function ScanPage({ previewData } = {}) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', padding: '0 0 40px', background: tokenVars['--scan-bg'], color: '#FAFAFA', ...tokenVars }}>
-      {/* Brand Header */}
-      {(brand?.logo_dark_url || brand?.logo_url) && (
-        <div style={{
-          width: '100%', height: 46, padding: '0 16px', overflow: 'hidden',
-          background: tokenVars['--scan-card'], borderBottom: `1px solid ${tokenVars['--scan-border']}`,
-          display: 'flex', alignItems: 'center',
-          justifyContent: brand?.logo_align === 'center' ? 'center' : brand?.logo_align === 'right' ? 'flex-end' : 'flex-start',
-        }}>
-          <img src={brand.logo_dark_url || brand.logo_url} alt={brand.name} style={{
-            height: Math.round(46 * (brand?.logo_size || 40) / 100), objectFit: 'contain',
-          }} />
-        </div>
-      )}
-
+    <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', padding: '0 0 40px' }}>
       {/* Product Images */}
       {!isPromoOnly && product?.image_urls?.length > 0 && (
         <div style={{
@@ -591,10 +553,10 @@ export default function ScanPage({ previewData } = {}) {
         </div>
       )}
 
-      {/* Product Title */}
+      {/* Header */}
       <div style={{
         width: '100%', padding: '20px 20px 16px',
-        background: tokenVars['--scan-card'], borderBottom: `1px solid ${tokenVars['--scan-border']}`
+        background: 'var(--bg-card)', borderBottom: '1px solid var(--border)'
       }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>
           {isPromoOnly ? (activePromo?.title || brand?.name || 'Event') : (product?.name || 'Product')}
@@ -603,7 +565,7 @@ export default function ScanPage({ previewData } = {}) {
 
       <div style={{ padding: '0 20px' }}>
         {!isPromoOnly && product?.description && (
-          <div style={{ padding: '20px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
+          <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
             <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.95rem', whiteSpace: 'pre-line' }}>
               {product.description}
             </p>
@@ -611,7 +573,7 @@ export default function ScanPage({ previewData } = {}) {
         )}
 
         {!isPromoOnly && (product?.content_title || product?.content_body || product?.content_url) && (
-          <div style={{ padding: '24px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
+          <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border)' }}>
             {product.content_title && (
               <h2 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 12 }}>
                 {product.content_title}
@@ -646,11 +608,11 @@ export default function ScanPage({ previewData } = {}) {
 
         {/* Warranty Registration */}
         {!isPromoOnly && product?.warranty_enabled && (
-          <div style={{ padding: '24px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
+          <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border)' }}>
             {!showWarranty && !warrantyRegistered && (
               <div style={{
                 background: 'rgba(255, 255, 255, 0.03)',
-                border: `1px solid ${tokenVars['--scan-border']}`,
+                border: '1px solid #3F3F46',
                 borderRadius: 'var(--radius)', padding: '28px 20px', textAlign: 'center'
               }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 8 }}>
@@ -664,7 +626,7 @@ export default function ScanPage({ previewData } = {}) {
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 20, lineHeight: 1.5 }}>
                   Activate your product warranty and get support when you need it.
                 </p>
-                <button className="btn" style={{ padding: '14px 32px', ...btnStyle }}
+                <button className="btn btn-primary" style={{ padding: '14px 32px' }}
                   onClick={() => setShowWarranty(true)}>
                   Register Now
                 </button>
@@ -704,7 +666,7 @@ export default function ScanPage({ previewData } = {}) {
                     I am 18 years or older and agree to the warranty terms. I consent to receiving communications about my warranty and product updates. <a href="/privacy" target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Privacy Policy</a>
                   </span>
                 </label>
-                <button type="submit" className="btn" style={{ width: '100%', padding: 14, ...btnStyle }}>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 14 }}>
                   Register Warranty
                 </button>
               </form>
@@ -730,12 +692,12 @@ export default function ScanPage({ previewData } = {}) {
 
         {/* Reorder Button */}
         {!isPromoOnly && product?.reorder_url && (
-          <div style={{ padding: '20px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
+          <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
             <a href={product.reorder_url} target="_blank" rel="noopener noreferrer"
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 width: '100%', padding: '16px', borderRadius: 'var(--radius)',
-                ...btnStyle, fontWeight: 700,
+                background: '#FAFAFA', color: '#09090B', fontWeight: 700,
                 fontSize: '1rem', textDecoration: 'none', gap: 8,
               }}>
               Reorder This Product
@@ -745,7 +707,7 @@ export default function ScanPage({ previewData } = {}) {
 
         {/* Active Promo */}
         {activePromo && (
-          <div style={{ padding: '24px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
+          <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border)' }}>
             {!showPromoEntry && !promoEntered && (
               <div style={{
                 background: activePromo.image_url ? 'none' : 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(245, 158, 11, 0.1))',
@@ -759,7 +721,8 @@ export default function ScanPage({ previewData } = {}) {
                   background: activePromo.image_url ? 'rgba(0,0,0,0.55)' : 'transparent',
                   borderRadius: 'var(--radius)', padding: '28px 20px', textAlign: 'center',
                 }}>
-                    <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: 8, color: '#FAFAFA' }}>
+                  <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>🎉</div>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: 8, color: '#FAFAFA' }}>
                     {activePromo.title}
                   </h3>
                   {activePromo.description && (
@@ -772,7 +735,7 @@ export default function ScanPage({ previewData } = {}) {
                       Prize: {activePromo.prize}
                     </p>
                   )}
-                  <button className="btn" style={{ padding: '14px 32px', ...btnStyle }}
+                  <button className="btn btn-primary" style={{ padding: '14px 32px' }}
                     onClick={() => setShowPromoEntry(true)}>
                     Enter to Win
                   </button>
@@ -799,7 +762,7 @@ export default function ScanPage({ previewData } = {}) {
                     I am 18 years or older and agree to receive communications from this brand via text, email, or phone. I understand my data will be used in accordance with the <a href="/privacy" target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Privacy Policy</a>. Message and data rates may apply. Reply STOP to opt out.
                   </span>
                 </label>
-                <button type="submit" className="btn" style={{ width: '100%', padding: 14, ...btnStyle }}>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 14 }}>
                   Submit Entry
                 </button>
               </form>
@@ -812,6 +775,7 @@ export default function ScanPage({ previewData } = {}) {
                 border: '1px solid var(--success)',
                 borderRadius: 'var(--radius)'
               }}>
+                <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>🎉</div>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>
                   You're Entered!
                 </h3>
@@ -829,7 +793,7 @@ export default function ScanPage({ previewData } = {}) {
             <div style={{ textAlign: 'center' }}>
               <div style={{
                 background: 'rgba(255, 255, 255, 0.03)',
-                border: `1px solid ${tokenVars['--scan-border']}`,
+                border: '1px solid #3F3F46',
                 borderRadius: 'var(--radius)', padding: '28px 20px'
               }}>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 8 }}>
@@ -838,7 +802,7 @@ export default function ScanPage({ previewData } = {}) {
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 20, lineHeight: 1.5 }}>
                   Get exclusive access to deals, early product drops, and insider content.
                 </p>
-                <button className="btn" style={{ padding: '14px 32px', ...btnStyle }}
+                <button className="btn btn-primary" style={{ padding: '14px 32px' }}
                   onClick={() => setShowVIP(true)}>
                   Sign Me Up
                 </button>
@@ -865,7 +829,7 @@ export default function ScanPage({ previewData } = {}) {
                   I am 18 years or older and agree to receive communications from this brand via text, email, or phone. I understand my data will be used in accordance with the <a href="/privacy" target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Privacy Policy</a>. Message and data rates may apply. Reply STOP to opt out.
                 </span>
               </label>
-              <button type="submit" className="btn" style={{ width: '100%', padding: 14, ...btnStyle }}>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 14 }}>
                 Join VIP List
               </button>
             </form>
@@ -900,7 +864,7 @@ export default function ScanPage({ previewData } = {}) {
           ].filter(s => brand[s.key])
           if (socials.length === 0) return null
           return (
-            <div style={{ padding: '20px 0', borderBottom: `1px solid ${tokenVars['--scan-border']}` }}>
+            <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
               <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>
                 Follow Us
               </div>
@@ -910,7 +874,7 @@ export default function ScanPage({ previewData } = {}) {
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       width: 44, height: 44, borderRadius: '50%',
-                      background: tokenVars['--scan-card'], border: `1px solid ${tokenVars['--scan-border']}`,
+                      background: 'var(--bg-card)', border: '1px solid var(--border)',
                       color: '#FAFAFA', textDecoration: 'none',
                     }}>
                     <span style={{ width: 20, height: 20 }} dangerouslySetInnerHTML={{ __html: s.svg }} />

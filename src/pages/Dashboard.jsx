@@ -7,7 +7,7 @@ import Scans from './dashboard/Scans'
 import VIPMembers from './dashboard/VIPMembers'
 import Overview from './dashboard/Overview'
 import Promos from './dashboard/Promos'
-import Brand from './dashboard/Brand'
+import Socials from './dashboard/Socials'
 import Insights from './dashboard/Insights'
 import Consumers from './dashboard/Consumers'
 import Events from './dashboard/Events'
@@ -15,11 +15,11 @@ import Settings from './dashboard/Settings'
 
 const navItems = [
   { path: '', label: 'Overview', icon: '◎' },
-  { path: 'brand', label: 'Brand', icon: '◆' },
   { path: 'products', label: 'Products', icon: '▦' },
   { path: 'qr-codes', label: 'QR Codes', icon: '⊞' },
   { path: 'promos', label: 'Promos', icon: '🎁' },
   { path: 'events', label: 'Events', icon: '🎪' },
+  { path: 'socials', label: 'Socials', icon: '🔗' },
   { path: 'scans', label: 'Scans', icon: '📍' },
   { path: 'consumers', label: 'Consumers', icon: '👥' },
   { path: 'insights', label: 'Insights', icon: '📊' },
@@ -156,9 +156,9 @@ export default function Dashboard() {
           <Route index element={<Overview brand={brand} />} />
           <Route path="products" element={<Products brand={brand} />} />
           <Route path="qr-codes" element={<QRCodes brand={brand} />} />
-          <Route path="brand" element={<Brand brand={brand} onBrandUpdate={setBrand} />} />
           <Route path="promos" element={<Promos brand={brand} />} />
           <Route path="events" element={<Events brand={brand} />} />
+          <Route path="socials" element={<Socials brand={brand} />} />
           <Route path="scans" element={<Scans brand={brand} />} />
           <Route path="vip" element={<VIPMembers brand={brand} />} />
           <Route path="consumers" element={<Consumers brand={brand} />} />

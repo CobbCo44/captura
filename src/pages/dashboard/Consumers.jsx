@@ -149,10 +149,6 @@ export default function Consumers({ brand }) {
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#FAFAFA' }}>{allConsumers.length}</div>
         </div>
         <div className="card" style={{ padding: '16px 20px' }}>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>VIP Members</div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--success)' }}>{vipMembers.length}</div>
-        </div>
-        <div className="card" style={{ padding: '16px 20px' }}>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Promo Entries</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#D4D4D8' }}>{promoEntries.length}</div>
         </div>
@@ -169,7 +165,6 @@ export default function Consumers({ brand }) {
       {/* Filters */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <button onClick={() => setFilter('all')} style={tabStyle(filter === 'all')}>All ({allConsumers.length})</button>
-        <button onClick={() => setFilter('vip')} style={tabStyle(filter === 'vip')}>VIP ({vipMembers.length})</button>
         <button onClick={() => setFilter('promo')} style={tabStyle(filter === 'promo')}>Promo ({promoEntries.length})</button>
         <button onClick={() => setFilter('event')} style={tabStyle(filter === 'event')}>Event ({eventEntries.length})</button>
         <button onClick={() => setFilter('warranty')} style={tabStyle(filter === 'warranty')}>Warranty ({warrantyRegs.length})</button>

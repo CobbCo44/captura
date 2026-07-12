@@ -27,21 +27,21 @@ export default function Scans({ brand }) {
       setLoading(false)
       return
     }
-    const [scansRes, vipRes] = await Promise.all([
+    const [scansRes, promoRes] = await Promise.all([
       supabase.from('scans').select('*, products(name, sku)').eq('brand_id', brand.id).order('scanned_at', { ascending: false }).limit(500),
-      supabase.from('vip_members').select('product_id').eq('brand_id', brand.id),
+      supabase.from('promo_entries').select('product_id').eq('brand_id', brand.id),
     ])
     setScans(scansRes.data || [])
-    setVipMembers(vipRes.data || [])
+    setVipMembers(promoRes.data || [])
     setLoading(false)
   }
 
   const mapPoints = scans.filter(s => s.latitude && s.longitude)
 
-  // SKU breakdown with VIP conversion
-  const vipByProduct = {}
+  // SKU breakdown with promo entry conversion
+  const promoByProduct = {}
   vipMembers.forEach(v => {
-    if (v.product_id) vipByProduct[v.product_id] = (vipByProduct[v.product_id] || 0) + 1
+    if (v.product_id) promoByProduct[v.product_id] = (promoByProduct[v.product_id] || 0) + 1
   })
 
   const skuMap = {}
@@ -55,8 +55,8 @@ export default function Scans({ brand }) {
   })
   const skuData = Object.values(skuMap).map(item => ({
     ...item,
-    vipSignups: vipByProduct[item.productId] || 0,
-    conversion: item.totalScans > 0 ? Math.round(((vipByProduct[item.productId] || 0) / item.totalScans) * 100) : 0,
+    promoEntries: promoByProduct[item.productId] || 0,
+    conversion: item.totalScans > 0 ? Math.round(((promoByProduct[item.productId] || 0) / item.totalScans) * 100) : 0,
   })).sort((a, b) => b.totalScans - a.totalScans)
 
   // City breakdown
@@ -182,8 +182,8 @@ export default function Scans({ brand }) {
                   </div>
                   <div style={{ display: 'flex', gap: 20, marginBottom: 12 }}>
                     <div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>VIP Signups</div>
-                      <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--success)' }}>{item.vipSignups}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Promo Entries</div>
+                      <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--success)' }}>{item.promoEntries}</div>
                     </div>
                     <div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Conversion</div>

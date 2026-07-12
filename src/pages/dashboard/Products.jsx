@@ -5,7 +5,7 @@ export default function Products({ brand }) {
   const [products, setProducts] = useState([])
   const [view, setView] = useState('list') // 'list' or 'form'
   const [editingProduct, setEditingProduct] = useState(null)
-  const [form, setForm] = useState({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', productType: 'durable', features: [], images: [], existingImages: [] })
+  const [form, setForm] = useState({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', careUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', productType: 'durable', features: [], images: [], existingImages: [] })
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -37,7 +37,7 @@ export default function Products({ brand }) {
 
   const openAdd = () => {
     setEditingProduct(null)
-    setForm({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', productType: 'durable', features: [], images: [], existingImages: [] })
+    setForm({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', careUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', productType: 'durable', features: [], images: [], existingImages: [] })
     setView('form')
   }
 
@@ -52,6 +52,7 @@ export default function Products({ brand }) {
       contentBody: p.content_body || '',
       contentUrl: p.content_url || '',
       reorderUrl: p.reorder_url || '',
+      careUrl: p.care_url || '',
       warrantyEnabled: p.warranty_enabled || false,
       warrantyDuration: p.warranty_duration || '',
       warrantyTerms: p.warranty_terms || '',
@@ -128,6 +129,7 @@ export default function Products({ brand }) {
         content_body: form.contentBody,
         content_url: form.contentUrl,
         reorder_url: form.reorderUrl,
+        care_url: form.careUrl || null,
         warranty_enabled: form.warrantyEnabled,
         warranty_duration: form.warrantyDuration || null,
         warranty_terms: form.warrantyTerms || null,
@@ -438,6 +440,16 @@ export default function Products({ brand }) {
               </p>
               <input className="input" placeholder="https://yourbrand.com/product/buy" value={form.reorderUrl}
                 onChange={e => setForm({ ...form, reorderUrl: e.target.value })} />
+            </div>
+
+            {/* Care Link */}
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Care Link</label>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: -8 }}>
+                Link to care instructions, maintenance guides, or product support.
+              </p>
+              <input className="input" placeholder="https://yourbrand.com/care" value={form.careUrl}
+                onChange={e => setForm({ ...form, careUrl: e.target.value })} />
             </div>
 
             {/* Warranty */}

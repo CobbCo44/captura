@@ -714,19 +714,11 @@ export default function ScanPage({ previewData } = {}) {
         </div>
       )}
 
-      {/* 3. Product name + orientation copy */}
+      {/* 3. Product name */}
       <div style={{ padding: '20px 20px 12px' }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--t-text)', margin: 0 }}>
           {isPromoOnly ? (activePromo?.title || brand?.name || 'Product') : (product?.name || 'Product')}
         </h1>
-        {!isPromoOnly && product?.description && (
-          <p style={{
-            color: 'var(--t-muted)', fontSize: '0.9rem', marginTop: 6, lineHeight: 1.4,
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          }}>
-            {product.description}
-          </p>
-        )}
       </div>
 
       <div style={{ padding: '0 20px' }}>

@@ -669,7 +669,6 @@ export default function ScanPage({ previewData } = {}) {
             <h2 style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em', fontSize: 21, lineHeight: 1.1, margin: '0 0 3px', color: 'var(--ink)' }}>
               {product.name}
             </h2>
-            {product.sku && <p style={{ fontSize: 12, color: 'var(--ink2)', margin: 0 }}>{product.sku}</p>}
           </div>
         </div>
       )}

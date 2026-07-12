@@ -566,7 +566,7 @@ export default function ScanPage({ previewData } = {}) {
           justifyContent: brand?.logo_align === 'center' ? 'center' : brand?.logo_align === 'right' ? 'flex-end' : 'flex-start',
         }}>
           <img src={brand.logo_dark_url || brand.logo_url} alt={brand.name} style={{
-            height: Math.round(46 * (brand?.logo_size || 40) / 100), objectFit: 'contain',
+            height: Math.round(46 * (brand?.logo_size || 70) / 100), objectFit: 'contain',
           }} />
         </div>
       )}

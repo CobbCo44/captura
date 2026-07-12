@@ -124,7 +124,3 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
 }
 
-export const config = {
-  path: ['/s/*', '/01/*'],
-  onError: 'bypass',
-}

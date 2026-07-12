@@ -5,6 +5,14 @@
 [functions]
   directory = "netlify/functions"
 
+[[edge_functions]]
+  path = "/s/*"
+  function = "og-preview"
+
+[[edge_functions]]
+  path = "/01/*"
+  function = "og-preview"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

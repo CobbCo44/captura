@@ -361,28 +361,6 @@ export default function Products({ brand }) {
                 onChange={e => setForm({ ...form, description: e.target.value })}
                 style={{ minHeight: 100, resize: 'vertical' }} />
 
-              <div>
-                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                  Product Type
-                </label>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {['durable', 'consumable'].map(t => (
-                    <button key={t} type="button" onClick={() => setForm({ ...form, productType: t })}
-                      style={{
-                        flex: 1, padding: '8px 0', borderRadius: 6, cursor: 'pointer',
-                        fontSize: '0.8rem', fontWeight: 600, textTransform: 'capitalize',
-                        border: form.productType === t ? '2px solid #FAFAFA' : '1px solid var(--border)',
-                        background: form.productType === t ? 'rgba(255,255,255,0.06)' : 'var(--bg)',
-                        color: form.productType === t ? '#FAFAFA' : 'var(--text-muted)',
-                      }}>
-                      {t}
-                    </button>
-                  ))}
-                </div>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 6 }}>
-                  Durable products (gear, electronics) can offer warranty registration. Consumable products (supplements, beauty) show reorder.
-                </p>
-              </div>
             </div>
 
             {/* Features */}

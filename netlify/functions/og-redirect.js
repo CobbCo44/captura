@@ -10,10 +10,17 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
 }
 
+function debugHtml(msg) {
+  return new Response(`<!-- og-redirect debug: ${msg} -->`, {
+    status: 200,
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
+  })
+}
+
 export default async (req) => {
   const ua = req.headers.get('user-agent') || ''
 
-  // Not a bot — let it fall through to index.html
+  // Not a bot — serve the SPA
   if (!BOT_PATTERN.test(ua)) {
     const origin = new URL(req.url).origin
     const spaRes = await fetch(`${origin}/index.html`)
@@ -37,11 +44,14 @@ export default async (req) => {
   if (shortMatch) shortId = shortMatch[1]
   else if (gs1SerialMatch) { gtinRaw = gs1SerialMatch[1]; shortId = gs1SerialMatch[2] }
   else if (gs1Match) gtinRaw = gs1Match[1]
-  else return
+  else return debugHtml('no path match')
 
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
   const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!supabaseUrl || !supabaseKey) return
+
+  if (!supabaseUrl || !supabaseKey) {
+    return debugHtml(`no env: url=${!!supabaseUrl} key=${!!supabaseKey}`)
+  }
 
   const supabase = createClient(supabaseUrl, supabaseKey)
 
@@ -50,11 +60,12 @@ export default async (req) => {
     let brand = null
 
     if (shortId) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('qr_codes')
         .select('*, products(name, description, image_url), brands:brand_id(name, logo_url)')
         .eq('short_id', shortId)
         .single()
+      if (error) return debugHtml(`qr query error: ${error.message}`)
       if (data) {
         product = data.products
         brand = data.brands
@@ -63,11 +74,12 @@ export default async (req) => {
 
     if (!product && gtinRaw) {
       const gtin = gtinRaw.replace(/\D/g, '').padStart(14, '0')
-      const { data: prod } = await supabase
+      const { data: prod, error: prodErr } = await supabase
         .from('products')
         .select('name, description, image_url, brand_id')
         .eq('gtin', gtin)
         .single()
+      if (prodErr) return debugHtml(`product query error: ${prodErr.message}`)
       if (prod) {
         product = prod
         const { data: br } = await supabase
@@ -79,7 +91,7 @@ export default async (req) => {
       }
     }
 
-    if (!product) return
+    if (!product) return debugHtml(`no product found. shortId=${shortId} gtin=${gtinRaw}`)
 
     const title = `${product.name || 'Product'} | ${brand?.name || 'Captura'}`
     const description = product.description
@@ -109,7 +121,7 @@ export default async (req) => {
       status: 200,
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
     })
-  } catch {
-    return
+  } catch (err) {
+    return debugHtml(`catch: ${err.message}`)
   }
 }

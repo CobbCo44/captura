@@ -459,9 +459,9 @@ export default function ScanPage({ previewData } = {}) {
 
   // Utility tiles
   const utilTiles = []
-  if (product?.reorder_url) utilTiles.push({ type: 'reorder', label: 'Reorder', sub: 'Buy again', glyph: '\u{1F501}', href: product.reorder_url })
+  if (product?.reorder_url) utilTiles.push({ type: 'reorder', label: 'Reorder', sub: 'Buy again', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>', href: product.reorder_url })
   if (product?.warranty_enabled) {
-    utilTiles.push({ type: 'warranty', label: 'Warranty', sub: 'Register', glyph: '\u{1F6E1}\uFE0F', action: () => setShowWarranty(true) })
+    utilTiles.push({ type: 'warranty', label: 'Warranty', sub: 'Register', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>', action: () => setShowWarranty(true) })
   } else if (activePromo?.winner_name) {
     utilTiles.push({ type: 'winner', winnerName: `${activePromo.winner_name}${activePromo.winner_city ? ' \u00B7 ' + activePromo.winner_city : ''}`, sub: 'Won the last drop' })
   }
@@ -787,7 +787,7 @@ export default function ScanPage({ previewData } = {}) {
               display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '10px 11px',
               transition: 'border-color 0.14s',
             }}>
-              <span style={{ fontSize: 17, marginBottom: 'auto' }}>{tile.glyph}</span>
+              <span style={{ width: 20, height: 20, marginBottom: 'auto', color: 'var(--accent)' }} dangerouslySetInnerHTML={{ __html: tile.icon }} />
               <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.15, color: 'var(--ink)' }}>
                 {tile.label}
                 <small style={{ display: 'block', fontWeight: 400, fontSize: '9.5px', color: 'var(--ink2)', marginTop: 1 }}>{tile.sub}</small>

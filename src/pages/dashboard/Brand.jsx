@@ -10,7 +10,6 @@ const LINK_FIELDS = [
   { key: 'social_twitter', label: 'X', placeholder: 'https://x.com/yourbrand', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>' },
   { key: 'social_facebook', label: 'Facebook', placeholder: 'https://facebook.com/yourbrand', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>' },
   { key: 'social_website', label: 'Website', placeholder: 'https://yourbrand.com', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>' },
-  { key: 'social_privacy', label: 'Privacy Policy', placeholder: 'https://yourbrand.com/privacy', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>' },
 ]
 
 export default function Brand({ brand, onBrandUpdate }) {
@@ -28,7 +27,6 @@ export default function Brand({ brand, onBrandUpdate }) {
     social_twitter: '',
     social_facebook: '',
     social_website: '',
-    social_privacy: '',
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -55,7 +53,6 @@ export default function Brand({ brand, onBrandUpdate }) {
       social_twitter: brand.social_twitter || '',
       social_facebook: brand.social_facebook || '',
       social_website: brand.social_website || '',
-      social_privacy: brand.social_privacy || '',
     })
   }, [brand])
 
@@ -123,7 +120,6 @@ export default function Brand({ brand, onBrandUpdate }) {
       social_twitter: form.social_twitter,
       social_facebook: form.social_facebook,
       social_website: form.social_website,
-      social_privacy: form.social_privacy,
     },
     promo: previewPromo,
   }), [form, previewProduct, previewPromo])

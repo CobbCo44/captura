@@ -62,7 +62,7 @@ export default async (req) => {
     if (shortId) {
       const { data, error } = await supabase
         .from('qr_codes')
-        .select('*, products(name, description, image_url), brands:brand_id(name, logo_url)')
+        .select('*, products(name, description), brands:brand_id(name, logo_url)')
         .eq('short_id', shortId)
         .single()
       if (error) return debugHtml(`qr query error: ${error.message}`)
@@ -76,7 +76,7 @@ export default async (req) => {
       const gtin = gtinRaw.replace(/\D/g, '').padStart(14, '0')
       const { data: prod, error: prodErr } = await supabase
         .from('products')
-        .select('name, description, image_url, brand_id')
+        .select('name, description, brand_id')
         .eq('gtin', gtin)
         .single()
       if (prodErr) return debugHtml(`product query error: ${prodErr.message}`)
@@ -97,7 +97,7 @@ export default async (req) => {
     const description = product.description
       ? product.description.slice(0, 160)
       : `Check out ${product.name} from ${brand?.name || 'Captura'}`
-    const image = product.image_url || brand?.logo_url || `${url.origin}/images/hero-qr-box.png`
+    const image = brand?.logo_url || `${url.origin}/images/hero-qr-box.png`
 
     const html = `<!DOCTYPE html>
 <html lang="en">

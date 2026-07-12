@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { derivePromoStatus } from '../../lib/resolvePrimary'
 
 export default function Promos({ brand }) {
   const [promos, setPromos] = useState([])
@@ -9,7 +8,7 @@ export default function Promos({ brand }) {
   const [editingPromo, setEditingPromo] = useState(null)
   const [viewingEntries, setViewingEntries] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ title: '', description: '', prize: '', image: null, existingImage: '', start_at: '', end_at: '', winner_name: '', winner_city: '' })
+  const [form, setForm] = useState({ title: '', description: '', prize: '', image: null, existingImage: '' })
   const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
@@ -43,15 +42,13 @@ export default function Promos({ brand }) {
 
   const openCreate = () => {
     setEditingPromo(null)
-    const now = new Date()
-    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-    setForm({ title: '', description: '', prize: '', image: null, existingImage: '', start_at: now.toISOString().slice(0, 16), end_at: nextWeek.toISOString().slice(0, 16), winner_name: '', winner_city: '' })
+    setForm({ title: '', description: '', prize: '', image: null, existingImage: '' })
     setShowModal(true)
   }
 
   const openEdit = (p) => {
     setEditingPromo(p)
-    setForm({ title: p.title, description: p.description || '', prize: p.prize || '', image: null, existingImage: p.image_url || '', start_at: p.start_at ? new Date(p.start_at).toISOString().slice(0, 16) : '', end_at: p.end_at ? new Date(p.end_at).toISOString().slice(0, 16) : '', winner_name: p.winner_name || '', winner_city: p.winner_city || '' })
+    setForm({ title: p.title, description: p.description || '', prize: p.prize || '', image: null, existingImage: p.image_url || '' })
     setShowModal(true)
   }
 
@@ -82,13 +79,7 @@ export default function Promos({ brand }) {
 
     if (editingPromo) {
       const { data, error } = await supabase.from('promos')
-        .update({
-          title: form.title, description: form.description, prize: form.prize, image_url: imageUrl,
-          start_at: form.start_at ? new Date(form.start_at).toISOString() : undefined,
-          end_at: form.end_at ? new Date(form.end_at).toISOString() : undefined,
-          winner_name: form.winner_name || null, winner_city: form.winner_city || null,
-          winner_announced_at: form.winner_name ? (editingPromo.winner_announced_at || new Date().toISOString()) : null,
-        })
+        .update({ title: form.title, description: form.description, prize: form.prize, image_url: imageUrl })
         .eq('id', editingPromo.id)
         .select().single()
       if (!error && data) {
@@ -102,8 +93,6 @@ export default function Promos({ brand }) {
         prize: form.prize,
         image_url: imageUrl,
         active: false,
-        start_at: new Date(form.start_at).toISOString(),
-        end_at: new Date(form.end_at).toISOString(),
       }).select().single()
       if (error) {
         alert(`Error: ${error.message}`)
@@ -204,36 +193,19 @@ export default function Promos({ brand }) {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>{promo.title}</h3>
-                    {(() => {
-                      const status = promo.active ? derivePromoStatus(promo) : 'off'
-                      const colors = { live: 'var(--success)', scheduled: '#F59E0B', closed: '#EF4444', winner: '#8B5CF6', off: 'var(--text-muted)' }
-                      const labels = { live: 'LIVE', scheduled: 'SCHEDULED', closed: 'CLOSED', winner: 'WINNER', off: 'OFF' }
-                      return (
-                        <span style={{
-                          padding: '3px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
-                          background: `${colors[status]}22`,
-                          color: colors[status],
-                        }}>
-                          {labels[status]}
-                        </span>
-                      )
-                    })()}
+                    <span style={{
+                      padding: '3px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
+                      background: promo.active ? 'rgba(34, 197, 94, 0.15)' : 'rgba(161, 161, 170, 0.1)',
+                      color: promo.active ? 'var(--success)' : 'var(--text-muted)',
+                    }}>
+                      {promo.active ? 'LIVE' : 'OFF'}
+                    </span>
                   </div>
                   {promo.description && (
                     <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 6 }}>{promo.description}</p>
                   )}
                   {promo.prize && (
                     <p style={{ fontSize: '0.85rem', color: '#FAFAFA' }}>Prize: {promo.prize}</p>
-                  )}
-                  {promo.start_at && promo.end_at && (
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                      {new Date(promo.start_at).toLocaleDateString()} - {new Date(promo.end_at).toLocaleDateString()}
-                    </p>
-                  )}
-                  {promo.winner_name && (
-                    <p style={{ fontSize: '0.8rem', color: '#8B5CF6', marginTop: 4 }}>
-                      Winner: {promo.winner_name}{promo.winner_city ? `, ${promo.winner_city}` : ''}
-                    </p>
                   )}
                 </div>
 
@@ -277,7 +249,7 @@ export default function Promos({ brand }) {
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50
         }} onClick={() => { setShowModal(false); setEditingPromo(null) }}>
-          <div className="card" style={{ width: 520, maxWidth: '90vw' }} onClick={e => e.stopPropagation()}>
+          <div className="card" style={{ width: 440, maxWidth: '90vw' }} onClick={e => e.stopPropagation()}>
             <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20 }}>
               {editingPromo ? 'Edit Promo' : 'Create Promo'}
             </h2>
@@ -328,40 +300,6 @@ export default function Promos({ brand }) {
                   </div>
                 )}
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  Start Date
-                </label>
-                <input className="input" type="datetime-local" value={form.start_at}
-                  onChange={e => setForm({ ...form, start_at: e.target.value })} required
-                  style={{ colorScheme: 'dark', width: '100%' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  End Date
-                </label>
-                <input className="input" type="datetime-local" value={form.end_at}
-                  onChange={e => setForm({ ...form, end_at: e.target.value })} required
-                  style={{ colorScheme: 'dark', width: '100%' }} />
-              </div>
-              {editingPromo && (
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                      Winner Name
-                    </label>
-                    <input className="input" placeholder="Leave blank until announced" value={form.winner_name}
-                      onChange={e => setForm({ ...form, winner_name: e.target.value })} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                      Winner City
-                    </label>
-                    <input className="input" placeholder="e.g. San Diego, CA" value={form.winner_city}
-                      onChange={e => setForm({ ...form, winner_city: e.target.value })} />
-                  </div>
-                </div>
-              )}
               <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
                 <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
                   onClick={() => { setShowModal(false); setEditingPromo(null) }}>Cancel</button>

@@ -5,7 +5,7 @@ export default function Products({ brand }) {
   const [products, setProducts] = useState([])
   const [view, setView] = useState('list') // 'list' or 'form'
   const [editingProduct, setEditingProduct] = useState(null)
-  const [form, setForm] = useState({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', careUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', productType: 'durable', features: [], images: [], existingImages: [] })
+  const [form, setForm] = useState({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', images: [], existingImages: [] })
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -37,7 +37,7 @@ export default function Products({ brand }) {
 
   const openAdd = () => {
     setEditingProduct(null)
-    setForm({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', careUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', productType: 'durable', features: [], images: [], existingImages: [] })
+    setForm({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', images: [], existingImages: [] })
     setView('form')
   }
 
@@ -52,12 +52,9 @@ export default function Products({ brand }) {
       contentBody: p.content_body || '',
       contentUrl: p.content_url || '',
       reorderUrl: p.reorder_url || '',
-      careUrl: p.care_url || '',
       warrantyEnabled: p.warranty_enabled || false,
       warrantyDuration: p.warranty_duration || '',
       warrantyTerms: p.warranty_terms || '',
-      productType: p.product_type || 'durable',
-      features: p.features || [],
       images: [],
       existingImages: p.image_urls || [],
     })
@@ -129,12 +126,9 @@ export default function Products({ brand }) {
         content_body: form.contentBody,
         content_url: form.contentUrl,
         reorder_url: form.reorderUrl,
-        care_url: form.careUrl || null,
         warranty_enabled: form.warrantyEnabled,
         warranty_duration: form.warrantyDuration || null,
         warranty_terms: form.warrantyTerms || null,
-        product_type: form.productType,
-        features: form.features.filter(f => f.trim()),
         image_urls: allImageUrls,
       }
 
@@ -360,34 +354,6 @@ export default function Products({ brand }) {
               <textarea className="input" placeholder="Product Description" value={form.description}
                 onChange={e => setForm({ ...form, description: e.target.value })}
                 style={{ minHeight: 100, resize: 'vertical' }} />
-
-            </div>
-
-            {/* Features */}
-            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Features</label>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: -8 }}>
-                Bullet points shown on the scan page. Leave empty to hide.
-              </p>
-              {form.features.map((f, i) => (
-                <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <input className="input" placeholder={`Feature ${i + 1}`} value={f}
-                    onChange={e => {
-                      const updated = [...form.features]
-                      updated[i] = e.target.value
-                      setForm({ ...form, features: updated })
-                    }}
-                    style={{ flex: 1 }} />
-                  <button type="button" onClick={() => setForm({ ...form, features: form.features.filter((_, j) => j !== i) })}
-                    style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '1rem', padding: '4px 8px' }}>
-                    x
-                  </button>
-                </div>
-              ))}
-              <button type="button" onClick={() => setForm({ ...form, features: [...form.features, ''] })}
-                className="btn btn-secondary" style={{ fontSize: '0.8rem', padding: '8px 14px', alignSelf: 'flex-start' }}>
-                + Add Feature
-              </button>
             </div>
 
             </div>{/* END LEFT COLUMN */}
@@ -418,16 +384,6 @@ export default function Products({ brand }) {
               </p>
               <input className="input" placeholder="https://yourbrand.com/product/buy" value={form.reorderUrl}
                 onChange={e => setForm({ ...form, reorderUrl: e.target.value })} />
-            </div>
-
-            {/* Care Link */}
-            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Care Link</label>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: -8 }}>
-                Link to care instructions, maintenance guides, or product support.
-              </p>
-              <input className="input" placeholder="https://yourbrand.com/care" value={form.careUrl}
-                onChange={e => setForm({ ...form, careUrl: e.target.value })} />
             </div>
 
             {/* Warranty */}

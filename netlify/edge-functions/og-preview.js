@@ -7,9 +7,14 @@ const BOT_PATTERN = /bot|crawl|spider|preview|slurp|facebookexternalhit|Facebot|
 export default async (request, context) => {
   const ua = request.headers.get('user-agent') || ''
 
-  // Not a bot — let the request pass through to the React app
-  if (!BOT_PATTERN.test(ua)) {
-    return context.next()
+  // Debug: add header so we can confirm the edge function is running
+  const isBot = BOT_PATTERN.test(ua)
+
+  // Not a bot — pass through but add debug header
+  if (!isBot) {
+    const response = await context.next()
+    response.headers.set('x-edge-debug', 'og-preview-ran')
+    return response
   }
 
   const url = new URL(request.url)

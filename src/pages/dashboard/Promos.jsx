@@ -48,7 +48,7 @@ export default function Promos({ brand }) {
 
   const openEdit = (p) => {
     setEditingPromo(p)
-    setForm({ title: p.title, description: p.description || '', prize: p.prize || '', image: null, existingImage: p.image_url || '' })
+    setForm({ title: p.title, description: p.description || '', prize: p.prize || '', image: null, existingImage: p.image_url || '', winner_name: p.winner_name || '', winner_city: p.winner_city || '' })
     setShowModal(true)
   }
 
@@ -79,7 +79,7 @@ export default function Promos({ brand }) {
 
     if (editingPromo) {
       const { data, error } = await supabase.from('promos')
-        .update({ title: form.title, description: form.description, prize: form.prize, image_url: imageUrl })
+        .update({ title: form.title, description: form.description, prize: form.prize, image_url: imageUrl, winner_name: form.winner_name || null, winner_city: form.winner_city || null })
         .eq('id', editingPromo.id)
         .select().single()
       if (!error && data) {
@@ -207,6 +207,11 @@ export default function Promos({ brand }) {
                   {promo.prize && (
                     <p style={{ fontSize: '0.85rem', color: '#FAFAFA' }}>Prize: {promo.prize}</p>
                   )}
+                  {promo.winner_name && (
+                    <p style={{ fontSize: '0.8rem', color: '#8B5CF6', marginTop: 4 }}>
+                      Winner: {promo.winner_name}{promo.winner_city ? `, ${promo.winner_city}` : ''}
+                    </p>
+                  )}
                 </div>
 
                 {/* Toggle */}
@@ -300,6 +305,24 @@ export default function Promos({ brand }) {
                   </div>
                 )}
               </div>
+              {editingPromo && (
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                      Winner Name
+                    </label>
+                    <input className="input" placeholder="Leave blank until announced" value={form.winner_name}
+                      onChange={e => setForm({ ...form, winner_name: e.target.value })} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                      Winner City
+                    </label>
+                    <input className="input" placeholder="e.g. San Diego, CA" value={form.winner_city}
+                      onChange={e => setForm({ ...form, winner_city: e.target.value })} />
+                  </div>
+                </div>
+              )}
               <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
                 <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
                   onClick={() => { setShowModal(false); setEditingPromo(null) }}>Cancel</button>

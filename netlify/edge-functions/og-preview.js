@@ -41,10 +41,13 @@ export default async (request, context) => {
 
   // Query Supabase for the product/brand info
   const supabaseUrl = Deno.env.get('VITE_SUPABASE_URL') || Deno.env.get('SUPABASE_URL')
-  const supabaseKey = Deno.env.get('VITE_SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+  const supabaseKey = Deno.env.get('VITE_SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
   if (!supabaseUrl || !supabaseKey) {
-    return context.next()
+    // Return a debug response so we can see what's missing
+    return new Response(`<!-- edge: no env vars. url=${!!supabaseUrl} key=${!!supabaseKey} -->`, {
+      headers: { 'Content-Type': 'text/html' },
+    })
   }
 
   try {
@@ -116,8 +119,10 @@ export default async (request, context) => {
     return new Response(html, {
       headers: { 'Content-Type': 'text/html; charset=utf-8' },
     })
-  } catch {
-    return context.next()
+  } catch (err) {
+    return new Response(`<!-- edge error: ${err.message} -->`, {
+      headers: { 'Content-Type': 'text/html' },
+    })
   }
 }
 

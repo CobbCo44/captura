@@ -79,6 +79,27 @@ export default function ScanPage({ previewData } = {}) {
   const lookupShortId = qrId || serial || null
   const lookupGtin = gtin ? gtin.replace(/\D/g, '').padStart(14, '0') : null
 
+  // Fetch location early so it's available for form submissions
+  useEffect(() => {
+    if (isPreview) return
+    async function fetchLocation() {
+      try {
+        const res = await fetch('https://ipapi.co/json/')
+        const geo = await res.json()
+        if (geo && geo.city) {
+          setLocation({
+            lat: geo.latitude,
+            lng: geo.longitude,
+            city: geo.city,
+            region: geo.region_code || geo.region,
+            country: geo.country_code,
+          })
+        }
+      } catch { /* ignore */ }
+    }
+    fetchLocation()
+  }, [])
+
   useEffect(() => {
     if (isPreview) return
     loadQRCode()

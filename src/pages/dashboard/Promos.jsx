@@ -42,15 +42,13 @@ export default function Promos({ brand }) {
 
   const openCreate = () => {
     setEditingPromo(null)
-    const now = new Date()
-    const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-    setForm({ title: '', description: '', prize: '', image: null, existingImage: '', start_at: now.toISOString().slice(0, 16), end_at: nextWeek.toISOString().slice(0, 16), winner_name: '', winner_city: '' })
+    setForm({ title: '', description: '', prize: '', image: null, existingImage: '', winner_name: '', winner_city: '' })
     setShowModal(true)
   }
 
   const openEdit = (p) => {
     setEditingPromo(p)
-    setForm({ title: p.title, description: p.description || '', prize: p.prize || '', image: null, existingImage: p.image_url || '', start_at: p.start_at ? new Date(p.start_at).toISOString().slice(0, 16) : '', end_at: p.end_at ? new Date(p.end_at).toISOString().slice(0, 16) : '', winner_name: p.winner_name || '', winner_city: p.winner_city || '' })
+    setForm({ title: p.title, description: p.description || '', prize: p.prize || '', image: null, existingImage: p.image_url || '', winner_name: p.winner_name || '', winner_city: p.winner_city || '' })
     setShowModal(true)
   }
 
@@ -81,7 +79,7 @@ export default function Promos({ brand }) {
 
     if (editingPromo) {
       const { data, error } = await supabase.from('promos')
-        .update({ title: form.title, description: form.description, prize: form.prize, image_url: imageUrl, start_at: form.start_at ? new Date(form.start_at).toISOString() : null, end_at: form.end_at ? new Date(form.end_at).toISOString() : null, winner_name: form.winner_name || null, winner_city: form.winner_city || null })
+        .update({ title: form.title, description: form.description, prize: form.prize, image_url: imageUrl, winner_name: form.winner_name || null, winner_city: form.winner_city || null })
         .eq('id', editingPromo.id)
         .select().single()
       if (!error && data) {
@@ -95,8 +93,6 @@ export default function Promos({ brand }) {
         prize: form.prize,
         image_url: imageUrl,
         active: false,
-        start_at: form.start_at ? new Date(form.start_at).toISOString() : null,
-        end_at: form.end_at ? new Date(form.end_at).toISOString() : null,
       }).select().single()
       if (error) {
         alert(`Error: ${error.message}`)
@@ -211,11 +207,6 @@ export default function Promos({ brand }) {
                   {promo.prize && (
                     <p style={{ fontSize: '0.85rem', color: '#FAFAFA' }}>Prize: {promo.prize}</p>
                   )}
-                  {promo.start_at && promo.end_at && (
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                      {new Date(promo.start_at).toLocaleDateString()} - {new Date(promo.end_at).toLocaleDateString()}
-                    </p>
-                  )}
                   {promo.winner_name && (
                     <p style={{ fontSize: '0.8rem', color: '#8B5CF6', marginTop: 4 }}>
                       Winner: {promo.winner_name}{promo.winner_city ? `, ${promo.winner_city}` : ''}
@@ -313,22 +304,6 @@ export default function Promos({ brand }) {
                     </button>
                   </div>
                 )}
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  Start Date
-                </label>
-                <input className="input" type="datetime-local" value={form.start_at}
-                  onChange={e => setForm({ ...form, start_at: e.target.value })}
-                  style={{ colorScheme: 'dark', width: '100%' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  End Date
-                </label>
-                <input className="input" type="datetime-local" value={form.end_at}
-                  onChange={e => setForm({ ...form, end_at: e.target.value })}
-                  style={{ colorScheme: 'dark', width: '100%' }} />
               </div>
               {editingPromo && (
                 <div style={{ display: 'flex', gap: 12 }}>

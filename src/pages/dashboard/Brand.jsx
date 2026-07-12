@@ -32,6 +32,7 @@ export default function Brand({ brand, onBrandUpdate }) {
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoDarkUploading, setLogoDarkUploading] = useState(false)
   const [products, setProducts] = useState([])
@@ -144,6 +145,9 @@ export default function Brand({ brand, onBrandUpdate }) {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {saved && <span style={{ color: 'var(--success)', fontWeight: 600, fontSize: '0.9rem' }}>Saved!</span>}
+          <button onClick={() => setShowPreviewModal(true)} className="btn btn-secondary">
+            Preview
+          </button>
           <button onClick={handleSave} className="btn btn-primary" disabled={saving}>
             {saving ? 'Saving...' : 'Save Changes'}
           </button>
@@ -378,6 +382,22 @@ export default function Brand({ brand, onBrandUpdate }) {
         </div>
 
       </div>
+
+      {/* Preview Modal */}
+      {showPreviewModal && (
+        <div onClick={() => setShowPreviewModal(false)} style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50,
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: 390, borderRadius: 32, border: '3px solid #3F3F46',
+            overflow: 'hidden', background: '#09090B',
+            height: '85vh', overflowY: 'auto',
+          }}>
+            <ScanPage previewData={previewData} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

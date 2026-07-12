@@ -5,13 +5,15 @@
 [functions]
   directory = "netlify/functions"
 
-[[edge_functions]]
-  path = "/s/*"
-  function = "og-preview"
+[[redirects]]
+  from = "/s/*"
+  to = "/.netlify/functions/og-redirect"
+  status = 200
 
-[[edge_functions]]
-  path = "/01/*"
-  function = "og-preview"
+[[redirects]]
+  from = "/01/*"
+  to = "/.netlify/functions/og-redirect"
+  status = 200
 
 [[redirects]]
   from = "/*"

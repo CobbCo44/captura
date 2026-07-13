@@ -19,6 +19,7 @@ export default function ScanPage({ previewData } = {}) {
   const [qrCode, setQrCode] = useState(null)
   const [brand, setBrand] = useState(previewData?.brand || null)
   const [location, setLocation] = useState(null)
+  const locationRef = useRef(null)
   const [showVIP, setShowVIP] = useState(false)
   const [vipForm, setVipForm] = useState({ firstName: '', lastName: '', email: '', phone: '', consent: false })
   const [vipSubmitted, setVipSubmitted] = useState(false)
@@ -79,25 +80,34 @@ export default function ScanPage({ previewData } = {}) {
   const lookupShortId = qrId || serial || null
   const lookupGtin = gtin ? gtin.replace(/\D/g, '').padStart(14, '0') : null
 
-  // Fetch location early so it's available for form submissions
+  // Fetch location once, shared by scan logging and form submissions
+  const locationPromise = useRef(null)
   useEffect(() => {
-    if (isPreview) return
-    async function fetchLocation() {
+    if (isPreview || locationPromise.current) return
+    locationPromise.current = (async () => {
+      // Try ipapi.co first, fall back to ip-api.com
       try {
         const res = await fetch('https://ipapi.co/json/')
         const geo = await res.json()
-        if (geo && geo.city) {
-          setLocation({
-            lat: geo.latitude,
-            lng: geo.longitude,
-            city: geo.city,
-            region: geo.region_code || geo.region,
-            country: geo.country_code,
-          })
+        if (geo && geo.city && !geo.error) {
+          const loc = { lat: geo.latitude, lng: geo.longitude, city: geo.city, region: geo.region_code || geo.region, country: geo.country_code }
+          locationRef.current = loc
+          setLocation(loc)
+          return loc
         }
-      } catch { /* ignore */ }
-    }
-    fetchLocation()
+      } catch { /* fall through */ }
+      try {
+        const res = await fetch('https://ip-api.com/json/?fields=status,lat,lon,city,region,countryCode')
+        const geo = await res.json()
+        if (geo && geo.status === 'success' && geo.city) {
+          const loc = { lat: geo.lat, lng: geo.lon, city: geo.city, region: geo.region, country: geo.countryCode }
+          locationRef.current = loc
+          setLocation(loc)
+          return loc
+        }
+      } catch { /* location unavailable */ }
+      return null
+    })()
   }, [])
 
   useEffect(() => {
@@ -203,6 +213,12 @@ export default function ScanPage({ previewData } = {}) {
     if (lastScan && Date.now() - parseInt(lastScan) < 300000) return
     localStorage.setItem(throttleKey, String(Date.now()))
 
+    // Wait for the shared location fetch to finish (won't make a second API call)
+    if (locationPromise.current) {
+      await locationPromise.current
+    }
+    const loc = locationRef.current
+
     let scanData = {
       qr_code_id: qr.id,
       product_id: qr.product_id || null,
@@ -211,29 +227,14 @@ export default function ScanPage({ previewData } = {}) {
       user_agent: navigator.userAgent,
     }
 
-    // Get location from IP address (no permission popup needed)
-    try {
-      const res = await fetch('https://ipapi.co/json/')
-      const geo = await res.json()
-      if (geo && geo.city) {
-        scanData.latitude = geo.latitude
-        scanData.longitude = geo.longitude
-        scanData.city = `${geo.city}, ${geo.region_code || geo.region}`
-        scanData.region = geo.region_code || geo.region
-        scanData.country = geo.country_code
-        setLocation({
-          lat: geo.latitude,
-          lng: geo.longitude,
-          city: geo.city,
-          region: geo.region_code || geo.region,
-          country: geo.country_code,
-        })
-      }
-    } catch (e) {
-      // IP geolocation failed, log without location
+    if (loc) {
+      scanData.latitude = loc.lat
+      scanData.longitude = loc.lng
+      scanData.city = `${loc.city}, ${loc.region}`
+      scanData.region = loc.region
+      scanData.country = loc.country
     }
 
-    // Log the scan with whatever data we have
     if (supabase) {
       await supabase.from('scans').insert(scanData)
     }

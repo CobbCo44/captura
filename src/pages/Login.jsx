@@ -1,16 +1,12 @@
 import { useState } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
+
 import { supabase } from '../lib/supabase'
-import { INDUSTRIES } from '../lib/industries'
 
 export default function Login() {
-  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const [isSignup, setIsSignup] = useState(searchParams.get('signup') === 'true')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [brandName, setBrandName] = useState('')
-  const [industry, setIndustry] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -25,30 +21,12 @@ export default function Login() {
     }
 
     try {
-      if (isSignup) {
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-        })
-        if (signUpError) throw signUpError
-
-        if (data.user) {
-          await supabase.from('brands').insert({
-            user_id: data.user.id,
-            name: brandName,
-            email: email,
-            industry: industry,
-          })
-        }
-        navigate('/dashboard')
-      } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        })
-        if (signInError) throw signInError
-        navigate('/dashboard')
-      }
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+      if (signInError) throw signInError
+      navigate('/dashboard')
     } catch (err) {
       setError(err.message)
     } finally {
@@ -67,44 +45,11 @@ export default function Login() {
             Captura
           </div>
           <p style={{ color: 'var(--text-muted)' }}>
-            {isSignup ? 'Create your brand account' : 'Welcome back'}
+            Welcome back
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {isSignup && (
-            <>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  Brand Name
-                </label>
-                <input
-                  type="text"
-                  className="input"
-                  placeholder="Your brand name"
-                  value={brandName}
-                  onChange={e => setBrandName(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  Industry
-                </label>
-                <select
-                  className="input"
-                  value={industry}
-                  onChange={e => setIndustry(e.target.value)}
-                  required
-                >
-                  <option value="">Select your industry</option>
-                  {INDUSTRIES.map(ind => (
-                    <option key={ind} value={ind}>{ind}</option>
-                  ))}
-                </select>
-              </div>
-            </>
-          )}
           <div>
             <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
               Email
@@ -149,32 +94,20 @@ export default function Login() {
             style={{ width: '100%', padding: '14px', marginTop: 8 }}
             disabled={loading}
           >
-            {loading ? 'Please wait...' : isSignup ? 'Create Account' : 'Log In'}
+            {loading ? 'Please wait...' : 'Log In'}
           </button>
 
-          {!isSignup && (
-            <p style={{ textAlign: 'center', marginTop: -8 }}>
-              <span onClick={async () => {
-                if (!email) { setError('Enter your email first'); return }
-                const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                  redirectTo: window.location.origin + '/login',
-                })
-                if (error) setError(error.message)
-                else alert('Check your email for a password reset link.')
-              }}
-                style={{ color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem' }}>
-                Forgot password?
-              </span>
-            </p>
-          )}
-
-          <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-            {isSignup ? 'Already have an account?' : "Don't have an account?"}{' '}
-            <span
-              onClick={() => setIsSignup(!isSignup)}
-              style={{ color: '#FAFAFA', cursor: 'pointer', fontWeight: 500 }}
-            >
-              {isSignup ? 'Log In' : 'Sign Up'}
+          <p style={{ textAlign: 'center', marginTop: -8 }}>
+            <span onClick={async () => {
+              if (!email) { setError('Enter your email first'); return }
+              const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: window.location.origin + '/login',
+              })
+              if (error) setError(error.message)
+              else alert('Check your email for a password reset link.')
+            }}
+              style={{ color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem' }}>
+              Forgot password?
             </span>
           </p>
         </form>

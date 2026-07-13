@@ -657,7 +657,7 @@ export default function ScanPage({ previewData } = {}) {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', background: 'var(--surface)', color: 'var(--ink)', fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14, lineHeight: 1.5, ...t }}>
-      <style>{`@keyframes captura-pulse{0%,100%{opacity:1}50%{opacity:.25}}`}</style>
+      <style>{`@keyframes captura-pulse{0%,100%{opacity:1}50%{opacity:.25}}@keyframes captura-slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
 
       {/* 1. BRAND BAR */}
       {(brand?.logo_dark_url || brand?.logo_url) && (
@@ -809,25 +809,7 @@ export default function ScanPage({ previewData } = {}) {
       {/* FORMS */}
       <div style={{ padding: '0 14px' }}>
 
-        {/* Promo entry form */}
-        {showPromoEntry && !promoEntered && (
-          <div style={{ paddingBottom: 20 }}>
-            <form onSubmit={handlePromoEntry} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--ink)' }}>Enter to Win</h3>
-              <input className="input" placeholder="First Name" value={promoForm.firstName} onChange={e => setPromoForm({ ...promoForm, firstName: e.target.value })} required />
-              <input className="input" placeholder="Last Name" value={promoForm.lastName} onChange={e => setPromoForm({ ...promoForm, lastName: e.target.value })} required />
-              <input className="input" type="email" placeholder="Email" value={promoForm.email} onChange={e => setPromoForm({ ...promoForm, email: e.target.value })} />
-              <input className="input" type="tel" placeholder="Phone Number" value={promoForm.phone} onChange={e => setPromoForm({ ...promoForm, phone: e.target.value })} required />
-              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
-                <input type="checkbox" checked={promoForm.consent} required onChange={e => setPromoForm({ ...promoForm, consent: e.target.checked })} style={{ marginTop: 3, accentColor: 'var(--accent)' }} />
-                <span style={{ color: 'var(--ink2)', fontSize: '0.75rem', lineHeight: 1.5 }}>
-                  I am 18 years or older and agree to receive communications from this brand via text, email, or phone. I understand my data will be used in accordance with the <a href="/privacy" target="_blank" style={{ color: 'var(--ink2)', textDecoration: 'underline' }}>Privacy Policy</a>. Message and data rates may apply. Reply STOP to opt out.
-                </span>
-              </label>
-              <button type="submit" style={{ width: '100%', padding: 14, ...btnStyle, border: 'none', borderRadius: 'var(--r)', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>Submit Entry</button>
-            </form>
-          </div>
-        )}
+        {/* Promo entered confirmation (inline) */}
         {promoEntered && (
           <div style={{ textAlign: 'center', padding: 28, marginBottom: 20, background: 'rgba(34, 197, 94, 0.1)', border: '1px solid var(--success)', borderRadius: 'var(--r)' }}>
             <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>You're Entered!</h3>
@@ -962,6 +944,39 @@ export default function ScanPage({ previewData } = {}) {
           <a href="/privacy" target="_blank" style={{ color: 'var(--ink2)', textDecoration: 'underline' }}>Privacy Policy</a>
         </p>
       </div>
+
+      {/* PROMO ENTRY MODAL */}
+      {showPromoEntry && !promoEntered && (
+        <div onClick={() => setShowPromoEntry(false)} style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: '100%', maxWidth: 480,
+            background: 'var(--tile, #18181B)', border: '1px solid var(--line, rgba(255,255,255,0.11))',
+            borderRadius: '18px 18px 0 0', padding: '24px 20px 32px',
+            animation: 'captura-slide-up 0.25s ease-out',
+          }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '0 auto 20px' }} />
+            <form onSubmit={handlePromoEntry} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--ink, #fff)', margin: 0, textAlign: 'center' }}>Enter to Win</h3>
+              {activePromo?.title && <p style={{ color: 'var(--ink2, rgba(255,255,255,0.56))', fontSize: '0.85rem', textAlign: 'center', margin: 0 }}>{activePromo.title}</p>}
+              <input className="input" placeholder="First Name" value={promoForm.firstName} onChange={e => setPromoForm({ ...promoForm, firstName: e.target.value })} required />
+              <input className="input" placeholder="Last Name" value={promoForm.lastName} onChange={e => setPromoForm({ ...promoForm, lastName: e.target.value })} required />
+              <input className="input" type="email" placeholder="Email" value={promoForm.email} onChange={e => setPromoForm({ ...promoForm, email: e.target.value })} />
+              <input className="input" type="tel" placeholder="Phone Number" value={promoForm.phone} onChange={e => setPromoForm({ ...promoForm, phone: e.target.value })} required />
+              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                <input type="checkbox" checked={promoForm.consent} required onChange={e => setPromoForm({ ...promoForm, consent: e.target.checked })} style={{ marginTop: 3, accentColor: 'var(--accent)' }} />
+                <span style={{ color: 'var(--ink2, rgba(255,255,255,0.56))', fontSize: '0.75rem', lineHeight: 1.5 }}>
+                  I am 18 years or older and agree to receive communications from this brand via text, email, or phone. I understand my data will be used in accordance with the <a href="/privacy" target="_blank" style={{ color: 'var(--ink2)', textDecoration: 'underline' }}>Privacy Policy</a>. Message and data rates may apply. Reply STOP to opt out.
+                </span>
+              </label>
+              <button type="submit" style={{ width: '100%', padding: 14, ...btnStyle, border: 'none', borderRadius: 'var(--r, 14px)', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>Submit Entry</button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

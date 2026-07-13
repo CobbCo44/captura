@@ -20,6 +20,19 @@ export async function getCurrentBrand() {
   return data
 }
 
+// Get all brands for the logged-in user
+export async function getAllBrands() {
+  if (!supabase) return []
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+  const { data } = await supabase
+    .from('brands')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: true })
+  return data || []
+}
+
 // Generate a short ID for QR codes
 export function generateShortId() {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'

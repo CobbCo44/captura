@@ -19,7 +19,7 @@ export default function Overview({ brand }) {
 
     const [scansRes, vipRes, productsRes, recentRes] = await Promise.all([
       supabase.from('scans').select('id, city, scanned_at').eq('brand_id', brand.id),
-      supabase.from('vip_members').select('id').eq('brand_id', brand.id),
+      supabase.from('promo_entries').select('id').eq('brand_id', brand.id),
       supabase.from('products').select('id').eq('brand_id', brand.id),
       supabase.from('scans').select('*, products(name)').eq('brand_id', brand.id).order('scanned_at', { ascending: false }).limit(10),
     ])
@@ -64,7 +64,7 @@ export default function Overview({ brand }) {
         {[
           { label: 'Total Scans', value: stats.totalScans.toLocaleString(), color: '#FAFAFA' },
           { label: 'Unique Cities', value: stats.uniqueCities, color: '#A1A1AA' },
-          { label: 'VIP Members', value: stats.vipMembers, color: 'var(--success)' },
+          { label: 'Promo Entries', value: stats.vipMembers, color: 'var(--success)' },
           { label: 'Active Products', value: stats.products, color: '#D4D4D8' },
         ].map(s => (
           <div key={s.label} className="card">

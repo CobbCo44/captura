@@ -80,32 +80,20 @@ export default function ScanPage({ previewData } = {}) {
   const lookupShortId = qrId || serial || null
   const lookupGtin = gtin ? gtin.replace(/\D/g, '').padStart(14, '0') : null
 
-  // Fetch location once, shared by scan logging and form submissions
+  // Fetch location once via Netlify edge geo (free, unlimited, server-side)
   const locationPromise = useRef(null)
   useEffect(() => {
     if (isPreview || locationPromise.current) return
     locationPromise.current = (async () => {
-      // Try ipapi.co first, fall back to ip-api.com
       try {
-        const res = await fetch('https://ipapi.co/json/')
-        const geo = await res.json()
-        if (geo && geo.city && !geo.error) {
-          const loc = { lat: geo.latitude, lng: geo.longitude, city: geo.city, region: geo.region_code || geo.region, country: geo.country_code }
+        const res = await fetch('/.netlify/functions/geo')
+        const loc = await res.json()
+        if (loc && loc.city) {
           locationRef.current = loc
           setLocation(loc)
           return loc
         }
-      } catch { /* fall through */ }
-      try {
-        const res = await fetch('https://ip-api.com/json/?fields=status,lat,lon,city,region,countryCode')
-        const geo = await res.json()
-        if (geo && geo.status === 'success' && geo.city) {
-          const loc = { lat: geo.lat, lng: geo.lon, city: geo.city, region: geo.region, country: geo.countryCode }
-          locationRef.current = loc
-          setLocation(loc)
-          return loc
-        }
-      } catch { /* location unavailable */ }
+      } catch { /* geo unavailable */ }
       return null
     })()
   }, [])
@@ -312,6 +300,8 @@ export default function ScanPage({ previewData } = {}) {
         latitude: location?.lat || null,
         longitude: location?.lng || null,
         city: location?.city ? `${location.city}, ${location.region}` : null,
+        region: location?.region || null,
+        country: location?.country || null,
       }).select('id').single()
       logBillingEvent(qrCode.brand_id, vipForm.email, vipForm.phone, 'vip', inserted?.id)
       syncToShopify({
@@ -342,7 +332,11 @@ export default function ScanPage({ previewData } = {}) {
         last_name: promoForm.lastName,
         email: promoForm.email,
         phone: promoForm.phone,
+        latitude: location?.lat || null,
+        longitude: location?.lng || null,
         city: location?.city ? `${location.city}, ${location.region}` : null,
+        region: location?.region || null,
+        country: location?.country || null,
       }).select('id').single()
       logBillingEvent(qrCode.brand_id, promoForm.email, promoForm.phone, 'promo', inserted?.id)
       syncToShopify({
@@ -374,7 +368,11 @@ export default function ScanPage({ previewData } = {}) {
         phone: warrantyForm.phone,
         purchase_date: warrantyForm.purchaseDate || null,
         retailer: warrantyForm.retailer || null,
+        latitude: location?.lat || null,
+        longitude: location?.lng || null,
         city: location?.city ? `${location.city}, ${location.region}` : null,
+        region: location?.region || null,
+        country: location?.country || null,
         consent: warrantyForm.consent,
       }).select('id').single()
       logBillingEvent(qrCode.brand_id, warrantyForm.email, warrantyForm.phone, 'warranty', inserted?.id)
@@ -405,7 +403,11 @@ export default function ScanPage({ previewData } = {}) {
         last_name: eventForm.lastName,
         email: eventForm.email,
         phone: eventForm.phone,
+        latitude: location?.lat || null,
+        longitude: location?.lng || null,
         city: location?.city ? `${location.city}, ${location.region}` : null,
+        region: location?.region || null,
+        country: location?.country || null,
       }).select('id').single()
       logBillingEvent(qrCode.brand_id, eventForm.email, eventForm.phone, 'event', inserted?.id)
       syncToShopify({

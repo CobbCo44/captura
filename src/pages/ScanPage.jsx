@@ -454,11 +454,11 @@ export default function ScanPage({ previewData } = {}) {
   const promoState = (() => {
     if (!activePromo?.active) return 'evergreen'
     try {
+      if (activePromo.winner_announced_at) return 'winner'
       const now = new Date()
       const start = activePromo.start_at ? new Date(activePromo.start_at) : null
       const end = activePromo.end_at ? new Date(activePromo.end_at) : null
       if (!start || !end) return 'live'
-      if (activePromo.winner_announced_at) return 'winner'
       if (now < start) return 'scheduled'
       if (now >= start && now <= end) return 'live'
       return 'closed'

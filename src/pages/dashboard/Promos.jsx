@@ -78,8 +78,15 @@ export default function Promos({ brand }) {
     }
 
     if (editingPromo) {
+      const updatePayload = { title: form.title, description: form.description, prize: form.prize, image_url: imageUrl, winner_name: form.winner_name || null, winner_city: form.winner_city || null }
+      // Auto-set winner_announced_at when a winner name is provided
+      if (form.winner_name?.trim()) {
+        updatePayload.winner_announced_at = editingPromo.winner_announced_at || new Date().toISOString()
+      } else {
+        updatePayload.winner_announced_at = null
+      }
       const { data, error } = await supabase.from('promos')
-        .update({ title: form.title, description: form.description, prize: form.prize, image_url: imageUrl, winner_name: form.winner_name || null, winner_city: form.winner_city || null })
+        .update(updatePayload)
         .eq('id', editingPromo.id)
         .select().single()
       if (!error && data) {

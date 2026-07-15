@@ -1,6 +1,114 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { exportBatchCSV } from '../../lib/exportBatchCSV'
+import { buildGS1DigitalLink } from '../../lib/gs1'
+import generateQRCode from 'qr.js'
+import BrandedQR from '../../components/BrandedQR'
+import JSZip from 'jszip'
+import { jsPDF } from 'jspdf'
+
+const SCAN_DOMAIN = import.meta.env.VITE_SCAN_DOMAIN || 'https://www.meetcaptura.com'
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.lineTo(x + w - r, y)
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+  ctx.lineTo(x + w, y + h - r)
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+  ctx.lineTo(x + r, y + h)
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+  ctx.lineTo(x, y + r)
+  ctx.quadraticCurveTo(x, y, x + r, y)
+  ctx.closePath()
+}
+
+function renderQRToCanvas(url, fgColor, bgColor, logoDataUrl, logoScale, ctaText, size = 1000) {
+  return new Promise((resolve) => {
+    const code = generateQRCode(url)
+    if (!code) { resolve(null); return }
+    const matrix = code.modules
+    const gridSize = matrix.length
+    const modSize = size / gridSize
+
+    const bannerHeight = ctaText ? size * 0.12 : 0
+    const totalHeight = size + bannerHeight
+
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = totalHeight
+    const ctx = canvas.getContext('2d')
+
+    ctx.fillStyle = bgColor
+    ctx.fillRect(0, 0, size, totalHeight)
+
+    ctx.fillStyle = fgColor
+    for (let y = 0; y < gridSize; y++) {
+      for (let x = 0; x < gridSize; x++) {
+        if (!matrix[y][x]) continue
+        ctx.fillRect(x * modSize, y * modSize, modSize, modSize)
+      }
+    }
+
+    if (ctaText) {
+      ctx.fillStyle = fgColor
+      ctx.fillRect(0, size, size, bannerHeight)
+      ctx.fillStyle = bgColor
+      ctx.font = `bold ${bannerHeight * 0.5}px Inter, -apple-system, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(ctaText.toUpperCase(), size / 2, size + bannerHeight / 2)
+    }
+
+    if (logoDataUrl) {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        const logoSize = size * logoScale
+        const logoPos = (size - logoSize) / 2
+        const padding = logoSize * 0.12
+        ctx.fillStyle = bgColor
+        roundRect(ctx, logoPos - padding, logoPos - padding,
+          logoSize + padding * 2, logoSize + padding * 2, 12)
+        ctx.fill()
+        ctx.drawImage(img, logoPos, logoPos, logoSize, logoSize)
+        resolve(canvas)
+      }
+      img.onerror = () => resolve(canvas)
+      img.src = logoDataUrl
+    } else {
+      resolve(canvas)
+    }
+  })
+}
+
+async function fetchAllSerials(batchId) {
+  if (!supabase) return []
+  const allSerials = []
+  const pageSize = 1000
+  let from = 0
+  while (true) {
+    const { data, error } = await supabase
+      .from('serials')
+      .select('serial, created_at')
+      .eq('batch_id', batchId)
+      .order('created_at', { ascending: true })
+      .range(from, from + pageSize - 1)
+    if (error) { alert('Error loading serials.'); return [] }
+    allSerials.push(...data)
+    if (data.length < pageSize) break
+    from += pageSize
+  }
+  return allSerials
+}
+
+function csvEscape(value) {
+  const str = String(value ?? '')
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return '"' + str.replace(/"/g, '""') + '"'
+  }
+  return str
+}
 
 export default function Products({ brand }) {
   const [products, setProducts] = useState([])
@@ -25,6 +133,11 @@ export default function Products({ brand }) {
   const [channels, setChannels] = useState([])
   const [batchForm, setBatchForm] = useState({ quantity: '', channelId: '', newChannelName: '', newChannelType: 'retail', poReference: '', notes: '' })
   const [claimedCounts, setClaimedCounts] = useState({})
+
+  // QR download modal state
+  const [qrModal, setQrModal] = useState(null) // batch object or null
+  const [qrStyle, setQrStyle] = useState({ fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoScale: 0.25, ctaText: '' })
+  const [downloadProgress, setDownloadProgress] = useState(null) // { current, total, type } or null
 
   useEffect(() => {
     loadProducts()
@@ -379,6 +492,136 @@ export default function Products({ brand }) {
     setBatchGenerating(false)
   }
 
+  // ========== QR DOWNLOAD HELPERS ==========
+
+  function openQrModal(batch) {
+    setQrStyle({ fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoScale: 0.25, ctaText: '' })
+    setDownloadProgress(null)
+    setQrModal(batch)
+  }
+
+  function handleQrLogoUpload(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setQrStyle(prev => ({ ...prev, logoFile: ev.target.result }))
+    }
+    reader.readAsDataURL(file)
+  }
+
+  async function handleDownloadZip() {
+    if (!qrModal || !editingProduct) return
+    const gtin = editingProduct.gtin
+    if (!gtin) return
+
+    setDownloadProgress({ current: 0, total: 0, type: 'zip' })
+
+    const serials = await fetchAllSerials(qrModal.id)
+    if (!serials.length) { setDownloadProgress(null); return }
+
+    setDownloadProgress({ current: 0, total: serials.length, type: 'zip' })
+
+    const zip = new JSZip()
+    const imgFolder = zip.folder('qr-codes')
+
+    for (let i = 0; i < serials.length; i++) {
+      const s = serials[i]
+      const url = buildGS1DigitalLink(SCAN_DOMAIN, gtin, { serial: s.serial })
+      const canvas = await renderQRToCanvas(
+        url, qrStyle.fgColor, qrStyle.bgColor,
+        qrStyle.logoFile, qrStyle.logoScale, qrStyle.ctaText
+      )
+      if (canvas) {
+        const dataUrl = canvas.toDataURL('image/png')
+        const base64 = dataUrl.split(',')[1]
+        imgFolder.file(`${s.serial}.png`, base64, { base64: true })
+      }
+      setDownloadProgress({ current: i + 1, total: serials.length, type: 'zip' })
+    }
+
+    // Add CSV to the zip
+    const productName = editingProduct.name || ''
+    const channelName = qrModal.channels?.name || ''
+    const poRef = qrModal.po_reference || ''
+    const csvHeader = 'serial,url,product_name,gtin,batch_id,channel_name,po_reference,created_at'
+    const csvRows = serials.map(s => {
+      const g14 = gtin.replace(/\D/g, '').padStart(14, '0')
+      const url = `${SCAN_DOMAIN}/01/${g14}/21/${encodeURIComponent(s.serial)}`
+      return [csvEscape(s.serial), csvEscape(url), csvEscape(productName), csvEscape(gtin),
+        csvEscape(qrModal.id), csvEscape(channelName), csvEscape(poRef), csvEscape(s.created_at)].join(',')
+    })
+    zip.file('serials.csv', [csvHeader, ...csvRows].join('\n'))
+
+    const blob = await zip.generateAsync({ type: 'blob' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `batch-${qrModal.id.slice(0, 8)}-${serials.length}-qr-codes.zip`
+    link.click()
+    URL.revokeObjectURL(link.href)
+    setDownloadProgress(null)
+  }
+
+  async function handleDownloadPdf() {
+    if (!qrModal || !editingProduct) return
+    const gtin = editingProduct.gtin
+    if (!gtin) return
+
+    setDownloadProgress({ current: 0, total: 0, type: 'pdf' })
+
+    const serials = await fetchAllSerials(qrModal.id)
+    if (!serials.length) { setDownloadProgress(null); return }
+
+    setDownloadProgress({ current: 0, total: serials.length, type: 'pdf' })
+
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'in', format: 'letter' })
+    const cols = 4
+    const rows = 5
+    const perPage = cols * rows
+    const pageW = 8.5
+    const pageH = 11
+    const marginX = 0.5
+    const marginY = 0.5
+    const cellW = (pageW - marginX * 2) / cols
+    const cellH = (pageH - marginY * 2) / rows
+    const qrSize = Math.min(cellW, cellH) * 0.72
+
+    for (let i = 0; i < serials.length; i++) {
+      const pageIndex = Math.floor(i / perPage)
+      const posOnPage = i % perPage
+      if (posOnPage === 0 && pageIndex > 0) pdf.addPage()
+
+      const col = posOnPage % cols
+      const row = Math.floor(posOnPage / cols)
+      const cx = marginX + col * cellW + cellW / 2
+      const cy = marginY + row * cellH
+
+      const s = serials[i]
+      const url = buildGS1DigitalLink(SCAN_DOMAIN, gtin, { serial: s.serial })
+      const canvas = await renderQRToCanvas(
+        url, qrStyle.fgColor, qrStyle.bgColor,
+        qrStyle.logoFile, qrStyle.logoScale, qrStyle.ctaText, 400
+      )
+
+      if (canvas) {
+        const dataUrl = canvas.toDataURL('image/png')
+        const imgX = cx - qrSize / 2
+        const imgY = cy + 0.08
+        const aspectRatio = canvas.height / canvas.width
+        const imgH = qrSize * aspectRatio
+        pdf.addImage(dataUrl, 'PNG', imgX, imgY, qrSize, imgH)
+        pdf.setFontSize(6)
+        pdf.setTextColor(100)
+        pdf.text(s.serial, cx, imgY + imgH + 0.12, { align: 'center' })
+      }
+
+      setDownloadProgress({ current: i + 1, total: serials.length, type: 'pdf' })
+    }
+
+    pdf.save(`batch-${qrModal.id.slice(0, 8)}-${serials.length}-qr-codes.pdf`)
+    setDownloadProgress(null)
+  }
+
   // ========== FORM VIEW ==========
   if (view === 'form') {
     return (
@@ -663,13 +906,21 @@ export default function Products({ brand }) {
                                   {counts.claimed} / {counts.total}
                                 </span>
                               </td>
-                              <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                                 <button type="button" onClick={() => exportBatchCSV(b.id)}
                                   style={{
                                     background: 'none', border: 'none', color: '#FAFAFA',
                                     fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap',
                                   }}>
-                                  Download CSV
+                                  CSV
+                                </button>
+                                <button type="button" onClick={() => openQrModal(b)}
+                                  style={{
+                                    background: 'none', border: 'none', color: 'var(--success)',
+                                    fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap',
+                                    marginLeft: 8,
+                                  }}>
+                                  Download QR
                                 </button>
                               </td>
                             </tr>
@@ -683,6 +934,161 @@ export default function Products({ brand }) {
             </div>
           )}
         </div>
+
+        {/* QR Style & Download Modal */}
+        {qrModal && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.7)', zIndex: 1000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20,
+          }} onClick={() => { if (!downloadProgress) setQrModal(null) }}>
+            <div style={{
+              background: 'var(--card-bg)', borderRadius: 12, width: '100%', maxWidth: 640,
+              maxHeight: '90vh', overflowY: 'auto',
+              border: '1px solid var(--border)', padding: 24,
+            }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Download QR Codes</h2>
+                {!downloadProgress && (
+                  <button onClick={() => setQrModal(null)} style={{
+                    background: 'none', border: 'none', color: 'var(--text-muted)',
+                    fontSize: '1.2rem', cursor: 'pointer',
+                  }}>x</button>
+                )}
+              </div>
+
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 20 }}>
+                Batch: {qrModal.quantity} codes, {qrModal.channels?.name || 'Unknown channel'}{qrModal.po_reference ? `, PO: ${qrModal.po_reference}` : ''}
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                {/* Style controls */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                      QR Color
+                    </label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input type="color" value={qrStyle.fgColor}
+                        onChange={e => setQrStyle({ ...qrStyle, fgColor: e.target.value })}
+                        style={{ width: 36, height: 36, border: 'none', borderRadius: 6, cursor: 'pointer', padding: 0 }} />
+                      <input className="input" value={qrStyle.fgColor} style={{ flex: 1 }}
+                        onChange={e => setQrStyle({ ...qrStyle, fgColor: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                      Background Color
+                    </label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input type="color" value={qrStyle.bgColor}
+                        onChange={e => setQrStyle({ ...qrStyle, bgColor: e.target.value })}
+                        style={{ width: 36, height: 36, border: 'none', borderRadius: 6, cursor: 'pointer', padding: 0 }} />
+                      <input className="input" value={qrStyle.bgColor} style={{ flex: 1 }}
+                        onChange={e => setQrStyle({ ...qrStyle, bgColor: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                      Center Logo (optional)
+                    </label>
+                    {qrStyle.logoFile ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <img src={qrStyle.logoFile} alt="Logo"
+                          style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 4, background: '#fff', padding: 2 }} />
+                        <button type="button" onClick={() => setQrStyle({ ...qrStyle, logoFile: null })}
+                          style={{ fontSize: '0.75rem', color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                          Remove
+                        </button>
+                      </div>
+                    ) : null}
+                    <input type="file" accept="image/*" onChange={handleQrLogoUpload}
+                      style={{ fontSize: '0.8rem', color: 'var(--text-muted)', width: '100%' }} />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                      CTA Text (optional)
+                    </label>
+                    <input className="input" placeholder="e.g. Scan Me, Members Only"
+                      value={qrStyle.ctaText}
+                      onChange={e => setQrStyle({ ...qrStyle, ctaText: e.target.value })} />
+                  </div>
+                </div>
+
+                {/* Live preview */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 8 }}>
+                    Preview
+                  </label>
+                  <div style={{
+                    background: '#0A0A10', borderRadius: 12, padding: 20,
+                    display: 'flex', justifyContent: 'center', alignItems: 'center',
+                    border: '1px solid var(--border)', minHeight: 220,
+                  }}>
+                    <BrandedQR
+                      url={buildGS1DigitalLink(SCAN_DOMAIN, editingProduct?.gtin || '0000000000000', { serial: 'PREVIEW' })}
+                      fgColor={qrStyle.fgColor}
+                      bgColor={qrStyle.bgColor}
+                      logoSrc={qrStyle.logoFile}
+                      logoScale={qrStyle.logoScale}
+                      size={180}
+                      ctaText={qrStyle.ctaText}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress indicator */}
+              {downloadProgress && (
+                <div style={{ marginTop: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                    <span>Generating {downloadProgress.type === 'zip' ? 'ZIP' : 'PDF'}...</span>
+                    <span>{downloadProgress.current} / {downloadProgress.total}</span>
+                  </div>
+                  <div style={{
+                    width: '100%', height: 6, borderRadius: 3,
+                    background: 'var(--border)', overflow: 'hidden',
+                  }}>
+                    <div style={{
+                      width: downloadProgress.total > 0
+                        ? `${(downloadProgress.current / downloadProgress.total) * 100}%`
+                        : '0%',
+                      height: '100%', borderRadius: 3,
+                      background: 'var(--success)', transition: 'width 0.15s',
+                    }} />
+                  </div>
+                </div>
+              )}
+
+              {/* Download buttons */}
+              <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+                <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
+                  disabled={!!downloadProgress}
+                  onClick={() => setQrModal(null)}>
+                  Cancel
+                </button>
+                <button type="button" className="btn btn-primary" style={{ flex: 1 }}
+                  disabled={!!downloadProgress}
+                  onClick={handleDownloadZip}>
+                  {downloadProgress?.type === 'zip' ? 'Generating...' : 'Download ZIP'}
+                </button>
+                <button type="button" className="btn btn-primary" style={{ flex: 1 }}
+                  disabled={!!downloadProgress}
+                  onClick={handleDownloadPdf}>
+                  {downloadProgress?.type === 'pdf' ? 'Generating...' : 'Download PDF'}
+                </button>
+              </div>
+
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 12, lineHeight: 1.4 }}>
+                ZIP: Individual PNG files per serial, ideal for packaging. PDF: Sticker sheet layout (4x5 grid), ideal for printing.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     )
   }

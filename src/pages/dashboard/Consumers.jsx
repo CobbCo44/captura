@@ -155,28 +155,6 @@ export default function Consumers({ brand }) {
         contactId: emailToContactId[key] || null,
       }
     }),
-    // Only show contacts as separate rows if they have claimed serials
-    // AND don't already appear in a legacy table
-    ...contacts.filter(c => {
-      const key = (c.email || '').toLowerCase().trim()
-      return (contactSerials[c.id] || []).length > 0 && !legacyEmails.has(key)
-    }).map(c => {
-      const serials = contactSerials[c.id] || []
-      return {
-        id: `contact-${c.id}`,
-        firstName: c.first_name || '',
-        lastName: '',
-        email: c.email || '',
-        phone: c.phone || '',
-        product: serials[0]?.product || '-',
-        city: '',
-        type: 'Serial',
-        source: 'Serial Claim',
-        date: c.created_at,
-        channel: serials[0]?.channel || '-',
-        contactId: c.id,
-      }
-    }),
   ].sort((a, b) => new Date(b.date) - new Date(a.date))
 
   const filtered = allConsumers.filter(c => {
@@ -184,7 +162,6 @@ export default function Consumers({ brand }) {
     if (filter === 'promo' && c.type !== 'Promo') return false
     if (filter === 'warranty' && c.type !== 'Warranty') return false
     if (filter === 'event' && c.type !== 'Event') return false
-    if (filter === 'serial' && c.type !== 'Serial') return false
     if (search) {
       const q = search.toLowerCase()
       return `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) ||
@@ -258,7 +235,7 @@ export default function Consumers({ brand }) {
         </div>
         <div className="card" style={{ padding: '16px 20px' }}>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Serial Claims</div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#C084FC' }}>{Object.keys(contactSerials).length}</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#C084FC' }}>{Object.values(contactSerials).flat().length}</div>
         </div>
       </div>
 
@@ -268,7 +245,6 @@ export default function Consumers({ brand }) {
         <button onClick={() => setFilter('promo')} style={tabStyle(filter === 'promo')}>Promo ({promoEntries.length})</button>
         <button onClick={() => setFilter('event')} style={tabStyle(filter === 'event')}>Event ({eventEntries.length})</button>
         <button onClick={() => setFilter('warranty')} style={tabStyle(filter === 'warranty')}>Warranty ({warrantyRegs.length})</button>
-        <button onClick={() => setFilter('serial')} style={tabStyle(filter === 'serial')}>Serial ({allConsumers.filter(c => c.type === 'Serial').length})</button>
         <input
           className="input"
           placeholder="Search name, email, phone, city, product..."

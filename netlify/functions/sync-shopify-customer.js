@@ -91,6 +91,7 @@ export default async (req) => {
     // Build note with full details
     const noteLines = [customer.note || 'Added via Captura QR scan']
     if (customer.product) noteLines.push(`Product: ${customer.product}`)
+    if (customer.serial) noteLines.push(`Serial: ${customer.serial}`)
     if (customer.city) noteLines.push(`City: ${customer.city}`)
     noteLines.push(`Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`)
 
@@ -153,6 +154,12 @@ export default async (req) => {
         const newTags = customerData.tags
         const mergedTags = [...new Set([...existingTags.split(',').map(t => t.trim()).filter(Boolean), ...newTags.split(',').map(t => t.trim())])].join(', ')
         customerData.tags = mergedTags
+
+        // Append new note to existing instead of overwriting
+        const existingNote = existing.customer.note || ''
+        if (existingNote) {
+          customerData.note = existingNote + '\n---\n' + customerData.note
+        }
       }
 
       // Don't send metafields on update (Shopify requires different endpoint for that)

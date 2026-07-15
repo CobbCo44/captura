@@ -365,6 +365,7 @@ export default function ScanPage({ previewData } = {}) {
         tags: `captura, vip${serialData?.channel_name ? `, ${serialData.channel_name}` : ''}`,
         note: `VIP signup via Captura QR scan${serialData?.channel_name ? `\nChannel: ${serialData.channel_name}` : ''}`,
         product: product?.name || null,
+        serial: lookupSerial || null,
         source: 'VIP Signup',
         city: location?.city ? `${location.city}, ${location.region}` : null,
       })
@@ -398,9 +399,10 @@ export default function ScanPage({ previewData } = {}) {
         lastName: promoForm.lastName,
         email: promoForm.email,
         phone: promoForm.phone,
-        tags: `captura, promo${serialData?.channel_name ? `, ${serialData.channel_name}` : ''}`,
+        tags: `captura, promo, ${activePromo.title}${serialData?.channel_name ? `, ${serialData.channel_name}` : ''}`,
         note: `Promo entry via Captura - ${activePromo.title}${serialData?.channel_name ? `\nChannel: ${serialData.channel_name}` : ''}`,
         product: product?.name || null,
+        serial: lookupSerial || null,
         source: 'Promo Entry',
         city: location?.city ? `${location.city}, ${location.region}` : null,
       })
@@ -439,6 +441,7 @@ export default function ScanPage({ previewData } = {}) {
         tags: `captura, warranty${serialData?.channel_name ? `, ${serialData.channel_name}` : ''}`,
         note: `Warranty registration via Captura${serialData?.channel_name ? `\nChannel: ${serialData.channel_name}` : ''}`,
         product: product?.name || null,
+        serial: lookupSerial || null,
         source: 'Warranty Registration',
         city: location?.city ? `${location.city}, ${location.region}` : null,
       })
@@ -471,7 +474,7 @@ export default function ScanPage({ previewData } = {}) {
         lastName: eventForm.lastName,
         email: eventForm.email,
         phone: eventForm.phone,
-        tags: `captura, event${serialData?.channel_name ? `, ${serialData.channel_name}` : ''}`,
+        tags: `captura, event, ${event.name}${serialData?.channel_name ? `, ${serialData.channel_name}` : ''}`,
         note: `Event signup via Captura - ${event.name}${event.giveaway ? ` - Giveaway: ${event.giveaway}` : ''}${serialData?.channel_name ? `\nChannel: ${serialData.channel_name}` : ''}`,
         product: null,
         serial: null,

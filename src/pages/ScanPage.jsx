@@ -10,10 +10,10 @@ function getYouTubeId(url) {
 }
 
 export default function ScanPage({ previewData } = {}) {
-  // Supports two URL shapes:
+  // Supports three URL shapes:
   //   /s/:qrId             — legacy short_id lookup
-  //   /01/:gtin/21/:serial — GS1 Digital Link (serial = short_id for tracking)
-  //   /01/:gtin            — GS1 Digital Link without serial (no per-code tracking)
+  //   /01/:gtin/21/:serial — GS1 Digital Link with serialized unit tracking
+  //   /01/:gtin            — GS1 Digital Link, product-level (static GTIN)
   const { qrId, gtin, serial } = useParams()
   const [product, setProduct] = useState(previewData?.product || null)
   const [qrCode, setQrCode] = useState(null)
@@ -39,6 +39,8 @@ export default function ScanPage({ previewData } = {}) {
   const [descExpanded, setDescExpanded] = useState(false)
   const [countdown, setCountdown] = useState('')
   const isPreview = !!previewData
+  // V2 serialization: data from lookup_serial RPC when /21/ segment is present
+  const [serialData, setSerialData] = useState(null)
 
   // Keep preview data in sync
   useEffect(() => {
@@ -75,10 +77,10 @@ export default function ScanPage({ previewData } = {}) {
     return () => clearInterval(id)
   }, [activePromo])
 
-  // Determine lookup mode: if we have a gtin param, it's a GS1 path.
-  // If we also have a serial, that's the short_id for per-code tracking.
-  const lookupShortId = qrId || serial || null
+  // Determine lookup mode
+  const lookupShortId = qrId || null  // only /s/:qrId uses short_id lookup
   const lookupGtin = gtin ? gtin.replace(/\D/g, '').padStart(14, '0') : null
+  const lookupSerial = serial || null  // /21/ segment → serials table via RPC
 
   // Fetch location once via Netlify edge geo (free, unlimited, server-side)
   const locationPromise = useRef(null)
@@ -111,8 +113,9 @@ export default function ScanPage({ previewData } = {}) {
     }
 
     let qr = null
+    let resolvedSerialData = null
 
-    // Path 1: we have a short_id (either from /s/:qrId or from GS1 /21/:serial)
+    // Path 1: legacy short_id lookup (/s/:qrId only)
     if (lookupShortId) {
       const { data, error } = await supabase
         .from('qr_codes')
@@ -122,15 +125,35 @@ export default function ScanPage({ previewData } = {}) {
       if (!error && data) qr = data
     }
 
-    // Path 2: GS1 path with GTIN but no serial (or serial lookup failed).
-    // Look up the product by GTIN, then find any QR code for it.
+    // Path 2: serialized scan (/01/:gtin/21/:serial) — lookup via RPC
+    if (!qr && lookupGtin && lookupSerial) {
+      const { data: serialResult } = await supabase.rpc('lookup_serial', {
+        p_gtin: lookupGtin,
+        p_serial_value: lookupSerial,
+      })
+      if (serialResult && serialResult.length > 0) {
+        resolvedSerialData = serialResult[0]
+        setSerialData(resolvedSerialData)
+        // Serial found — now load the product and QR/brand data using the product_id
+      }
+      // If serial not found, fall through to static GTIN lookup (bogus serial fallback)
+    }
+
+    // Path 3: static GTIN lookup (/01/:gtin with no serial, or bogus serial fallback)
+    // Also used after a valid serial lookup to load the QR/brand/promo data
     if (!qr && lookupGtin) {
-      const { data: prod } = await supabase
-        .from('products')
-        .select('*')
-        .eq('gtin', lookupGtin)
-        .limit(1)
-        .single()
+      const productId = resolvedSerialData?.product_id
+      let prod = null
+
+      if (productId) {
+        // We already know the product_id from the serial lookup
+        const { data } = await supabase.from('products').select('*').eq('id', productId).single()
+        prod = data
+      } else {
+        // Static GTIN lookup (no serial, or bogus serial)
+        const { data } = await supabase.from('products').select('*').eq('gtin', lookupGtin).limit(1).single()
+        prod = data
+      }
 
       if (prod) {
         // Try to find a QR code for this product so we get promo/event/brand data
@@ -153,6 +176,7 @@ export default function ScanPage({ previewData } = {}) {
           setProduct(prod)
           setBrand(brandData)
           setLoading(false)
+          getLocationAndLogScan(null, resolvedSerialData)
           return
         }
       }
@@ -188,15 +212,15 @@ export default function ScanPage({ previewData } = {}) {
     }
 
     // Get location, then log scan with it
-    getLocationAndLogScan(qr)
+    getLocationAndLogScan(qr, resolvedSerialData)
   }
 
-  async function getLocationAndLogScan(qr) {
+  async function getLocationAndLogScan(qr, serialInfo) {
     if (scanLogged.current) return
     scanLogged.current = true
 
     // Throttle: don't log duplicate scans within 5 minutes
-    const throttleKey = `scan_${qr.short_id}`
+    const throttleKey = qr ? `scan_${qr.short_id}` : `scan_gtin_${lookupGtin}_${lookupSerial || ''}`
     const lastScan = localStorage.getItem(throttleKey)
     if (lastScan && Date.now() - parseInt(lastScan) < 300000) return
     localStorage.setItem(throttleKey, String(Date.now()))
@@ -207,10 +231,14 @@ export default function ScanPage({ previewData } = {}) {
     }
     const loc = locationRef.current
 
+    const brandId = qr?.brand_id || serialInfo?.brand_id
+    if (!brandId) return
+
     let scanData = {
-      qr_code_id: qr.id,
-      product_id: qr.product_id || null,
-      brand_id: qr.brand_id,
+      qr_code_id: qr?.id || null,
+      product_id: qr?.product_id || serialInfo?.product_id || null,
+      brand_id: brandId,
+      serial_id: serialInfo?.serial_id || null,
       device: getDeviceInfo(),
       user_agent: navigator.userAgent,
     }
@@ -285,6 +313,30 @@ export default function ScanPage({ previewData } = {}) {
     }
   }
 
+  // V2: upsert contact via RPC and attempt serial claim (if serialized scan)
+  async function upsertContactAndClaimSerial(brandId, firstName, email, phone, source, consent) {
+    if (!supabase || !email) return
+    try {
+      const { data: contactId } = await supabase.rpc('get_or_create_contact', {
+        p_brand_id: brandId,
+        p_first_name: firstName,
+        p_email: email,
+        p_phone: phone || null,
+        p_source: source,
+        p_sms_consent: consent || false,
+      })
+      if (contactId && serialData && lookupGtin) {
+        await supabase.rpc('claim_serial', {
+          p_serial_value: lookupSerial,
+          p_gtin: lookupGtin,
+          p_contact_id: contactId,
+        })
+      }
+    } catch (err) {
+      // Contact upsert/claim is best-effort, never block the consumer experience
+    }
+  }
+
   const handleVIPSubmit = async (e) => {
     e.preventDefault()
     if (isPreview) { setVipSubmitted(true); return }
@@ -304,6 +356,7 @@ export default function ScanPage({ previewData } = {}) {
         country: location?.country || null,
       }).select('id').single()
       logBillingEvent(qrCode.brand_id, vipForm.email, vipForm.phone, 'vip', inserted?.id)
+      upsertContactAndClaimSerial(qrCode.brand_id, vipForm.firstName, vipForm.email, vipForm.phone, 'vip', vipForm.consent)
       syncToShopify({
         firstName: vipForm.firstName,
         lastName: vipForm.lastName,
@@ -339,6 +392,7 @@ export default function ScanPage({ previewData } = {}) {
         country: location?.country || null,
       }).select('id').single()
       logBillingEvent(qrCode.brand_id, promoForm.email, promoForm.phone, 'promo', inserted?.id)
+      upsertContactAndClaimSerial(qrCode.brand_id, promoForm.firstName, promoForm.email, promoForm.phone, 'promo', promoForm.consent)
       syncToShopify({
         firstName: promoForm.firstName,
         lastName: promoForm.lastName,
@@ -376,6 +430,7 @@ export default function ScanPage({ previewData } = {}) {
         consent: warrantyForm.consent,
       }).select('id').single()
       logBillingEvent(qrCode.brand_id, warrantyForm.email, warrantyForm.phone, 'warranty', inserted?.id)
+      upsertContactAndClaimSerial(qrCode.brand_id, warrantyForm.firstName, warrantyForm.email, warrantyForm.phone, 'warranty', warrantyForm.consent)
       syncToShopify({
         firstName: warrantyForm.firstName,
         lastName: warrantyForm.lastName,
@@ -410,6 +465,7 @@ export default function ScanPage({ previewData } = {}) {
         country: location?.country || null,
       }).select('id').single()
       logBillingEvent(qrCode.brand_id, eventForm.email, eventForm.phone, 'event', inserted?.id)
+      upsertContactAndClaimSerial(qrCode.brand_id, eventForm.firstName, eventForm.email, eventForm.phone, 'event', eventForm.consent)
       syncToShopify({
         firstName: eventForm.firstName,
         lastName: eventForm.lastName,

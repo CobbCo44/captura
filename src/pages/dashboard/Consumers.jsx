@@ -66,79 +66,114 @@ export default function Consumers({ brand }) {
     setLoading(false)
   }
 
-  // Combine into one list
+  // Build email -> contact channel lookup for enriching legacy entries
+  const emailToChannel = {}
+  const emailToContactId = {}
+  contacts.forEach(c => {
+    const serials = contactSerials[c.id] || []
+    if (serials.length > 0 && c.email) {
+      const key = c.email.toLowerCase().trim()
+      emailToChannel[key] = serials[0].channel
+      emailToContactId[key] = c.id
+    }
+  })
+
+  // Track which contact emails already appear in legacy tables
+  const legacyEmails = new Set()
+
+  // Combine into one list — legacy entries enriched with channel data
   const allConsumers = [
-    ...vipMembers.map(v => ({
-      id: `vip-${v.id}`,
-      firstName: v.first_name,
-      lastName: v.last_name,
-      email: v.email || '',
-      phone: v.phone,
-      product: v.products?.name || '',
-      city: v.city || '',
-      type: 'VIP',
-      source: 'VIP Signup',
-      date: v.joined_at,
-      channel: '-',
-      contactId: null,
-    })),
-    ...promoEntries.map(p => ({
-      id: `promo-${p.id}`,
-      firstName: p.first_name,
-      lastName: p.last_name,
-      email: p.email || '',
-      phone: p.phone,
-      product: p.products?.name || '',
-      city: p.city || '',
-      type: 'Promo',
-      source: p.promos?.title || 'Promo Entry',
-      date: p.entered_at,
-      channel: '-',
-      contactId: null,
-    })),
-    ...warrantyRegs.map(w => ({
-      id: `warranty-${w.id}`,
-      firstName: w.first_name,
-      lastName: w.last_name,
-      email: w.email || '',
-      phone: w.phone,
-      product: w.products?.name || '',
-      city: w.city || '',
-      type: 'Warranty',
-      source: 'Warranty Registration',
-      date: w.registered_at,
-      channel: '-',
-      contactId: null,
-    })),
-    ...eventEntries.map(ev => ({
-      id: `event-${ev.id}`,
-      firstName: ev.first_name,
-      lastName: ev.last_name,
-      email: ev.email || '',
-      phone: ev.phone,
-      product: '',
-      city: ev.city || '',
-      type: 'Event',
-      source: ev.events?.name || 'Event Entry',
-      date: ev.entered_at,
-      channel: '-',
-      contactId: null,
-    })),
-    ...contacts.map(c => {
+    ...vipMembers.map(v => {
+      const key = (v.email || '').toLowerCase().trim()
+      if (key) legacyEmails.add(key)
+      return {
+        id: `vip-${v.id}`,
+        firstName: v.first_name,
+        lastName: v.last_name,
+        email: v.email || '',
+        phone: v.phone,
+        product: v.products?.name || '',
+        city: v.city || '',
+        type: 'VIP',
+        source: 'VIP Signup',
+        date: v.joined_at,
+        channel: emailToChannel[key] || '-',
+        contactId: emailToContactId[key] || null,
+      }
+    }),
+    ...promoEntries.map(p => {
+      const key = (p.email || '').toLowerCase().trim()
+      if (key) legacyEmails.add(key)
+      return {
+        id: `promo-${p.id}`,
+        firstName: p.first_name,
+        lastName: p.last_name,
+        email: p.email || '',
+        phone: p.phone,
+        product: p.products?.name || '',
+        city: p.city || '',
+        type: 'Promo',
+        source: p.promos?.title || 'Promo Entry',
+        date: p.entered_at,
+        channel: emailToChannel[key] || '-',
+        contactId: emailToContactId[key] || null,
+      }
+    }),
+    ...warrantyRegs.map(w => {
+      const key = (w.email || '').toLowerCase().trim()
+      if (key) legacyEmails.add(key)
+      return {
+        id: `warranty-${w.id}`,
+        firstName: w.first_name,
+        lastName: w.last_name,
+        email: w.email || '',
+        phone: w.phone,
+        product: w.products?.name || '',
+        city: w.city || '',
+        type: 'Warranty',
+        source: 'Warranty Registration',
+        date: w.registered_at,
+        channel: emailToChannel[key] || '-',
+        contactId: emailToContactId[key] || null,
+      }
+    }),
+    ...eventEntries.map(ev => {
+      const key = (ev.email || '').toLowerCase().trim()
+      if (key) legacyEmails.add(key)
+      return {
+        id: `event-${ev.id}`,
+        firstName: ev.first_name,
+        lastName: ev.last_name,
+        email: ev.email || '',
+        phone: ev.phone,
+        product: '',
+        city: ev.city || '',
+        type: 'Event',
+        source: ev.events?.name || 'Event Entry',
+        date: ev.entered_at,
+        channel: emailToChannel[key] || '-',
+        contactId: emailToContactId[key] || null,
+      }
+    }),
+    // Only show contacts as separate rows if they have claimed serials
+    // AND don't already appear in a legacy table
+    ...contacts.filter(c => {
+      const key = (c.email || '').toLowerCase().trim()
+      return (contactSerials[c.id] || []).length > 0 && !legacyEmails.has(key)
+    }).map(c => {
       const serials = contactSerials[c.id] || []
-      const latestChannel = serials.length > 0 ? serials[0].channel : '-'
       return {
         id: `contact-${c.id}`,
         firstName: c.first_name || '',
         lastName: '',
         email: c.email || '',
         phone: c.phone || '',
-        product: serials.length > 0 ? serials[0].product : '-',
+        product: serials[0]?.product || '-',
         city: '',
         type: 'Serial',
-        source: c.source || 'QR Scan',
+        source: 'Serial Claim',
         date: c.created_at,
-        channel: latestChannel,
+        channel: serials[0]?.channel || '-',
         contactId: c.id,
       }
     }),
@@ -222,8 +257,8 @@ export default function Consumers({ brand }) {
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#A1A1AA' }}>{warrantyRegs.length}</div>
         </div>
         <div className="card" style={{ padding: '16px 20px' }}>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Serial Contacts</div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#C084FC' }}>{contacts.length}</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Serial Claims</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#C084FC' }}>{Object.keys(contactSerials).length}</div>
         </div>
       </div>
 
@@ -233,7 +268,7 @@ export default function Consumers({ brand }) {
         <button onClick={() => setFilter('promo')} style={tabStyle(filter === 'promo')}>Promo ({promoEntries.length})</button>
         <button onClick={() => setFilter('event')} style={tabStyle(filter === 'event')}>Event ({eventEntries.length})</button>
         <button onClick={() => setFilter('warranty')} style={tabStyle(filter === 'warranty')}>Warranty ({warrantyRegs.length})</button>
-        <button onClick={() => setFilter('serial')} style={tabStyle(filter === 'serial')}>Serial ({contacts.length})</button>
+        <button onClick={() => setFilter('serial')} style={tabStyle(filter === 'serial')}>Serial ({allConsumers.filter(c => c.type === 'Serial').length})</button>
         <input
           className="input"
           placeholder="Search name, email, phone, city, product..."
@@ -269,7 +304,7 @@ export default function Consumers({ brand }) {
               {filtered.map(c => {
                 const isExpanded = expandedContact === c.id
                 const serials = c.contactId ? (contactSerials[c.contactId] || []) : []
-                const isExpandable = c.type === 'Serial'
+                const isExpandable = c.contactId && serials.length > 0
                 return (
                   <React.Fragment key={c.id}>
                     <tr style={{ borderBottom: '1px solid var(--border)', cursor: isExpandable ? 'pointer' : 'default' }}

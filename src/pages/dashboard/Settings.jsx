@@ -12,6 +12,14 @@ export default function Settings({ brand, onBrandUpdate }) {
   const [shopifyConnecting, setShopifyConnecting] = useState(false)
   const [connectStore, setConnectStore] = useState('')
 
+  // Channels state
+  const [channelsList, setChannelsList] = useState([])
+  const [channelsLoading, setChannelsLoading] = useState(true)
+  const [showChannelForm, setShowChannelForm] = useState(false)
+  const [channelForm, setChannelForm] = useState({ name: '', type: 'retail' })
+  const [channelSaving, setChannelSaving] = useState(false)
+  const [channelBatchCounts, setChannelBatchCounts] = useState({})
+
   useEffect(() => {
     if (brand) {
       setForm({
@@ -23,8 +31,69 @@ export default function Settings({ brand, onBrandUpdate }) {
       })
       setShopifyStore(brand.shopify_store || '')
       setShopifyStatus(brand.shopify_store ? 'connected' : null)
+      loadChannels()
     }
   }, [brand])
+
+  async function loadChannels() {
+    if (!supabase || !brand?.id || brand.id === 'demo') {
+      setChannelsLoading(false)
+      return
+    }
+    const { data } = await supabase
+      .from('channels')
+      .select('*')
+      .eq('brand_id', brand.id)
+      .order('created_at', { ascending: false })
+    setChannelsList(data || [])
+
+    // Check which channels have batches (to control delete)
+    if (data && data.length > 0) {
+      const channelIds = data.map(c => c.id)
+      const { data: batchData } = await supabase
+        .from('batches')
+        .select('channel_id')
+        .in('channel_id', channelIds)
+      if (batchData) {
+        const counts = {}
+        batchData.forEach(b => {
+          counts[b.channel_id] = (counts[b.channel_id] || 0) + 1
+        })
+        setChannelBatchCounts(counts)
+      }
+    }
+    setChannelsLoading(false)
+  }
+
+  async function handleAddChannel(e) {
+    e.preventDefault()
+    if (!supabase || !brand?.id || brand.id === 'demo') return
+    if (!channelForm.name.trim()) return
+    setChannelSaving(true)
+    const { data, error } = await supabase
+      .from('channels')
+      .insert({ brand_id: brand.id, name: channelForm.name.trim(), type: channelForm.type })
+      .select()
+      .single()
+    if (error) {
+      alert(`Error adding channel: ${error.message}`)
+    } else {
+      setChannelsList(prev => [data, ...prev])
+      setChannelForm({ name: '', type: 'retail' })
+      setShowChannelForm(false)
+    }
+    setChannelSaving(false)
+  }
+
+  async function handleDeleteChannel(channelId) {
+    if (!confirm('Delete this channel?')) return
+    const { error } = await supabase.from('channels').delete().eq('id', channelId)
+    if (error) {
+      alert(`Error deleting channel: ${error.message}`)
+    } else {
+      setChannelsList(prev => prev.filter(c => c.id !== channelId))
+    }
+  }
 
   // Handle OAuth callback - check URL for success flag
   useEffect(() => {
@@ -258,6 +327,107 @@ export default function Settings({ brand, onBrandUpdate }) {
             {saving ? 'Saving...' : 'Save Settings'}
           </button>
         </form>
+
+        {/* Channels Section */}
+        <div style={{ marginTop: 32 }}>
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Channels</label>
+              <button type="button" className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+                onClick={() => setShowChannelForm(!showChannelForm)}>
+                {showChannelForm ? 'Cancel' : '+ Add Channel'}
+              </button>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 16, marginTop: -8 }}>
+              Channels represent distribution paths (retail, DTC, distributor, event). Batches of serialized QR codes are assigned to a channel.
+            </p>
+
+            {showChannelForm && (
+              <form onSubmit={handleAddChannel} style={{
+                padding: 16, borderRadius: 8, background: 'var(--bg)',
+                border: '1px solid var(--border)', marginBottom: 16,
+                display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap',
+              }}>
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>Name</label>
+                  <input className="input" placeholder="e.g. Amazon US" value={channelForm.name}
+                    onChange={e => setChannelForm({ ...channelForm, name: e.target.value })} required />
+                </div>
+                <div style={{ flex: 1, minWidth: 140 }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>Type</label>
+                  <select className="input" value={channelForm.type}
+                    onChange={e => setChannelForm({ ...channelForm, type: e.target.value })}>
+                    <option value="retail">Retail</option>
+                    <option value="dtc">DTC</option>
+                    <option value="distributor">Distributor</option>
+                    <option value="event">Event</option>
+                  </select>
+                </div>
+                <button type="submit" className="btn btn-primary" style={{ padding: '10px 20px' }} disabled={channelSaving}>
+                  {channelSaving ? 'Adding...' : 'Add'}
+                </button>
+              </form>
+            )}
+
+            {channelsLoading ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '12px 0' }}>
+                Loading...
+              </div>
+            ) : channelsList.length === 0 ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '12px 0' }}>
+                No channels yet. Add one to start generating serialized QR batches.
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                      {['Name', 'Type', 'Created', ''].map(h => (
+                        <th key={h} style={{
+                          padding: '10px 12px', textAlign: 'left',
+                          fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
+                          textTransform: 'uppercase', letterSpacing: '0.5px',
+                        }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {channelsList.map(ch => {
+                      const hasBatches = (channelBatchCounts[ch.id] || 0) > 0
+                      return (
+                        <tr key={ch.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '10px 12px', fontWeight: 500 }}>{ch.name}</td>
+                          <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>
+                            <span style={{
+                              padding: '3px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 600,
+                              background: 'rgba(161, 161, 170, 0.1)', color: 'var(--text-muted)',
+                              textTransform: 'capitalize',
+                            }}>{ch.type}</span>
+                          </td>
+                          <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>
+                            {new Date(ch.created_at).toLocaleDateString()}
+                          </td>
+                          <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                            {hasBatches ? (
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                                {channelBatchCounts[ch.id]} batch{channelBatchCounts[ch.id] !== 1 ? 'es' : ''}
+                              </span>
+                            ) : (
+                              <button onClick={() => handleDeleteChannel(ch.id)}
+                                style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.8rem', cursor: 'pointer' }}>
+                                Delete
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   )

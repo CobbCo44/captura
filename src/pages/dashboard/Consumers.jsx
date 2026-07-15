@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 
 export default function Consumers({ brand }) {
@@ -6,6 +6,9 @@ export default function Consumers({ brand }) {
   const [promoEntries, setPromoEntries] = useState([])
   const [warrantyRegs, setWarrantyRegs] = useState([])
   const [eventEntries, setEventEntries] = useState([])
+  const [contacts, setContacts] = useState([])
+  const [contactSerials, setContactSerials] = useState({}) // contactId -> [{serial, product, channel, po, date}]
+  const [expandedContact, setExpandedContact] = useState(null)
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
@@ -19,16 +22,47 @@ export default function Consumers({ brand }) {
       setLoading(false)
       return
     }
-    const [vipRes, promoRes, warrantyRes, eventRes] = await Promise.all([
+    const [vipRes, promoRes, warrantyRes, eventRes, contactsRes] = await Promise.all([
       supabase.from('vip_members').select('*, products(name)').eq('brand_id', brand.id).order('joined_at', { ascending: false }),
       supabase.from('promo_entries').select('*, products(name), promos(title)').eq('brand_id', brand.id).order('entered_at', { ascending: false }),
       supabase.from('warranty_registrations').select('*, products(name)').eq('brand_id', brand.id).order('registered_at', { ascending: false }),
       supabase.from('event_entries').select('*, events(name)').eq('brand_id', brand.id).order('entered_at', { ascending: false }),
+      supabase.from('contacts').select('*').eq('brand_id', brand.id).order('created_at', { ascending: false }),
     ])
     setVipMembers(vipRes.data || [])
     setPromoEntries(promoRes.data || [])
     setWarrantyRegs(warrantyRes.data || [])
     setEventEntries(eventRes.data || [])
+
+    const contactsList = contactsRes.data || []
+    setContacts(contactsList)
+
+    // Load claimed serials for all contacts
+    if (contactsList.length > 0) {
+      const contactIds = contactsList.map(c => c.id)
+      const { data: claimedSerials } = await supabase
+        .from('serials')
+        .select('*, batches:batch_id(po_reference, channels:channel_id(name)), products:product_id(name)')
+        .eq('status', 'claimed')
+        .in('claimed_by_contact_id', contactIds)
+        .order('claimed_at', { ascending: false })
+
+      if (claimedSerials) {
+        const grouped = {}
+        claimedSerials.forEach(s => {
+          if (!grouped[s.claimed_by_contact_id]) grouped[s.claimed_by_contact_id] = []
+          grouped[s.claimed_by_contact_id].push({
+            serial: s.serial,
+            product: s.products?.name || '-',
+            channel: s.batches?.channels?.name || '-',
+            poReference: s.batches?.po_reference || '-',
+            claimedAt: s.claimed_at,
+          })
+        })
+        setContactSerials(grouped)
+      }
+    }
+
     setLoading(false)
   }
 
@@ -45,6 +79,8 @@ export default function Consumers({ brand }) {
       type: 'VIP',
       source: 'VIP Signup',
       date: v.joined_at,
+      channel: '-',
+      contactId: null,
     })),
     ...promoEntries.map(p => ({
       id: `promo-${p.id}`,
@@ -57,6 +93,8 @@ export default function Consumers({ brand }) {
       type: 'Promo',
       source: p.promos?.title || 'Promo Entry',
       date: p.entered_at,
+      channel: '-',
+      contactId: null,
     })),
     ...warrantyRegs.map(w => ({
       id: `warranty-${w.id}`,
@@ -69,6 +107,8 @@ export default function Consumers({ brand }) {
       type: 'Warranty',
       source: 'Warranty Registration',
       date: w.registered_at,
+      channel: '-',
+      contactId: null,
     })),
     ...eventEntries.map(ev => ({
       id: `event-${ev.id}`,
@@ -81,7 +121,27 @@ export default function Consumers({ brand }) {
       type: 'Event',
       source: ev.events?.name || 'Event Entry',
       date: ev.entered_at,
+      channel: '-',
+      contactId: null,
     })),
+    ...contacts.map(c => {
+      const serials = contactSerials[c.id] || []
+      const latestChannel = serials.length > 0 ? serials[0].channel : '-'
+      return {
+        id: `contact-${c.id}`,
+        firstName: c.first_name || '',
+        lastName: '',
+        email: c.email || '',
+        phone: c.phone || '',
+        product: serials.length > 0 ? serials[0].product : '-',
+        city: '',
+        type: 'Serial',
+        source: c.source || 'QR Scan',
+        date: c.created_at,
+        channel: latestChannel,
+        contactId: c.id,
+      }
+    }),
   ].sort((a, b) => new Date(b.date) - new Date(a.date))
 
   const filtered = allConsumers.filter(c => {
@@ -89,6 +149,7 @@ export default function Consumers({ brand }) {
     if (filter === 'promo' && c.type !== 'Promo') return false
     if (filter === 'warranty' && c.type !== 'Warranty') return false
     if (filter === 'event' && c.type !== 'Event') return false
+    if (filter === 'serial' && c.type !== 'Serial') return false
     if (search) {
       const q = search.toLowerCase()
       return `${c.firstName} ${c.lastName}`.toLowerCase().includes(q) ||
@@ -102,10 +163,10 @@ export default function Consumers({ brand }) {
 
   const exportCSV = () => {
     if (filtered.length === 0) return
-    const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Product', 'City', 'Source', 'Type', 'Date']
+    const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Product', 'Channel', 'City', 'Source', 'Type', 'Date']
     const rows = filtered.map(c => [
       c.firstName, c.lastName, c.email, c.phone,
-      c.product, c.city, c.source, c.type,
+      c.product, c.channel || '-', c.city, c.source, c.type,
       new Date(c.date).toLocaleDateString(),
     ])
     const csv = [headers, ...rows].map(row =>
@@ -136,7 +197,7 @@ export default function Consumers({ brand }) {
         <div>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Consumer Data</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: 4 }}>
-            All consumers from VIP signups, promo entries, events, and warranty registrations
+            All consumers from VIP signups, promo entries, events, warranty registrations, and serialized QR scans
           </p>
         </div>
         <button className="btn btn-primary" onClick={exportCSV}>Export CSV</button>
@@ -160,6 +221,10 @@ export default function Consumers({ brand }) {
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Warranty Regs</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#A1A1AA' }}>{warrantyRegs.length}</div>
         </div>
+        <div className="card" style={{ padding: '16px 20px' }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Serial Contacts</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#C084FC' }}>{contacts.length}</div>
+        </div>
       </div>
 
       {/* Filters */}
@@ -168,6 +233,7 @@ export default function Consumers({ brand }) {
         <button onClick={() => setFilter('promo')} style={tabStyle(filter === 'promo')}>Promo ({promoEntries.length})</button>
         <button onClick={() => setFilter('event')} style={tabStyle(filter === 'event')}>Event ({eventEntries.length})</button>
         <button onClick={() => setFilter('warranty')} style={tabStyle(filter === 'warranty')}>Warranty ({warrantyRegs.length})</button>
+        <button onClick={() => setFilter('serial')} style={tabStyle(filter === 'serial')}>Serial ({contacts.length})</button>
         <input
           className="input"
           placeholder="Search name, email, phone, city, product..."
@@ -190,7 +256,7 @@ export default function Consumers({ brand }) {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['Name', 'Email', 'Phone', 'Product', 'City', 'Source', 'Date'].map(h => (
+                {['Name', 'Email', 'Phone', 'Product', 'Channel', 'City', 'Source', 'Date'].map(h => (
                   <th key={h} style={{
                     padding: '12px 16px', textAlign: 'left',
                     fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
@@ -200,35 +266,88 @@ export default function Consumers({ brand }) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(c => (
-                <tr key={c.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 500, fontSize: '0.85rem' }}>
-                    {c.firstName} {c.lastName}
-                  </td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                    {c.email || '-'}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.85rem' }}>{c.phone}</td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                    {c.product || '-'}
-                  </td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                    {c.city || '-'}
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{
-                      padding: '3px 10px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 600,
-                      background: c.type === 'VIP' ? 'rgba(34, 197, 94, 0.1)' : c.type === 'Event' ? 'rgba(96, 165, 250, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                      color: c.type === 'VIP' ? 'var(--success)' : c.type === 'Event' ? '#60A5FA' : '#F59E0B',
-                    }}>
-                      {c.source}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    {new Date(c.date).toLocaleDateString()}
-                  </td>
-                </tr>
-              ))}
+              {filtered.map(c => {
+                const isExpanded = expandedContact === c.id
+                const serials = c.contactId ? (contactSerials[c.contactId] || []) : []
+                const isExpandable = c.type === 'Serial'
+                return (
+                  <React.Fragment key={c.id}>
+                    <tr style={{ borderBottom: '1px solid var(--border)', cursor: isExpandable ? 'pointer' : 'default' }}
+                      onClick={() => isExpandable && setExpandedContact(isExpanded ? null : c.id)}>
+                      <td style={{ padding: '12px 16px', fontWeight: 500, fontSize: '0.85rem' }}>
+                        {isExpandable && (
+                          <span style={{ display: 'inline-block', width: 16, color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                            {isExpanded ? 'v' : '>'}
+                          </span>
+                        )}
+                        {c.firstName} {c.lastName}
+                      </td>
+                      <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                        {c.email || '-'}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontSize: '0.85rem' }}>{c.phone || '-'}</td>
+                      <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                        {c.product || '-'}
+                      </td>
+                      <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                        {c.channel || '-'}
+                      </td>
+                      <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                        {c.city || '-'}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{
+                          padding: '3px 10px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 600,
+                          background: c.type === 'VIP' ? 'rgba(34, 197, 94, 0.1)' : c.type === 'Event' ? 'rgba(96, 165, 250, 0.1)' : c.type === 'Serial' ? 'rgba(192, 132, 252, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                          color: c.type === 'VIP' ? 'var(--success)' : c.type === 'Event' ? '#60A5FA' : c.type === 'Serial' ? '#C084FC' : '#F59E0B',
+                        }}>
+                          {c.source}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                        {new Date(c.date).toLocaleDateString()}
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                        <td colSpan={8} style={{ padding: '12px 16px 16px 32px', background: 'var(--bg)' }}>
+                          <div style={{ fontSize: '0.8rem', fontWeight: 600, marginBottom: 8 }}>Claimed Products</div>
+                          {serials.length === 0 ? (
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No serialized claims</div>
+                          ) : (
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                              <thead>
+                                <tr>
+                                  {['Product', 'Serial', 'Channel', 'PO Ref', 'Claimed'].map(h => (
+                                    <th key={h} style={{
+                                      padding: '6px 10px', textAlign: 'left',
+                                      fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)',
+                                      textTransform: 'uppercase', borderBottom: '1px solid var(--border)',
+                                    }}>{h}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {serials.map((s, i) => (
+                                  <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                                    <td style={{ padding: '6px 10px' }}>{s.product}</td>
+                                    <td style={{ padding: '6px 10px', fontFamily: 'monospace', fontSize: '0.75rem' }}>{s.serial}</td>
+                                    <td style={{ padding: '6px 10px', color: 'var(--text-muted)' }}>{s.channel}</td>
+                                    <td style={{ padding: '6px 10px', color: 'var(--text-muted)' }}>{s.poReference}</td>
+                                    <td style={{ padding: '6px 10px', color: 'var(--text-muted)' }}>
+                                      {s.claimedAt ? new Date(s.claimedAt).toLocaleDateString() : '-'}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                )
+              })}
             </tbody>
           </table>
         </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { exportBatchCSV } from '../../lib/exportBatchCSV'
 
 export default function Products({ brand }) {
   const [products, setProducts] = useState([])
@@ -15,6 +16,15 @@ export default function Products({ brand }) {
   const [selectedIds, setSelectedIds] = useState(new Set())
   const [pickerSearch, setPickerSearch] = useState('')
   const [pickerLoading, setPickerLoading] = useState(false)
+
+  // Serialization state
+  const [showBatchForm, setShowBatchForm] = useState(false)
+  const [batches, setBatches] = useState([])
+  const [batchesLoading, setBatchesLoading] = useState(false)
+  const [batchGenerating, setBatchGenerating] = useState(false)
+  const [channels, setChannels] = useState([])
+  const [batchForm, setBatchForm] = useState({ quantity: '', channelId: '', newChannelName: '', newChannelType: 'retail', poReference: '', notes: '' })
+  const [claimedCounts, setClaimedCounts] = useState({})
 
   useEffect(() => {
     loadProducts()
@@ -59,6 +69,15 @@ export default function Products({ brand }) {
       existingImages: p.image_urls || [],
     })
     setView('form')
+    // Load serialization data if product has a GTIN
+    if (p.gtin) {
+      loadChannels()
+      loadBatches(p.id)
+    } else {
+      setBatches([])
+      setClaimedCounts({})
+    }
+    setShowBatchForm(false)
   }
 
   const goBack = () => {
@@ -268,6 +287,98 @@ export default function Products({ brand }) {
     return null
   }
 
+  // ========== SERIALIZATION HELPERS ==========
+
+  async function loadChannels() {
+    if (!supabase || !brand?.id || brand.id === 'demo') return
+    const { data } = await supabase
+      .from('channels')
+      .select('*')
+      .eq('brand_id', brand.id)
+      .order('name')
+    setChannels(data || [])
+  }
+
+  async function loadBatches(productId) {
+    if (!supabase || !brand?.id || brand.id === 'demo' || !productId) return
+    setBatchesLoading(true)
+    const { data } = await supabase
+      .from('batches')
+      .select('*, channels:channel_id(name)')
+      .eq('product_id', productId)
+      .order('created_at', { ascending: false })
+    setBatches(data || [])
+
+    // Load claimed counts for each batch
+    if (data && data.length > 0) {
+      const batchIds = data.map(b => b.id)
+      const { data: serials } = await supabase
+        .from('serials')
+        .select('batch_id, status')
+        .in('batch_id', batchIds)
+      if (serials) {
+        const counts = {}
+        serials.forEach(s => {
+          if (!counts[s.batch_id]) counts[s.batch_id] = { total: 0, claimed: 0 }
+          counts[s.batch_id].total++
+          if (s.status === 'claimed') counts[s.batch_id].claimed++
+        })
+        setClaimedCounts(counts)
+      }
+    }
+    setBatchesLoading(false)
+  }
+
+  async function handleGenerateBatch(productId) {
+    if (!supabase || !brand?.id || brand.id === 'demo') return
+    const qty = parseInt(batchForm.quantity, 10)
+    if (!qty || qty < 1 || qty > 10000) {
+      alert('Quantity must be between 1 and 10,000.')
+      return
+    }
+
+    let channelId = batchForm.channelId
+    if (channelId === '__new__') {
+      if (!batchForm.newChannelName.trim()) {
+        alert('Please enter a channel name.')
+        return
+      }
+      const { data: newChannel, error: chErr } = await supabase
+        .from('channels')
+        .insert({ brand_id: brand.id, name: batchForm.newChannelName.trim(), type: batchForm.newChannelType })
+        .select()
+        .single()
+      if (chErr) {
+        alert(`Error creating channel: ${chErr.message}`)
+        return
+      }
+      channelId = newChannel.id
+      setChannels(prev => [...prev, newChannel].sort((a, b) => a.name.localeCompare(b.name)))
+    }
+
+    if (!channelId) {
+      alert('Please select a channel.')
+      return
+    }
+
+    setBatchGenerating(true)
+    const { data, error } = await supabase.rpc('generate_batch', {
+      p_product_id: productId,
+      p_channel_id: channelId,
+      p_quantity: qty,
+      p_po_reference: batchForm.poReference || null,
+      p_notes: batchForm.notes || null,
+    })
+    if (error) {
+      alert(`Error generating batch: ${error.message}`)
+    } else {
+      setBatchForm({ quantity: '', channelId: '', newChannelName: '', newChannelType: 'retail', poReference: '', notes: '' })
+      setShowBatchForm(false)
+      loadBatches(productId)
+    }
+    setBatchGenerating(false)
+  }
+
   // ========== FORM VIEW ==========
   if (view === 'form') {
     return (
@@ -417,6 +528,160 @@ export default function Products({ brand }) {
               </button>
             </div>
           </form>
+
+          {/* Serialized QR Codes Section - only for existing products with a GTIN */}
+          {editingProduct && editingProduct.gtin && (
+            <div style={{ marginTop: 28 }}>
+              <div className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Serialized QR Codes</label>
+                  <button type="button" className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+                    onClick={() => { setShowBatchForm(!showBatchForm); if (!channels.length) loadChannels() }}>
+                    {showBatchForm ? 'Cancel' : '+ Generate Batch'}
+                  </button>
+                </div>
+
+                {/* Inline batch generation form */}
+                {showBatchForm && (
+                  <div style={{
+                    padding: 16, borderRadius: 8, background: 'var(--bg)',
+                    border: '1px solid var(--border)', marginBottom: 16,
+                    display: 'flex', flexDirection: 'column', gap: 12,
+                  }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                        Quantity (1 - 10,000)
+                      </label>
+                      <input className="input" type="number" min="1" max="10000"
+                        placeholder="e.g. 500"
+                        value={batchForm.quantity}
+                        onChange={e => setBatchForm({ ...batchForm, quantity: e.target.value })} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                        Channel
+                      </label>
+                      <select className="input" value={batchForm.channelId}
+                        onChange={e => setBatchForm({ ...batchForm, channelId: e.target.value })}>
+                        <option value="">Select channel</option>
+                        {channels.map(ch => (
+                          <option key={ch.id} value={ch.id}>{ch.name} ({ch.type})</option>
+                        ))}
+                        <option value="__new__">+ Add new channel</option>
+                      </select>
+                    </div>
+                    {batchForm.channelId === '__new__' && (
+                      <div style={{ display: 'flex', gap: 10 }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                            Channel Name
+                          </label>
+                          <input className="input" placeholder="e.g. Amazon US"
+                            value={batchForm.newChannelName}
+                            onChange={e => setBatchForm({ ...batchForm, newChannelName: e.target.value })} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                            Type
+                          </label>
+                          <select className="input" value={batchForm.newChannelType}
+                            onChange={e => setBatchForm({ ...batchForm, newChannelType: e.target.value })}>
+                            <option value="retail">Retail</option>
+                            <option value="dtc">DTC</option>
+                            <option value="distributor">Distributor</option>
+                            <option value="event">Event</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                        PO Reference (optional)
+                      </label>
+                      <input className="input" placeholder="e.g. PO-2026-1234"
+                        value={batchForm.poReference}
+                        onChange={e => setBatchForm({ ...batchForm, poReference: e.target.value })} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                        Notes (optional)
+                      </label>
+                      <textarea className="input" placeholder="Internal notes about this batch"
+                        value={batchForm.notes}
+                        onChange={e => setBatchForm({ ...batchForm, notes: e.target.value })}
+                        style={{ minHeight: 60, resize: 'vertical' }} />
+                    </div>
+                    <button type="button" className="btn btn-primary" disabled={batchGenerating}
+                      onClick={() => handleGenerateBatch(editingProduct.id)}>
+                      {batchGenerating ? 'Generating...' : 'Generate'}
+                    </button>
+                  </div>
+                )}
+
+                {/* Batches list */}
+                {batchesLoading ? (
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '12px 0', textAlign: 'center' }}>
+                    Loading batches...
+                  </div>
+                ) : batches.length === 0 ? (
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '12px 0', textAlign: 'center' }}>
+                    No batches generated yet. Click "Generate Batch" to create serialized QR codes.
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                          {['Date', 'Qty', 'Channel', 'PO Ref', 'Claimed', ''].map(h => (
+                            <th key={h} style={{
+                              padding: '10px 12px', textAlign: 'left',
+                              fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
+                              textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap',
+                            }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {batches.map(b => {
+                          const counts = claimedCounts[b.id] || { total: b.quantity, claimed: 0 }
+                          return (
+                            <tr key={b.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                                {new Date(b.created_at).toLocaleDateString()}
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>{b.quantity}</td>
+                              <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>
+                                {b.channels?.name || '-'}
+                              </td>
+                              <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>
+                                {b.po_reference || '-'}
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <span style={{
+                                  color: counts.claimed > 0 ? 'var(--success)' : 'var(--text-muted)',
+                                }}>
+                                  {counts.claimed} / {counts.total}
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right' }}>
+                                <button type="button" onClick={() => exportBatchCSV(b.id)}
+                                  style={{
+                                    background: 'none', border: 'none', color: '#FAFAFA',
+                                    fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap',
+                                  }}>
+                                  Download CSV
+                                </button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )

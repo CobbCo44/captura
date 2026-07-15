@@ -19,6 +19,7 @@ export default function Insights({ brand }) {
   const [stats, setStats] = useState(null)
   const [loaded, setLoaded] = useState(false)
   const [range, setRange] = useState(30)
+  const [channelStats, setChannelStats] = useState([])
 
   useEffect(() => {
     loadData()
@@ -46,7 +47,67 @@ export default function Insights({ brand }) {
     }
 
     setStats(data)
+    await loadChannelStats(since)
     setLoaded(true)
+  }
+
+  async function loadChannelStats(since) {
+    if (!supabase || !brand?.id || brand.id === 'demo') return
+
+    // Get all serials with batch/channel info for this brand
+    let serialsQuery = supabase
+      .from('serials')
+      .select('id, status, claimed_at, batch_id, batches!inner(brand_id, channel_id, channels!inner(name))')
+      .eq('batches.brand_id', brand.id)
+
+    const { data: serials } = await serialsQuery
+
+    // Get scans with serial_id for this brand
+    let scansQuery = supabase
+      .from('scans')
+      .select('id, serial_id, scanned_at')
+      .eq('brand_id', brand.id)
+      .not('serial_id', 'is', null)
+
+    if (since) {
+      scansQuery = scansQuery.gte('scanned_at', since)
+    }
+
+    const { data: serialScans } = await scansQuery
+
+    if (!serials || serials.length === 0) {
+      setChannelStats([])
+      return
+    }
+
+    // Build serial_id -> channel_name map
+    const serialChannelMap = {}
+    const channelData = {}
+    for (const s of serials) {
+      const channelName = s.batches?.channels?.name || 'Unknown'
+      serialChannelMap[s.id] = channelName
+      if (!channelData[channelName]) channelData[channelName] = { scans: 0, claims: 0, total: 0 }
+      channelData[channelName].total++
+      if (s.status === 'claimed') {
+        if (!since || (s.claimed_at && new Date(s.claimed_at) >= new Date(since))) {
+          channelData[channelName].claims++
+        }
+      }
+    }
+
+    // Count scans per channel
+    if (serialScans) {
+      for (const scan of serialScans) {
+        const ch = serialChannelMap[scan.serial_id]
+        if (ch && channelData[ch]) channelData[ch].scans++
+      }
+    }
+
+    const result = Object.entries(channelData)
+      .map(([name, d]) => ({ name, scans: d.scans, claims: d.claims, total: d.total }))
+      .sort((a, b) => b.scans - a.scans)
+
+    setChannelStats(result)
   }
 
   async function loadDataFallback(since) {
@@ -104,6 +165,7 @@ export default function Insights({ brand }) {
         city: s.city,
       })),
     })
+    await loadChannelStats(since)
     setLoaded(true)
   }
 
@@ -252,6 +314,51 @@ export default function Insights({ brand }) {
           </div>
         ))}
       </div>
+
+      {/* By Channel Breakdown */}
+      {channelStats.length > 0 && (
+        <div className="card" style={{ marginBottom: 28, padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>By Channel</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 4 }}>
+              Scans and claims grouped by retail channel
+            </p>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  {['Channel', 'Scans', 'Claims', 'Total Serials', 'Claim Rate'].map(h => (
+                    <th key={h} style={{
+                      padding: '12px 20px', textAlign: 'left',
+                      fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
+                      textTransform: 'uppercase', letterSpacing: '0.5px',
+                    }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {channelStats.map(ch => (
+                  <tr key={ch.name} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '12px 20px', fontWeight: 500, fontSize: '0.9rem' }}>{ch.name}</td>
+                    <td style={{ padding: '12px 20px', fontSize: '0.9rem' }}>{ch.scans}</td>
+                    <td style={{ padding: '12px 20px', fontSize: '0.9rem' }}>{ch.claims}</td>
+                    <td style={{ padding: '12px 20px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>{ch.total}</td>
+                    <td style={{ padding: '12px 20px', fontSize: '0.9rem' }}>
+                      <span style={{
+                        padding: '3px 10px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600,
+                        background: 'rgba(34, 197, 94, 0.1)', color: 'var(--success)',
+                      }}>
+                        {ch.total > 0 ? `${Math.round((ch.claims / ch.total) * 100)}%` : '0%'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Report */}
       {generating && (

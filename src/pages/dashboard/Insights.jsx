@@ -112,22 +112,19 @@ export default function Insights({ brand }) {
 
   async function loadDataFallback(since) {
     let scansQuery = supabase.from('scans').select('*, products(name, sku)').eq('brand_id', brand.id)
-    let vipQuery = supabase.from('vip_members').select('id').eq('brand_id', brand.id)
     let promoQuery = supabase.from('promo_entries').select('id').eq('brand_id', brand.id)
     let eventQuery = supabase.from('event_entries').select('id').eq('brand_id', brand.id)
     let warrantyQuery = supabase.from('warranty_registrations').select('id').eq('brand_id', brand.id)
 
     if (since) {
       scansQuery = scansQuery.gte('scanned_at', since)
-      vipQuery = vipQuery.gte('joined_at', since)
       promoQuery = promoQuery.gte('entered_at', since)
       eventQuery = eventQuery.gte('entered_at', since)
       warrantyQuery = warrantyQuery.gte('registered_at', since)
     }
 
-    const [scansRes, vipRes, promoRes, eventRes, warrantyRes] = await Promise.all([
+    const [scansRes, promoRes, eventRes, warrantyRes] = await Promise.all([
       scansQuery.order('scanned_at', { ascending: false }).limit(500),
-      vipQuery,
       promoQuery,
       eventQuery,
       warrantyQuery,
@@ -146,7 +143,6 @@ export default function Insights({ brand }) {
 
     setStats({
       total_scans: scans.length,
-      vip_members: (vipRes.data || []).length,
       promo_entries: (promoRes.data || []).length,
       event_entries: (eventRes.data || []).length,
       warranty_registrations: (warrantyRes.data || []).length,
@@ -305,7 +301,6 @@ export default function Insights({ brand }) {
           { label: 'Promo Entries', value: stats?.promo_entries || 0 },
           { label: 'Event Entries', value: stats?.event_entries || 0 },
           { label: 'Warranty Reg.', value: stats?.warranty_registrations || 0 },
-          { label: 'VIP Members', value: stats?.vip_members || 0 },
           { label: 'Promo Conversion', value: conversionRate },
         ].map(s => (
           <div key={s.label} className="card" style={{ padding: '16px 20px' }}>

@@ -72,7 +72,7 @@ CREATE TABLE qr_codes (
 -- Scans (every time someone scans a QR code)
 CREATE TABLE scans (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  qr_code_id UUID REFERENCES qr_codes(id) ON DELETE CASCADE NOT NULL,
+  qr_code_id UUID REFERENCES qr_codes(id) ON DELETE SET NULL,
   product_id UUID REFERENCES products(id) ON DELETE CASCADE,
   brand_id UUID REFERENCES brands(id) ON DELETE CASCADE NOT NULL,
   latitude REAL,

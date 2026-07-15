@@ -115,14 +115,14 @@ export default function Insights({ brand }) {
     let vipQuery = supabase.from('vip_members').select('id').eq('brand_id', brand.id)
     let promoQuery = supabase.from('promo_entries').select('id').eq('brand_id', brand.id)
     let eventQuery = supabase.from('event_entries').select('id').eq('brand_id', brand.id)
-    let warrantyQuery = supabase.from('contact_warranties').select('id, contacts!inner(brand_id)').eq('contacts.brand_id', brand.id)
+    let warrantyQuery = supabase.from('warranty_registrations').select('id').eq('brand_id', brand.id)
 
     if (since) {
       scansQuery = scansQuery.gte('scanned_at', since)
       vipQuery = vipQuery.gte('joined_at', since)
       promoQuery = promoQuery.gte('entered_at', since)
       eventQuery = eventQuery.gte('entered_at', since)
-      warrantyQuery = warrantyQuery.gte('created_at', since)
+      warrantyQuery = warrantyQuery.gte('registered_at', since)
     }
 
     const [scansRes, vipRes, promoRes, eventRes, warrantyRes] = await Promise.all([

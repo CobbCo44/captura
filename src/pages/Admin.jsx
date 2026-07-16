@@ -62,7 +62,7 @@ export default function Admin() {
           width: 380, padding: 36, background: 'var(--bg-card)',
           border: '1px solid var(--border)', borderRadius: 12,
         }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 6, letterSpacing: '0.05em' }}>CAPTURA</div>
+          <img src="/images/meetcaptura-logo.png" alt="meetcaptura" style={{ height: 20, marginBottom: 6 }} />
           <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 28 }}>Admin Console</h2>
           <input
             className="input"
@@ -286,7 +286,7 @@ export default function Admin() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
         <div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4, letterSpacing: '0.05em' }}>CAPTURA</div>
+          <img src="/images/meetcaptura-logo.png" alt="meetcaptura" style={{ height: 20, marginBottom: 4 }} />
           <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Admin Console</h1>
         </div>
       </div>

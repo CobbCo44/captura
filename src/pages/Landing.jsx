@@ -8,9 +8,7 @@ export default function Landing() {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '20px 40px', maxWidth: 1200, margin: '0 auto',
       }}>
-        <div style={{ fontSize: '2.2rem', fontWeight: 800, color: '#FAFAFA', letterSpacing: '-1px' }}>
-          Captura
-        </div>
+        <img src="/images/meetcaptura-logo.png" alt="meetcaptura" style={{ height: 32, filter: 'invert(1)' }} />
         <div style={{ display: 'flex', gap: 12 }}>
           <Link to="/login" style={{
             padding: '10px 20px', fontSize: '0.9rem', color: '#A1A1AA', fontWeight: 500,
@@ -579,7 +577,7 @@ export default function Landing() {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         maxWidth: 1200, margin: '0 auto', flexWrap: 'wrap', gap: 16,
       }}>
-        <span style={{ color: '#27272A', fontSize: '0.85rem' }}>&copy; 2026 Captura</span>
+        <span style={{ color: '#27272A', fontSize: '0.85rem' }}>&copy; 2026 meetcaptura</span>
         <div style={{ display: 'flex', gap: 24 }}>
           <Link to="/terms" style={{ color: '#3F3F46', fontSize: '0.85rem' }}>Terms</Link>
           <Link to="/privacy" style={{ color: '#3F3F46', fontSize: '0.85rem' }}>Privacy</Link>

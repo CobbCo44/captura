@@ -1047,7 +1047,7 @@ export default function ScanPage({ previewData } = {}) {
         <div style={{ padding: '16px 14px', borderTop: '1px solid var(--line)' }}>
           <h4 style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em', fontSize: 13, margin: '0 0 7px', color: 'var(--ink)' }}>About this product</h4>
           <p style={{
-            color: 'var(--ink2)', fontSize: 13, margin: 0, lineHeight: 1.5,
+            color: 'var(--ink2)', fontSize: 13, margin: 0, lineHeight: 1.5, whiteSpace: 'pre-line',
             ...(descExpanded ? {} : { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }),
           }}>
             {product.description}

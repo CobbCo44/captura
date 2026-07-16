@@ -29,6 +29,7 @@ export default function Consumers({ brand }) {
       supabase.from('event_entries').select('*, events(name)').eq('brand_id', brand.id).order('entered_at', { ascending: false }),
       supabase.from('contacts').select('*').eq('brand_id', brand.id).order('created_at', { ascending: false }),
     ])
+    if (eventRes.error) console.error('Event entries query error:', eventRes.error)
     setVipMembers(vipRes.data || [])
     setPromoEntries(promoRes.data || [])
     setWarrantyRegs(warrantyRes.data || [])

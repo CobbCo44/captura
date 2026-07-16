@@ -604,7 +604,7 @@ export default function ScanPage({ previewData } = {}) {
 
             {/* Brand header bar */}
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 12,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: '16px 20px',
             }}>
               {(brand?.logo_dark_url || brand?.logo_url) && (
@@ -612,10 +612,6 @@ export default function ScanPage({ previewData } = {}) {
                   height: 32, objectFit: 'contain',
                 }} />
               )}
-              <h2 style={{
-                fontSize: '1rem', fontWeight: 700, color: '#fff',
-                textShadow: '0 1px 3px rgba(0,0,0,0.5)',
-              }}>{event.name}</h2>
             </div>
 
             {/* Spacer pushes content to bottom */}
@@ -647,7 +643,6 @@ export default function ScanPage({ previewData } = {}) {
                   border: '1px solid rgba(255,255,255,0.2)',
                   borderRadius: 100, padding: '8px 16px', marginBottom: 24,
                 }}>
-                  <span style={{ fontSize: '1rem' }}>🎁</span>
                   <span style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 600 }}>{event.giveaway}</span>
                 </div>
               )}

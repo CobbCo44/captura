@@ -609,7 +609,7 @@ export default function ScanPage({ previewData } = {}) {
             }}>
               {(brand?.logo_dark_url || brand?.logo_url) && (
                 <img src={brand.logo_dark_url || brand.logo_url} alt={brand.name} style={{
-                  height: 32, objectFit: 'contain',
+                  height: 48, objectFit: 'contain',
                 }} />
               )}
             </div>

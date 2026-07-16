@@ -651,36 +651,6 @@ export default function Events({ brand }) {
                   {(form.image || form.existingImage) && (
                     <div>
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                        Image Focus
-                      </label>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        {[
-                          { value: 'top', label: 'Top' },
-                          { value: 'center', label: 'Center' },
-                          { value: 'bottom', label: 'Bottom' },
-                          { value: 'left', label: 'Left' },
-                          { value: 'right', label: 'Right' },
-                        ].map(pos => (
-                          <button key={pos.value} type="button"
-                            onClick={() => setForm({ ...form, bgPosition: pos.value })}
-                            style={{
-                              padding: '6px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
-                              background: form.bgPosition === pos.value ? '#FAFAFA' : 'var(--bg-card)',
-                              color: form.bgPosition === pos.value ? '#09090B' : 'var(--text-muted)',
-                              border: form.bgPosition === pos.value ? 'none' : '1px solid var(--border)',
-                            }}>
-                            {pos.label}
-                          </button>
-                        ))}
-                      </div>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                        Choose which part of the image to focus on.
-                      </p>
-                    </div>
-                  )}
-                  {(form.image || form.existingImage) && (
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
                         Image Zoom: {form.bgZoom}%
                       </label>
                       <input type="range" min="100" max="300" value={form.bgZoom}

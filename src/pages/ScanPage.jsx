@@ -539,9 +539,8 @@ export default function ScanPage({ previewData } = {}) {
   const tokenVars = { '--scan-bg': kit.bg, '--scan-card': kit.card, '--scan-border': kit.border }
   const btnStyle = { background: accentBg, color: accentInk }
 
-  // Derive promo state safely
+  // Derive promo state safely (winner only shown in utility tile, not here)
   const promoState = (() => {
-    if (activePromo?.winner_announced_at) return 'winner'
     if (!activePromo?.active) return 'evergreen'
     try {
       const now = new Date()
@@ -560,7 +559,6 @@ export default function ScanPage({ previewData } = {}) {
       case 'live': return { pill: 'Live now', dot: true, h: activePromo.title, sub: activePromo.description || '', showCountdown: true, countdownTarget: activePromo.end_at, cta: 'Enter to win', formAction: () => setShowPromoEntry(true) }
       case 'scheduled': return { pill: 'Next drop', dot: false, h: activePromo.title, sub: activePromo.prize ? `Prize: ${activePromo.prize}` : '', showCountdown: true, countdownTarget: activePromo.start_at, cta: 'Get the alert', formAction: () => setShowPromoEntry(true) }
       case 'closed': return { pill: 'Entries closed', dot: false, h: activePromo.title, sub: 'Winner drawn soon', showCountdown: false, countdownTarget: null, cta: 'Get notified', formAction: () => setShowPromoEntry(true) }
-      case 'winner': return { pill: 'Winner', dot: false, h: `${activePromo.winner_name || ''} won`, sub: activePromo.winner_city || '', showCountdown: false, countdownTarget: null, cta: 'Get the next one', formAction: () => setShowPromoEntry(true) }
       default: return { pill: 'This month', dot: true, h: 'Win the Monthly Gear Drop', sub: 'Gloves, grips, and a bag.', showCountdown: false, countdownTarget: null, cta: 'Enter free', formAction: () => setShowPromoEntry(true) }
     }
   })()

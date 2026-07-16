@@ -54,6 +54,7 @@ export default function ScanPage({ previewData } = {}) {
 
   // Countdown timer for promo
   useEffect(() => {
+    if (activePromo?.winner_announced_at) { setCountdown(''); return }
     if (!activePromo?.active) { setCountdown(''); return }
     let target = null
     try {
@@ -61,7 +62,6 @@ export default function ScanPage({ previewData } = {}) {
       const start = activePromo.start_at ? new Date(activePromo.start_at) : null
       const end = activePromo.end_at ? new Date(activePromo.end_at) : null
       if (start && end) {
-        if (activePromo.winner_announced_at) { setCountdown(''); return }
         if (now < start) target = activePromo.start_at
         else if (now >= start && now <= end) target = activePromo.end_at
       }
@@ -201,12 +201,13 @@ export default function ScanPage({ previewData } = {}) {
       if (qr.promos) {
         setActivePromo(qr.promos)
       } else {
-        // Check for a brand-wide active promo
+        // Check for active promo or most recent winner
         const { data: promoData } = await supabase
           .from('promos')
           .select('*')
           .eq('brand_id', qr.brand_id)
-          .eq('active', true)
+          .or('active.eq.true,winner_announced_at.not.is.null')
+          .order('winner_announced_at', { ascending: false, nullsFirst: false })
           .limit(1)
           .single()
         if (promoData) setActivePromo(promoData)
@@ -540,9 +541,9 @@ export default function ScanPage({ previewData } = {}) {
 
   // Derive promo state safely
   const promoState = (() => {
+    if (activePromo?.winner_announced_at) return 'winner'
     if (!activePromo?.active) return 'evergreen'
     try {
-      if (activePromo.winner_announced_at) return 'winner'
       const now = new Date()
       const start = activePromo.start_at ? new Date(activePromo.start_at) : null
       const end = activePromo.end_at ? new Date(activePromo.end_at) : null

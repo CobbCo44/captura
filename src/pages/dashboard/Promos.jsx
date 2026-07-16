@@ -89,7 +89,10 @@ export default function Promos({ brand }) {
         .update(updatePayload)
         .eq('id', editingPromo.id)
         .select().single()
-      if (!error && data) {
+      if (error) {
+        console.error('Promo update error:', error)
+        alert(`Error saving promo: ${error.message}`)
+      } else if (data) {
         setPromos(promos.map(p => p.id === data.id ? data : p))
       }
     } else {

@@ -27,7 +27,7 @@ export default function Events({ brand }) {
     ctaText: '',
   })
 
-  const [form, setForm] = useState({ name: '', description: '', giveaway: '', image: null, existingImage: '', logoSize: 48, logoAlign: 'center', logo: null, existingLogo: '', bgPosition: 'center' })
+  const [form, setForm] = useState({ name: '', description: '', giveaway: '', image: null, existingImage: '', logoSize: 48, logoAlign: 'center', logo: null, existingLogo: '', bgPosition: 'center', bgZoom: 100 })
   const [uploading, setUploading] = useState(false)
 
   const scanUrl = 'https://meetcaptura.com'
@@ -76,13 +76,13 @@ export default function Events({ brand }) {
   // Event CRUD
   const openCreate = () => {
     setEditingEvent(null)
-    setForm({ name: '', description: '', giveaway: '', image: null, existingImage: '', logoSize: 48, logoAlign: 'center', logo: null, existingLogo: '', bgPosition: 'center' })
+    setForm({ name: '', description: '', giveaway: '', image: null, existingImage: '', logoSize: 48, logoAlign: 'center', logo: null, existingLogo: '', bgPosition: 'center', bgZoom: 100 })
     setShowModal(true)
   }
 
   const openEdit = (ev) => {
     setEditingEvent(ev)
-    setForm({ name: ev.name, description: ev.description || '', giveaway: ev.giveaway || '', image: null, existingImage: ev.image_url || '', logoSize: ev.logo_size || 48, logoAlign: ev.logo_align || 'center', logo: null, existingLogo: ev.logo_url || '', bgPosition: ev.bg_position || 'center' })
+    setForm({ name: ev.name, description: ev.description || '', giveaway: ev.giveaway || '', image: null, existingImage: ev.image_url || '', logoSize: ev.logo_size || 48, logoAlign: ev.logo_align || 'center', logo: null, existingLogo: ev.logo_url || '', bgPosition: ev.bg_position || 'center', bgZoom: ev.bg_zoom || 100 })
     setShowModal(true)
   }
 
@@ -132,7 +132,7 @@ export default function Events({ brand }) {
 
     if (editingEvent) {
       const { data, error } = await supabase.from('events')
-        .update({ name: form.name, description: form.description, giveaway: form.giveaway, image_url: imageUrl, logo_size: form.logoSize, logo_align: form.logoAlign, logo_url: logoUrl, bg_position: form.bgPosition })
+        .update({ name: form.name, description: form.description, giveaway: form.giveaway, image_url: imageUrl, logo_size: form.logoSize, logo_align: form.logoAlign, logo_url: logoUrl, bg_position: form.bgPosition, bg_zoom: form.bgZoom })
         .eq('id', editingEvent.id)
         .select('*, qr_codes(*)').single()
       if (!error && data) {
@@ -149,6 +149,7 @@ export default function Events({ brand }) {
         logo_align: form.logoAlign,
         logo_url: logoUrl,
         bg_position: form.bgPosition,
+        bg_zoom: form.bgZoom,
       }).select('*, qr_codes(*)').single()
       if (error) {
         alert(`Error: ${error.message}`)
@@ -578,6 +579,7 @@ export default function Events({ brand }) {
             logo_align: form.logoAlign,
             logo_url: form.logo ? URL.createObjectURL(form.logo) : (form.existingLogo || null),
             bg_position: form.bgPosition,
+            bg_zoom: form.bgZoom,
           },
         }
 
@@ -672,7 +674,20 @@ export default function Events({ brand }) {
                         ))}
                       </div>
                       <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                        Choose which part of the image to focus on when it fills the screen.
+                        Choose which part of the image to focus on.
+                      </p>
+                    </div>
+                  )}
+                  {(form.image || form.existingImage) && (
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                        Image Zoom: {form.bgZoom}%
+                      </label>
+                      <input type="range" min="100" max="300" value={form.bgZoom}
+                        onChange={e => setForm({ ...form, bgZoom: parseInt(e.target.value) })}
+                        style={{ width: '100%', accentColor: '#FAFAFA' }} />
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                        100% shows the full image. Slide right to zoom in.
                       </p>
                     </div>
                   )}

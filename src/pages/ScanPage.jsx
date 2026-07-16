@@ -178,7 +178,7 @@ export default function ScanPage({ previewData } = {}) {
           setProduct(prod)
           setBrand(brandData)
           setLoading(false)
-          getLocationAndLogScan(null, resolvedSerialData)
+          getLocationAndLogScan(null, resolvedSerialData || { brand_id: prod.brand_id, product_id: prod.id })
           return
         }
       }

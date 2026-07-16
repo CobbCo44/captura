@@ -17,6 +17,7 @@ export default function Admin() {
   const [promoEntries, setPromoEntries] = useState([])
   const [billingEvents, setBillingEvents] = useState([])
   const [selectedBrand, setSelectedBrand] = useState(null)
+  const [period, setPeriod] = useState('month')
   const [billingMonth, setBillingMonth] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -99,10 +100,30 @@ export default function Admin() {
   if (selectedBrand) {
     const brand = selectedBrand
     const brandScans = scans.filter(s => s.brand_id === brand.id)
-    const brandVIP = vipMembers.filter(v => v.brand_id === brand.id)
+    const brandWarranty = vipMembers.filter(v => v.brand_id === brand.id)
     const brandPromo = promoEntries.filter(p => p.brand_id === brand.id)
-    const brandBilling = billingEvents.filter(e => e.brand_id === brand.id)
-    const billableThisMonth = brandBilling.filter(e => e.billing_month === billingMonth && e.billable).length
+
+    // Time period filter
+    const now = new Date()
+    const filterByPeriod = (date) => {
+      const d = new Date(date)
+      if (period === 'week') {
+        const weekAgo = new Date(now)
+        weekAgo.setDate(weekAgo.getDate() - 7)
+        return d >= weekAgo
+      } else if (period === 'month') {
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+      } else {
+        return d.getFullYear() === now.getFullYear()
+      }
+    }
+
+    const filteredWarranty = brandWarranty.filter(v => filterByPeriod(v.joined_at))
+    const filteredPromo = brandPromo.filter(p => filterByPeriod(p.entered_at))
+    const totalEntries = filteredWarranty.length + filteredPromo.length
+    const amountDue = totalEntries
+
+    const periodLabel = period === 'week' ? 'This Week' : period === 'month' ? 'This Month' : 'This Year'
 
     return (
       <div style={{ minHeight: '100vh', padding: '32px 40px', maxWidth: 1200, margin: '0 auto' }}>
@@ -128,14 +149,30 @@ export default function Admin() {
           </div>
         </div>
 
+        {/* Period Filter */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+          {[
+            { key: 'week', label: 'Week' },
+            { key: 'month', label: 'Month' },
+            { key: 'year', label: 'Year' },
+          ].map(p => (
+            <button key={p.key} onClick={() => setPeriod(p.key)} style={{
+              padding: '8px 18px', borderRadius: 8, fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer',
+              background: period === p.key ? '#FAFAFA' : 'var(--bg-card)',
+              color: period === p.key ? '#09090B' : 'var(--text-muted)',
+              border: period === p.key ? 'none' : '1px solid var(--border)',
+            }}>{p.label}</button>
+          ))}
+        </div>
+
         {/* Brand Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 28 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16, marginBottom: 28 }}>
           {[
             { label: 'Total Scans', value: brandScans.length, color: '#FAFAFA' },
-            { label: 'VIP Members', value: brandVIP.length, color: 'var(--success)' },
-            { label: 'Promo Entries', value: brandPromo.length, color: '#F59E0B' },
-            { label: 'Billable This Month', value: billableThisMonth, color: '#A1A1AA' },
-            { label: 'Amount Due', value: `$${billableThisMonth}.00`, color: 'var(--success)' },
+            { label: `Warranty Registrations`, value: filteredWarranty.length, color: 'var(--success)' },
+            { label: `Promo Entries`, value: filteredPromo.length, color: '#F59E0B' },
+            { label: `Billable ${periodLabel}`, value: totalEntries, color: '#A1A1AA' },
+            { label: 'Amount Due', value: `$${amountDue}.00`, color: 'var(--success)' },
           ].map(s => (
             <div key={s.label} className="card" style={{ padding: '16px 20px' }}>
               <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>{s.label}</div>
@@ -144,9 +181,9 @@ export default function Admin() {
           ))}
         </div>
 
-        {/* VIP Members */}
-        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 12 }}>VIP Members ({brandVIP.length})</h3>
-        {brandVIP.length > 0 ? (
+        {/* Warranty Registrations */}
+        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 12 }}>Warranty Registrations ({filteredWarranty.length})</h3>
+        {filteredWarranty.length > 0 ? (
           <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 28 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -157,7 +194,7 @@ export default function Admin() {
                 </tr>
               </thead>
               <tbody>
-                {brandVIP.map(v => (
+                {filteredWarranty.map(v => (
                   <tr key={v.id} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '10px 14px', fontWeight: 500, fontSize: '0.85rem' }}>{v.first_name} {v.last_name}</td>
                     <td style={{ padding: '10px 14px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>{v.email || '-'}</td>
@@ -171,12 +208,12 @@ export default function Admin() {
             </table>
           </div>
         ) : (
-          <div className="card" style={{ padding: '24px', color: 'var(--text-muted)', textAlign: 'center', marginBottom: 28 }}>No VIP members yet.</div>
+          <div className="card" style={{ padding: '24px', color: 'var(--text-muted)', textAlign: 'center', marginBottom: 28 }}>No warranty registrations {periodLabel.toLowerCase()}.</div>
         )}
 
         {/* Promo Entries */}
-        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 12 }}>Promo Entries ({brandPromo.length})</h3>
-        {brandPromo.length > 0 ? (
+        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 12 }}>Promo Entries ({filteredPromo.length})</h3>
+        {filteredPromo.length > 0 ? (
           <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: 28 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
@@ -187,7 +224,7 @@ export default function Admin() {
                 </tr>
               </thead>
               <tbody>
-                {brandPromo.map(p => (
+                {filteredPromo.map(p => (
                   <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '10px 14px', fontWeight: 500, fontSize: '0.85rem' }}>{p.first_name} {p.last_name}</td>
                     <td style={{ padding: '10px 14px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>{p.email || '-'}</td>
@@ -201,35 +238,7 @@ export default function Admin() {
             </table>
           </div>
         ) : (
-          <div className="card" style={{ padding: '24px', color: 'var(--text-muted)', textAlign: 'center', marginBottom: 28 }}>No promo entries yet.</div>
-        )}
-
-        {/* Recent Scans */}
-        <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 12 }}>Recent Scans ({brandScans.length})</h3>
-        {brandScans.length > 0 ? (
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['Product', 'City', 'Device', 'Time'].map(h => (
-                    <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {brandScans.slice(0, 50).map(s => (
-                  <tr key={s.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '10px 14px', fontWeight: 500, fontSize: '0.85rem' }}>{s.products?.name || '-'}</td>
-                    <td style={{ padding: '10px 14px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>{s.city || '-'}</td>
-                    <td style={{ padding: '10px 14px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>{s.device || '-'}</td>
-                    <td style={{ padding: '10px 14px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>{new Date(s.scanned_at).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="card" style={{ padding: '24px', color: 'var(--text-muted)', textAlign: 'center' }}>No scans yet.</div>
+          <div className="card" style={{ padding: '24px', color: 'var(--text-muted)', textAlign: 'center', marginBottom: 28 }}>No promo entries {periodLabel.toLowerCase()}.</div>
         )}
       </div>
     )
@@ -251,7 +260,7 @@ export default function Admin() {
         {[
           { label: 'Total Brands', value: brands.length, color: '#FAFAFA' },
           { label: 'Total Scans', value: scans.length, color: '#A1A1AA' },
-          { label: 'VIP Members', value: vipMembers.length, color: 'var(--success)' },
+          { label: 'Warranty Registrations', value: vipMembers.length, color: 'var(--success)' },
           { label: 'Promo Entries', value: promoEntries.length, color: '#F59E0B' },
         ].map(s => (
           <div key={s.label} className="card" style={{ padding: '16px 20px' }}>
@@ -299,7 +308,7 @@ export default function Admin() {
                     <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>{bScans}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>VIP</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Warranty</div>
                     <div style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--success)' }}>{bVIP}</div>
                   </div>
                   <div>

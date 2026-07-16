@@ -27,7 +27,7 @@ export default function Events({ brand }) {
     ctaText: '',
   })
 
-  const [form, setForm] = useState({ name: '', description: '', giveaway: '', image: null, existingImage: '', logoSize: 48, logoAlign: 'center' })
+  const [form, setForm] = useState({ name: '', description: '', giveaway: '', image: null, existingImage: '', logoSize: 48, logoAlign: 'center', logo: null, existingLogo: '' })
   const [uploading, setUploading] = useState(false)
 
   const scanUrl = 'https://meetcaptura.com'
@@ -76,13 +76,13 @@ export default function Events({ brand }) {
   // Event CRUD
   const openCreate = () => {
     setEditingEvent(null)
-    setForm({ name: '', description: '', giveaway: '', image: null, existingImage: '', logoSize: 48, logoAlign: 'center' })
+    setForm({ name: '', description: '', giveaway: '', image: null, existingImage: '', logoSize: 48, logoAlign: 'center', logo: null, existingLogo: '' })
     setShowModal(true)
   }
 
   const openEdit = (ev) => {
     setEditingEvent(ev)
-    setForm({ name: ev.name, description: ev.description || '', giveaway: ev.giveaway || '', image: null, existingImage: ev.image_url || '', logoSize: ev.logo_size || 48, logoAlign: ev.logo_align || 'center' })
+    setForm({ name: ev.name, description: ev.description || '', giveaway: ev.giveaway || '', image: null, existingImage: ev.image_url || '', logoSize: ev.logo_size || 48, logoAlign: ev.logo_align || 'center', logo: null, existingLogo: ev.logo_url || '' })
     setShowModal(true)
   }
 
@@ -92,7 +92,9 @@ export default function Events({ brand }) {
     setUploading(true)
 
     let imageUrl = form.existingImage || null
+    let logoUrl = form.existingLogo || null
 
+    // Upload background image
     if (form.image && supabase && brand?.id && brand.id !== 'demo') {
       const fileExt = form.image.name.split('.').pop()
       const fileName = `${brand.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`
@@ -110,9 +112,27 @@ export default function Events({ brand }) {
       }
     }
 
+    // Upload event logo
+    if (form.logo && supabase && brand?.id && brand.id !== 'demo') {
+      const fileExt = form.logo.name.split('.').pop()
+      const fileName = `${brand.id}/event-logo-${Date.now()}.${fileExt}`
+      const { error: uploadError } = await supabase.storage
+        .from('product-images')
+        .upload(fileName, form.logo)
+
+      if (uploadError) {
+        console.error('Logo upload error:', uploadError)
+      } else {
+        const { data: urlData } = supabase.storage
+          .from('product-images')
+          .getPublicUrl(fileName)
+        logoUrl = urlData.publicUrl
+      }
+    }
+
     if (editingEvent) {
       const { data, error } = await supabase.from('events')
-        .update({ name: form.name, description: form.description, giveaway: form.giveaway, image_url: imageUrl, logo_size: form.logoSize, logo_align: form.logoAlign })
+        .update({ name: form.name, description: form.description, giveaway: form.giveaway, image_url: imageUrl, logo_size: form.logoSize, logo_align: form.logoAlign, logo_url: logoUrl })
         .eq('id', editingEvent.id)
         .select('*, qr_codes(*)').single()
       if (!error && data) {
@@ -127,6 +147,7 @@ export default function Events({ brand }) {
         image_url: imageUrl,
         logo_size: form.logoSize,
         logo_align: form.logoAlign,
+        logo_url: logoUrl,
       }).select('*, qr_codes(*)').single()
       if (error) {
         alert(`Error: ${error.message}`)
@@ -554,6 +575,7 @@ export default function Events({ brand }) {
             image_url: previewImageUrl,
             logo_size: form.logoSize,
             logo_align: form.logoAlign,
+            logo_url: form.logo ? URL.createObjectURL(form.logo) : (form.existingLogo || null),
           },
         }
 
@@ -620,6 +642,30 @@ export default function Events({ brand }) {
                     )}
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
                       This image fills the full scan page background. Use a high-quality photo.
+                    </p>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                      Event Logo
+                    </label>
+                    {(form.logo || form.existingLogo) && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        <img src={form.logo ? URL.createObjectURL(form.logo) : form.existingLogo} alt="Logo"
+                          style={{ height: 40, objectFit: 'contain', borderRadius: 6, background: '#fff', padding: 2 }} />
+                        <button type="button" onClick={() => setForm({ ...form, logo: null, existingLogo: '' })}
+                          style={{ fontSize: '0.75rem', color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                    <input type="file" accept="image/*"
+                      onChange={e => {
+                        const file = e.target.files?.[0] || null
+                        setForm({ ...form, logo: file, existingLogo: file ? '' : form.existingLogo })
+                      }}
+                      style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }} />
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                      Override the brand logo for this event. Leave blank to use the default brand logo.
                     </p>
                   </div>
                   <div>

@@ -609,8 +609,8 @@ export default function ScanPage({ previewData } = {}) {
               justifyContent: (event.logo_align || 'center') === 'center' ? 'center' : (event.logo_align === 'right' ? 'flex-end' : 'flex-start'),
               padding: '16px 20px',
             }}>
-              {(brand?.logo_dark_url || brand?.logo_url) && (
-                <img src={brand.logo_dark_url || brand.logo_url} alt={brand.name} style={{
+              {(event.logo_url || brand?.logo_dark_url || brand?.logo_url) && (
+                <img src={event.logo_url || brand.logo_dark_url || brand.logo_url} alt={brand?.name} style={{
                   height: event.logo_size || 48, objectFit: 'contain',
                 }} />
               )}

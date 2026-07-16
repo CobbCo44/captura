@@ -27,7 +27,7 @@ export default function Events({ brand }) {
     ctaText: '',
   })
 
-  const [form, setForm] = useState({ name: '', description: '', giveaway: '', image: null, existingImage: '' })
+  const [form, setForm] = useState({ name: '', description: '', giveaway: '', image: null, existingImage: '', logoSize: 48, logoAlign: 'center' })
   const [uploading, setUploading] = useState(false)
 
   const scanUrl = 'https://meetcaptura.com'
@@ -76,13 +76,13 @@ export default function Events({ brand }) {
   // Event CRUD
   const openCreate = () => {
     setEditingEvent(null)
-    setForm({ name: '', description: '', giveaway: '', image: null, existingImage: '' })
+    setForm({ name: '', description: '', giveaway: '', image: null, existingImage: '', logoSize: 48, logoAlign: 'center' })
     setShowModal(true)
   }
 
   const openEdit = (ev) => {
     setEditingEvent(ev)
-    setForm({ name: ev.name, description: ev.description || '', giveaway: ev.giveaway || '', image: null, existingImage: ev.image_url || '' })
+    setForm({ name: ev.name, description: ev.description || '', giveaway: ev.giveaway || '', image: null, existingImage: ev.image_url || '', logoSize: ev.logo_size || 48, logoAlign: ev.logo_align || 'center' })
     setShowModal(true)
   }
 
@@ -112,7 +112,7 @@ export default function Events({ brand }) {
 
     if (editingEvent) {
       const { data, error } = await supabase.from('events')
-        .update({ name: form.name, description: form.description, giveaway: form.giveaway, image_url: imageUrl })
+        .update({ name: form.name, description: form.description, giveaway: form.giveaway, image_url: imageUrl, logo_size: form.logoSize, logo_align: form.logoAlign })
         .eq('id', editingEvent.id)
         .select('*, qr_codes(*)').single()
       if (!error && data) {
@@ -125,6 +125,8 @@ export default function Events({ brand }) {
         description: form.description,
         giveaway: form.giveaway,
         image_url: imageUrl,
+        logo_size: form.logoSize,
+        logo_align: form.logoAlign,
       }).select('*, qr_codes(*)').single()
       if (error) {
         alert(`Error: ${error.message}`)
@@ -550,6 +552,8 @@ export default function Events({ brand }) {
             description: form.description || '',
             giveaway: form.giveaway || '',
             image_url: previewImageUrl,
+            logo_size: form.logoSize,
+            logo_align: form.logoAlign,
           },
         }
 
@@ -617,6 +621,34 @@ export default function Events({ brand }) {
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
                       This image fills the full scan page background. Use a high-quality photo.
                     </p>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                      Logo Alignment
+                    </label>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      {['left', 'center', 'right'].map(align => (
+                        <button key={align} type="button"
+                          onClick={() => setForm({ ...form, logoAlign: align })}
+                          style={{
+                            padding: '6px 16px', borderRadius: 8, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                            background: form.logoAlign === align ? '#FAFAFA' : 'var(--bg-card)',
+                            color: form.logoAlign === align ? '#09090B' : 'var(--text-muted)',
+                            border: form.logoAlign === align ? 'none' : '1px solid var(--border)',
+                            textTransform: 'capitalize',
+                          }}>
+                          {align}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                      Logo Size: {form.logoSize}px
+                    </label>
+                    <input type="range" min="24" max="120" value={form.logoSize}
+                      onChange={e => setForm({ ...form, logoSize: parseInt(e.target.value) })}
+                      style={{ width: '100%', accentColor: '#FAFAFA' }} />
                   </div>
                   <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
                     <button type="button" className="btn btn-secondary" style={{ flex: 1 }}

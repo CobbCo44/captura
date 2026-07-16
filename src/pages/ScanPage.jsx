@@ -581,7 +581,7 @@ export default function ScanPage({ previewData } = {}) {
     ].filter(s => brand[s.key]) : []
 
     return (
-      <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ minHeight: isPreview ? '100%' : '100vh', maxWidth: 480, margin: '0 auto', position: 'relative', overflow: 'hidden' }}>
         <style>{`
           @keyframes ev-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
           @keyframes ev-slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
@@ -591,7 +591,7 @@ export default function ScanPage({ previewData } = {}) {
         {/* Full-bleed background */}
         <div style={{
           ...eventBg,
-          minHeight: '100vh', width: '100%', position: 'relative',
+          minHeight: isPreview ? '100%' : '100vh', width: '100%', position: 'relative',
           display: 'flex', flexDirection: 'column',
         }}>
           {/* Dark overlay for readability */}
@@ -605,12 +605,13 @@ export default function ScanPage({ previewData } = {}) {
 
             {/* Brand header bar */}
             <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              display: 'flex', alignItems: 'center',
+              justifyContent: (event.logo_align || 'center') === 'center' ? 'center' : (event.logo_align === 'right' ? 'flex-end' : 'flex-start'),
               padding: '16px 20px',
             }}>
               {(brand?.logo_dark_url || brand?.logo_url) && (
                 <img src={brand.logo_dark_url || brand.logo_url} alt={brand.name} style={{
-                  height: 48, objectFit: 'contain',
+                  height: event.logo_size || 48, objectFit: 'contain',
                 }} />
               )}
             </div>

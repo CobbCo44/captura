@@ -5,6 +5,11 @@ export default async (req, context) => {
     'Cache-Control': 'no-store',
   }
 
+  // Extract client IP from Netlify headers
+  const clientIp = req.headers.get('x-nf-client-connection-ip')
+    || (req.headers.get('x-forwarded-for') || '').split(',')[0].trim()
+    || null
+
   // Netlify injects geo data from its edge network — free, unlimited, no API key
   const geo = context?.geo || {}
 
@@ -15,6 +20,7 @@ export default async (req, context) => {
       city: geo.city,
       region: geo.subdivision?.code || geo.subdivision?.name || null,
       country: geo.country?.code || null,
+      ip: clientIp,
     }), { status: 200, headers })
   }
 
@@ -29,12 +35,13 @@ export default async (req, context) => {
         city: data.city,
         region: data.region_code || data.region,
         country: data.country_code,
+        ip: data.ip || clientIp,
       }), { status: 200, headers })
     }
   } catch { /* fall through */ }
 
   try {
-    const res = await fetch('https://ip-api.com/json/?fields=status,lat,lon,city,region,countryCode')
+    const res = await fetch('https://ip-api.com/json/?fields=status,lat,lon,city,region,countryCode,query')
     const data = await res.json()
     if (data && data.status === 'success' && data.city) {
       return new Response(JSON.stringify({
@@ -43,11 +50,12 @@ export default async (req, context) => {
         city: data.city,
         region: data.region,
         country: data.countryCode,
+        ip: data.query || clientIp,
       }), { status: 200, headers })
     }
   } catch { /* fall through */ }
 
   return new Response(JSON.stringify({
-    lat: null, lng: null, city: null, region: null, country: null,
+    lat: null, lng: null, city: null, region: null, country: null, ip: clientIp,
   }), { status: 200, headers })
 }

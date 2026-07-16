@@ -27,7 +27,7 @@ export default function ScanPage({ previewData } = {}) {
   const [notFound, setNotFound] = useState(false)
   const [activePromo, setActivePromo] = useState(previewData?.promo || null)
   const [showPromoEntry, setShowPromoEntry] = useState(false)
-  const [promoForm, setPromoForm] = useState({ firstName: '', lastName: '', email: '', phone: '', consent: false })
+  const [promoForm, setPromoForm] = useState({ firstName: '', lastName: '', email: '', phone: '', ageConsent: false, marketingConsent: false })
   const [promoEntered, setPromoEntered] = useState(false)
   const [showWarranty, setShowWarranty] = useState(false)
   const [warrantyForm, setWarrantyForm] = useState({ firstName: '', lastName: '', email: '', phone: '', purchaseDate: '', retailer: '', consent: false })
@@ -375,10 +375,18 @@ export default function ScanPage({ previewData } = {}) {
     setVipSubmitted(true)
   }
 
+  // Build the TCPA consent text for checkbox B (used in form and stored as evidence)
+  const brandNameForConsent = brand?.name || 'this brand'
+  const marketingConsentText = `I agree to receive recurring marketing texts, emails, and calls from ${brandNameForConsent}, delivered via Captura, including by automated technology, at the contact info I provided. Consent is not a condition of entry or purchase. Msg frequency varies. Msg & data rates may apply. Reply STOP to cancel, HELP for help.`
+
   const handlePromoEntry = async (e) => {
     e.preventDefault()
     if (isPreview) { setPromoEntered(true); return }
+    // Ensure geo/IP is available
+    if (locationPromise.current) await locationPromise.current
+    const loc = locationRef.current
     if (supabase && activePromo && qrCode) {
+      const now = new Date().toISOString()
       const { data: inserted } = await supabase.from('promo_entries').insert({
         promo_id: activePromo.id,
         brand_id: qrCode.brand_id,
@@ -388,14 +396,20 @@ export default function ScanPage({ previewData } = {}) {
         last_name: promoForm.lastName,
         email: promoForm.email,
         phone: promoForm.phone,
-        latitude: location?.lat || null,
-        longitude: location?.lng || null,
-        city: location?.city ? `${location.city}, ${location.region}` : null,
-        region: location?.region || null,
-        country: location?.country || null,
+        latitude: loc?.lat || null,
+        longitude: loc?.lng || null,
+        city: loc?.city ? `${loc.city}, ${loc.region}` : null,
+        region: loc?.region || null,
+        country: loc?.country || null,
+        age_attestation: true,
+        age_attestation_timestamp: now,
+        marketing_consent: promoForm.marketingConsent,
+        consent_timestamp: promoForm.marketingConsent ? now : null,
+        consent_ip: promoForm.marketingConsent ? (loc?.ip || null) : null,
+        consent_text_shown: promoForm.marketingConsent ? marketingConsentText : null,
       }).select('id').single()
       logBillingEvent(qrCode.brand_id, promoForm.email, promoForm.phone, 'promo', inserted?.id)
-      upsertContactAndClaimSerial(qrCode.brand_id, promoForm.firstName, promoForm.email, promoForm.phone, 'promo', promoForm.consent)
+      upsertContactAndClaimSerial(qrCode.brand_id, promoForm.firstName, promoForm.email, promoForm.phone, 'promo', promoForm.marketingConsent)
       syncToShopify({
         firstName: promoForm.firstName,
         lastName: promoForm.lastName,
@@ -1096,13 +1110,27 @@ export default function ScanPage({ previewData } = {}) {
               <input className="input" placeholder="Last Name" value={promoForm.lastName} onChange={e => setPromoForm({ ...promoForm, lastName: e.target.value })} required />
               <input className="input" type="email" placeholder="Email" value={promoForm.email} onChange={e => setPromoForm({ ...promoForm, email: e.target.value })} />
               <input className="input" type="tel" placeholder="Phone Number" value={promoForm.phone} onChange={e => setPromoForm({ ...promoForm, phone: e.target.value })} required />
+              {/* Checkbox A: Age + Rules (required) */}
               <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
-                <input type="checkbox" checked={promoForm.consent} required onChange={e => setPromoForm({ ...promoForm, consent: e.target.checked })} style={{ marginTop: 3, accentColor: 'var(--accent)' }} />
+                <input type="checkbox" checked={promoForm.ageConsent} required onChange={e => setPromoForm({ ...promoForm, ageConsent: e.target.checked })} style={{ marginTop: 3, accentColor: 'var(--accent)' }} />
                 <span style={{ color: 'var(--ink2, rgba(255,255,255,0.56))', fontSize: '0.75rem', lineHeight: 1.5 }}>
-                  I am 18 years or older and agree to receive communications from this brand via text, email, or phone. I understand my data will be used in accordance with the <a href="/privacy" target="_blank" style={{ color: 'var(--ink2)', textDecoration: 'underline' }}>Privacy Policy</a>. Message and data rates may apply. Reply STOP to opt out.
+                  I am 18 or older and agree to the <a href={`/rules/${activePromo?.id || ''}`} target="_blank" style={{ color: 'var(--ink2)', textDecoration: 'underline' }}>Official Rules</a> and <a href="/privacy" target="_blank" style={{ color: 'var(--ink2)', textDecoration: 'underline' }}>Privacy Policy</a>. No purchase necessary.
                 </span>
               </label>
-              <button type="submit" style={{ width: '100%', padding: 14, ...btnStyle, border: 'none', borderRadius: 'var(--r, 14px)', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>Submit Entry</button>
+              {!promoForm.ageConsent && promoForm.firstName && (
+                <p style={{ color: '#ef4444', fontSize: '0.7rem', margin: '-8px 0 0', lineHeight: 1.4 }}>Please confirm you're 18+ and agree to the rules.</p>
+              )}
+              {/* Checkbox B: Marketing opt-in (optional) */}
+              <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                <input type="checkbox" checked={promoForm.marketingConsent} onChange={e => setPromoForm({ ...promoForm, marketingConsent: e.target.checked })} style={{ marginTop: 3, accentColor: 'var(--accent)' }} />
+                <span style={{ color: 'var(--ink2, rgba(255,255,255,0.56))', fontSize: '0.7rem', lineHeight: 1.5 }}>
+                  {marketingConsentText}
+                </span>
+              </label>
+              <button type="submit" style={{ width: '100%', padding: 14, ...btnStyle, border: 'none', borderRadius: 'var(--r, 14px)', fontWeight: 700, cursor: 'pointer', fontSize: 14 }}>Enter to Win</button>
+              <p style={{ color: 'var(--ink2, rgba(255,255,255,0.36))', fontSize: '0.6rem', lineHeight: 1.5, textAlign: 'center', margin: '-4px 0 0' }}>
+                Entry gives you 1 giveaway entry in exchange for your contact information. See our Notice of Financial Incentive in the <a href="/privacy" target="_blank" style={{ color: 'var(--ink2, rgba(255,255,255,0.36))', textDecoration: 'underline' }}>Privacy Policy</a>. You may withdraw at any time by replying STOP or emailing privacy@meetcaptura.com.
+              </p>
             </form>
           </div>
         </div>

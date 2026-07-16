@@ -118,6 +118,7 @@ export default function Consumers({ brand }) {
         date: p.entered_at,
         channel: emailToChannel[key] || '-',
         contactId: emailToContactId[key] || null,
+        marketingConsent: p.marketing_consent || false,
       }
     }),
     ...warrantyRegs.map(w => {
@@ -174,12 +175,17 @@ export default function Consumers({ brand }) {
     return true
   })
 
-  const exportCSV = () => {
-    if (filtered.length === 0) return
-    const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Product', 'Channel', 'City', 'Source', 'Type', 'Date']
-    const rows = filtered.map(c => [
+  const exportCSV = (outreachOnly = false) => {
+    let data = filtered
+    if (outreachOnly) {
+      data = data.filter(c => c.marketingConsent === true)
+    }
+    if (data.length === 0) return
+    const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Product', 'Channel', 'City', 'Source', 'Type', 'Marketing Consent', 'Date']
+    const rows = data.map(c => [
       c.firstName, c.lastName, c.email, c.phone,
       c.product, c.channel || '-', c.city, c.source, c.type,
+      c.marketingConsent ? 'Yes' : 'No',
       new Date(c.date).toLocaleDateString(),
     ])
     const csv = [headers, ...rows].map(row =>
@@ -187,7 +193,7 @@ export default function Consumers({ brand }) {
     ).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const link = document.createElement('a')
-    link.download = `consumers-${filter}-${new Date().toISOString().split('T')[0]}.csv`
+    link.download = `consumers-${outreachOnly ? 'outreach' : filter}-${new Date().toISOString().split('T')[0]}.csv`
     link.href = URL.createObjectURL(blob)
     link.click()
     URL.revokeObjectURL(link.href)
@@ -213,7 +219,10 @@ export default function Consumers({ brand }) {
             All consumers from VIP signups, promo entries, events, warranty registrations, and serialized QR scans
           </p>
         </div>
-        <button className="btn btn-primary" onClick={exportCSV}>Export CSV</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn btn-secondary" onClick={() => exportCSV(true)}>Export Contactable</button>
+          <button className="btn btn-primary" onClick={() => exportCSV(false)}>Export All</button>
+        </div>
       </div>
 
       {/* Stats */}

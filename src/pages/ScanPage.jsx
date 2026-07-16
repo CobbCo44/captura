@@ -556,7 +556,7 @@ export default function ScanPage({ previewData } = {}) {
   // Giveaway tile config
   const promoConfig = (() => {
     switch (promoState) {
-      case 'live': return { pill: 'Live now', dot: true, h: activePromo.title, sub: activePromo.description || '', showCountdown: true, countdownTarget: activePromo.end_at, cta: 'Enter to win', formAction: () => setShowPromoEntry(true) }
+      case 'live': return { pill: 'Live now', dot: true, h: activePromo.title, sub: activePromo.description || (activePromo.prize ? `Prize: ${activePromo.prize}` : ''), showCountdown: true, countdownTarget: activePromo.end_at, cta: 'Enter to win', formAction: () => setShowPromoEntry(true) }
       case 'scheduled': return { pill: 'Next drop', dot: false, h: activePromo.title, sub: activePromo.prize ? `Prize: ${activePromo.prize}` : '', showCountdown: true, countdownTarget: activePromo.start_at, cta: 'Get the alert', formAction: () => setShowPromoEntry(true) }
       case 'closed': return { pill: 'Entries closed', dot: false, h: activePromo.title, sub: 'Winner drawn soon', showCountdown: false, countdownTarget: null, cta: 'Get notified', formAction: () => setShowPromoEntry(true) }
       default: return { pill: 'This month', dot: true, h: 'Win the Monthly Gear Drop', sub: 'Gloves, grips, and a bag.', showCountdown: false, countdownTarget: null, cta: 'Enter free', formAction: () => setShowPromoEntry(true) }

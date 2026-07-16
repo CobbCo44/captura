@@ -581,7 +581,7 @@ export default function ScanPage({ previewData } = {}) {
     ].filter(s => brand[s.key]) : []
 
     return (
-      <div style={{ minHeight: isPreview ? '100%' : '100vh', maxWidth: 480, margin: '0 auto', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ height: isPreview ? 580 : '100vh', minHeight: isPreview ? 580 : '100vh', maxWidth: 480, margin: '0 auto', position: 'relative', overflow: 'hidden' }}>
         <style>{`
           @keyframes ev-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
           @keyframes ev-slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
@@ -591,7 +591,7 @@ export default function ScanPage({ previewData } = {}) {
         {/* Full-bleed background */}
         <div style={{
           ...eventBg,
-          minHeight: isPreview ? '100%' : '100vh', width: '100%', position: 'relative',
+          height: '100%', width: '100%', position: 'relative',
           display: 'flex', flexDirection: 'column',
         }}>
           {/* Dark overlay for readability */}

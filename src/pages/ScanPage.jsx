@@ -564,158 +564,227 @@ export default function ScanPage({ previewData } = {}) {
   }
 
   // Event scan page
+  const [showEventForm, setShowEventForm] = useState(false)
+
   if (isEventQR) {
+    const eventBg = event.image_url
+      ? { backgroundImage: `url(${event.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+      : { background: 'linear-gradient(165deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)' }
+
+    const eventSocials = brand ? [
+      { key: 'social_instagram', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>' },
+      { key: 'social_tiktok', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 00-.79-.05A6.34 6.34 0 003.15 15.2a6.34 6.34 0 0010.86 4.48V13a8.28 8.28 0 005.58 2.15V11.7a4.79 4.79 0 01-3.77-1.85V6.69h3.77z"/></svg>' },
+      { key: 'social_twitter', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>' },
+      { key: 'social_facebook', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>' },
+      { key: 'social_youtube', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>' },
+      { key: 'social_website', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>' },
+    ].filter(s => brand[s.key]) : []
+
     return (
-      <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', padding: '0 0 40px' }}>
+      <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', position: 'relative', overflow: 'hidden' }}>
+        <style>{`
+          @keyframes ev-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+          @keyframes ev-slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+          @keyframes ev-fade-in{from{opacity:0}to{opacity:1}}
+        `}</style>
+
+        {/* Full-bleed background */}
         <div style={{
-          width: '100%', padding: '28px 20px 20px',
-          background: 'var(--bg-card)', borderBottom: '1px solid var(--border)',
-          textAlign: 'center',
+          ...eventBg,
+          minHeight: '100vh', width: '100%', position: 'relative',
+          display: 'flex', flexDirection: 'column',
         }}>
-          {brand?.logo_url && (
-            <img src={brand.logo_url} alt={brand.name} style={{
-              width: 48, height: 48, borderRadius: 10, objectFit: 'contain',
-              background: '#fff', padding: 3, marginBottom: 12,
-            }} />
-          )}
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>{event.name}</h1>
-          {brand?.name && (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 4 }}>by {brand.name}</p>
-          )}
-        </div>
+          {/* Dark overlay for readability */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.2) 40%, rgba(0,0,0,0.6) 75%, rgba(0,0,0,0.85) 100%)',
+          }} />
 
-        <div style={{ padding: '0 20px' }}>
-          {event.description && (
-            <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
-              <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.95rem' }}>
-                {event.description}
-              </p>
+          {/* Content layer */}
+          <div style={{ position: 'relative', zIndex: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
+
+            {/* Brand header bar */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '16px 20px',
+            }}>
+              {(brand?.logo_dark_url || brand?.logo_url) && (
+                <img src={brand.logo_dark_url || brand.logo_url} alt={brand.name} style={{
+                  height: 32, objectFit: 'contain',
+                }} />
+              )}
+              <h2 style={{
+                fontSize: '1rem', fontWeight: 700, color: '#fff',
+                textShadow: '0 1px 3px rgba(0,0,0,0.5)',
+              }}>{event.name}</h2>
             </div>
-          )}
 
-          {event.giveaway && (
-            <div style={{ padding: '24px 0', borderBottom: '1px solid var(--border)' }}>
-              <div style={{
-                ...(event.image_url
-                  ? { backgroundImage: `url(${event.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                  : { background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(245, 158, 11, 0.1))' }),
-                border: event.image_url ? 'none' : '1px solid rgba(239, 68, 68, 0.3)',
-                borderRadius: 'var(--radius)', overflow: 'hidden',
-              }}>
+            {/* Spacer pushes content to bottom */}
+            <div style={{ flex: 1 }} />
+
+            {/* Bottom content area */}
+            <div style={{ padding: '0 24px 40px' }}>
+
+              {/* Event title large */}
+              <h1 style={{
+                fontSize: '2.2rem', fontWeight: 800, color: '#fff', lineHeight: 1.15,
+                textShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                marginBottom: 8,
+              }}>{event.name}</h1>
+
+              {event.description && (
+                <p style={{
+                  color: 'rgba(255,255,255,0.8)', fontSize: '1rem', lineHeight: 1.5,
+                  marginBottom: 16, textShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                }}>{event.description}</p>
+              )}
+
+              {/* Giveaway badge */}
+              {event.giveaway && (
                 <div style={{
-                  padding: '24px 20px', textAlign: 'center',
-                  ...(event.image_url ? { background: 'rgba(0,0,0,0.55)' } : {}),
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 100, padding: '8px 16px', marginBottom: 24,
                 }}>
-                  <div style={{ fontSize: '1.3rem', marginBottom: 6 }}>🎁</div>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 6 }}>Giveaway</h3>
-                  <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#FAFAFA' }}>{event.giveaway}</p>
+                  <span style={{ fontSize: '1rem' }}>🎁</span>
+                  <span style={{ color: '#fff', fontSize: '0.9rem', fontWeight: 600 }}>{event.giveaway}</span>
                 </div>
-              </div>
-            </div>
-          )}
+              )}
 
-          {/* VIP Signup Form */}
-          <div style={{ padding: '24px 0' }}>
-            {!eventSubmitted ? (
-              <div>
+              {/* CTA Button */}
+              {!eventSubmitted ? (
+                <button
+                  onClick={() => setShowEventForm(true)}
+                  style={{
+                    width: '100%', padding: '18px 24px',
+                    background: accentBg, color: accentInk,
+                    border: 'none', borderRadius: 14, cursor: 'pointer',
+                    fontSize: '1.1rem', fontWeight: 700, letterSpacing: '0.01em',
+                    boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+                    animation: 'ev-pulse 2.5s ease-in-out infinite',
+                  }}
+                >
+                  {event.giveaway ? 'Enter to Win' : 'Sign Up'}
+                </button>
+              ) : (
                 <div style={{
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid #3F3F46',
-                  borderRadius: 'var(--radius)', padding: '28px 20px',
+                  textAlign: 'center', padding: '20px 24px',
+                  background: 'rgba(34, 197, 94, 0.2)', backdropFilter: 'blur(12px)',
+                  WebkitBackdropFilter: 'blur(12px)',
+                  border: '1px solid rgba(34, 197, 94, 0.4)',
+                  borderRadius: 14,
                 }}>
-                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 8, textAlign: 'center' }}>
-                    Sign Up
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#4ade80', marginBottom: 4 }}>
+                    You're In!
                   </h3>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 20, textAlign: 'center', lineHeight: 1.5 }}>
-                    {event.giveaway ? 'Enter your info for a chance to win.' : 'Sign up to stay connected.'}
+                  <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.9rem' }}>
+                    {event.giveaway
+                      ? `Good luck, ${eventForm.firstName}! We'll contact winners directly.`
+                      : `Thanks for signing up, ${eventForm.firstName}!`}
                   </p>
-                  <form onSubmit={handleEventSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    <input className="input" placeholder="First Name" value={eventForm.firstName}
-                      onChange={e => setEventForm({ ...eventForm, firstName: e.target.value })} required />
-                    <input className="input" placeholder="Last Name" value={eventForm.lastName}
-                      onChange={e => setEventForm({ ...eventForm, lastName: e.target.value })} required />
-                    <input className="input" type="email" placeholder="Email" value={eventForm.email}
-                      onChange={e => setEventForm({ ...eventForm, email: e.target.value })} />
-                    <input className="input" type="tel" placeholder="Phone Number" value={eventForm.phone}
-                      onChange={e => setEventForm({ ...eventForm, phone: e.target.value })} required />
-                    <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={eventForm.consent} required
-                        onChange={e => setEventForm({ ...eventForm, consent: e.target.checked })}
-                        style={{ marginTop: 3, accentColor: '#FAFAFA' }} />
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', lineHeight: 1.5 }}>
-                        I am 18 years or older and agree to receive communications from this brand via text, email, or phone. I understand my data will be used in accordance with the <a href="/privacy" target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Privacy Policy</a>. Message and data rates may apply. Reply STOP to opt out.
-                      </span>
-                    </label>
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 14 }}>
-                      {event.giveaway ? 'Enter to Win' : 'Sign Up'}
-                    </button>
-                  </form>
                 </div>
-              </div>
-            ) : (
-              <div style={{
-                textAlign: 'center', padding: 28,
-                background: 'rgba(34, 197, 94, 0.1)',
-                border: '1px solid var(--success)',
-                borderRadius: 'var(--radius)'
-              }}>
-                <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>🎉</div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>
-                  You're In!
-                </h3>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  {event.giveaway
-                    ? `Good luck, ${eventForm.firstName}! We'll contact winners directly.`
-                    : `Thanks for signing up, ${eventForm.firstName}!`}
-                </p>
-              </div>
-            )}
-          </div>
+              )}
 
-          {/* Social Links */}
-          {brand && (() => {
-            const socials = [
-              { key: 'social_instagram', label: 'Instagram', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>' },
-              { key: 'social_tiktok', label: 'TikTok', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 00-.79-.05A6.34 6.34 0 003.15 15.2a6.34 6.34 0 0010.86 4.48V13a8.28 8.28 0 005.58 2.15V11.7a4.79 4.79 0 01-3.77-1.85V6.69h3.77z"/></svg>' },
-              { key: 'social_twitter', label: 'X', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>' },
-              { key: 'social_facebook', label: 'Facebook', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>' },
-              { key: 'social_youtube', label: 'YouTube', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>' },
-              { key: 'social_website', label: 'Website', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>' },
-            ].filter(s => brand[s.key])
-            if (socials.length === 0) return null
-            return (
-              <div style={{ padding: '20px 0', borderBottom: '1px solid var(--border)' }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 12, textAlign: 'center' }}>Follow Us</div>
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-                  {socials.map(s => (
+              {/* Socials row */}
+              {eventSocials.length > 0 && (
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 24 }}>
+                  {eventSocials.map(s => (
                     <a key={s.key} href={brand[s.key]} target="_blank" rel="noopener noreferrer"
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: 44, height: 44, borderRadius: '50%',
-                        background: 'var(--bg-card)', border: '1px solid var(--border)',
-                        color: '#FAFAFA', textDecoration: 'none',
+                        width: 40, height: 40, borderRadius: '50%',
+                        background: 'rgba(255,255,255,0.12)', backdropFilter: 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        color: '#fff', textDecoration: 'none',
                       }}>
-                      <span style={{ width: 20, height: 20 }} dangerouslySetInnerHTML={{ __html: s.svg }} />
+                      <span style={{ width: 18, height: 18 }} dangerouslySetInnerHTML={{ __html: s.svg }} />
                     </a>
                   ))}
                 </div>
-              </div>
-            )
-          })()}
+              )}
 
-          <div style={{
-            textAlign: 'center', padding: '20px 0',
-            color: 'var(--text-muted)', fontSize: '0.75rem',
-          }}>
-            <div style={{ marginBottom: 8 }}>
-              Powered by <span style={{ color: '#FAFAFA', fontWeight: 600 }}>Captura</span>
-            </div>
-            <div style={{ fontSize: '0.65rem', color: '#3F3F46', lineHeight: 1.5 }}>
-              By scanning this code, approximate location data may be collected to improve your experience.{' '}
-              <a href="/privacy" target="_blank" style={{ color: '#52525B', textDecoration: 'underline' }}>Privacy Policy</a>
+              <div style={{ textAlign: 'center', marginTop: 20, fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)' }}>
+                Powered by <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>Captura</span>
+                {' '}&middot;{' '}
+                <a href="/privacy" target="_blank" style={{ color: 'rgba(255,255,255,0.35)', textDecoration: 'underline' }}>Privacy</a>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Slide-up form modal */}
+        {showEventForm && !eventSubmitted && (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 50,
+            display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+          }}>
+            {/* Backdrop */}
+            <div
+              onClick={() => setShowEventForm(false)}
+              style={{
+                position: 'absolute', inset: 0,
+                background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+                WebkitBackdropFilter: 'blur(4px)',
+                animation: 'ev-fade-in 0.2s ease-out',
+              }}
+            />
+            {/* Form panel */}
+            <div style={{
+              position: 'relative', zIndex: 51,
+              background: '#18181B', borderRadius: '24px 24px 0 0',
+              padding: '8px 24px 40px', maxHeight: '85vh', overflowY: 'auto',
+              animation: 'ev-slide-up 0.3s ease-out',
+            }}>
+              {/* Drag handle */}
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0 16px' }}>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: '#3F3F46' }} />
+              </div>
+
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 4, color: '#FAFAFA' }}>
+                {event.giveaway ? 'Enter to Win' : 'Sign Up'}
+              </h3>
+              <p style={{ color: '#A1A1AA', fontSize: '0.9rem', marginBottom: 20, lineHeight: 1.5 }}>
+                {event.giveaway ? `Win: ${event.giveaway}` : 'Sign up to stay connected.'}
+              </p>
+
+              <form onSubmit={handleEventSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <input className="input" placeholder="First Name" value={eventForm.firstName}
+                    onChange={e => setEventForm({ ...eventForm, firstName: e.target.value })} required
+                    style={{ background: '#27272A', border: '1px solid #3F3F46', color: '#FAFAFA' }} />
+                  <input className="input" placeholder="Last Name" value={eventForm.lastName}
+                    onChange={e => setEventForm({ ...eventForm, lastName: e.target.value })} required
+                    style={{ background: '#27272A', border: '1px solid #3F3F46', color: '#FAFAFA' }} />
+                </div>
+                <input className="input" type="email" placeholder="Email" value={eventForm.email}
+                  onChange={e => setEventForm({ ...eventForm, email: e.target.value })}
+                  style={{ background: '#27272A', border: '1px solid #3F3F46', color: '#FAFAFA' }} />
+                <input className="input" type="tel" placeholder="Phone Number" value={eventForm.phone}
+                  onChange={e => setEventForm({ ...eventForm, phone: e.target.value })} required
+                  style={{ background: '#27272A', border: '1px solid #3F3F46', color: '#FAFAFA' }} />
+                <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={eventForm.consent} required
+                    onChange={e => setEventForm({ ...eventForm, consent: e.target.checked })}
+                    style={{ marginTop: 3, accentColor: accentBg }} />
+                  <span style={{ color: '#71717A', fontSize: '0.7rem', lineHeight: 1.5 }}>
+                    I am 18 years or older and agree to receive communications from this brand via text, email, or phone. I understand my data will be used in accordance with the <a href="/privacy" target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Privacy Policy</a>. Message and data rates may apply. Reply STOP to opt out.
+                  </span>
+                </label>
+                <button type="submit" style={{
+                  width: '100%', padding: '16px 24px',
+                  background: accentBg, color: accentInk,
+                  border: 'none', borderRadius: 12, cursor: 'pointer',
+                  fontSize: '1rem', fontWeight: 700, marginTop: 4,
+                }}>
+                  {event.giveaway ? 'Enter to Win' : 'Sign Up'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     )
   }

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { supabase, generateShortId } from '../../lib/supabase'
 import BrandedQR from '../../components/BrandedQR'
 import generateQRCode from 'qr.js'
+import ScanPage from '../ScanPage'
 
 export default function Events({ brand }) {
   const [events, setEvents] = useState([])
@@ -525,76 +526,125 @@ export default function Events({ brand }) {
       )}
 
       {/* Create/Edit Event Modal */}
-      {showModal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50
-        }} onClick={() => { setShowModal(false); setEditingEvent(null) }}>
-          <div className="card" style={{ width: 440, maxWidth: '90vw' }} onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20 }}>
-              {editingEvent ? 'Edit Event' : 'Create Event'}
-            </h2>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  Event Name
-                </label>
-                <input className="input" placeholder="e.g. Summer Showcase 2026" value={form.name}
-                  onChange={e => setForm({ ...form, name: e.target.value })} required />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  Description
-                </label>
-                <textarea className="input" placeholder="What's the event about?" value={form.description}
-                  onChange={e => setForm({ ...form, description: e.target.value })}
-                  style={{ minHeight: 80, resize: 'vertical' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  Giveaway
-                </label>
-                <input className="input" placeholder="e.g. Free pair of gloves, $100 gift card" value={form.giveaway}
-                  onChange={e => setForm({ ...form, giveaway: e.target.value })} />
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                  What are you giving away at this event? This shows on the scan page.
-                </p>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  Background Image (optional)
-                </label>
-                <input type="file" accept="image/*"
-                  onChange={e => {
-                    const file = e.target.files?.[0] || null
-                    setForm({ ...form, image: file, existingImage: file ? '' : form.existingImage })
-                  }}
-                  style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }} />
-                {(form.image || form.existingImage) && (
-                  <div style={{ marginTop: 10 }}>
-                    <img
-                      src={form.image ? URL.createObjectURL(form.image) : form.existingImage}
-                      alt="Preview"
-                      style={{ height: 120, borderRadius: 8, objectFit: 'cover', display: 'block' }}
-                    />
-                    <button type="button" onClick={() => setForm({ ...form, image: null, existingImage: '' })}
-                      style={{ fontSize: '0.75rem', color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 6 }}>
-                      Remove
+      {showModal && (() => {
+        const previewImageUrl = form.image ? URL.createObjectURL(form.image) : form.existingImage || null
+        const eventPreviewData = {
+          brand: {
+            name: brand?.name,
+            logo_url: brand?.logo_url,
+            logo_dark_url: brand?.logo_dark_url,
+            logo_align: brand?.logo_align,
+            logo_size: brand?.logo_size,
+            accent_hex: brand?.accent_hex,
+            accent_ink_hex: brand?.accent_ink_hex,
+            kit: brand?.kit,
+            social_instagram: brand?.social_instagram,
+            social_tiktok: brand?.social_tiktok,
+            social_twitter: brand?.social_twitter,
+            social_facebook: brand?.social_facebook,
+            social_youtube: brand?.social_youtube,
+            social_website: brand?.social_website,
+          },
+          event: {
+            name: form.name || 'Event Name',
+            description: form.description || '',
+            giveaway: form.giveaway || '',
+            image_url: previewImageUrl,
+          },
+        }
+
+        return (
+          <div style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50
+          }} onClick={() => { setShowModal(false); setEditingEvent(null) }}>
+            <div className="card" style={{ width: 860, maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20 }}>
+                {editingEvent ? 'Edit Event' : 'Create Event'}
+              </h2>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 32 }}>
+                {/* Left: Form */}
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                      Event Name
+                    </label>
+                    <input className="input" placeholder="e.g. Summer Showcase 2026" value={form.name}
+                      onChange={e => setForm({ ...form, name: e.target.value })} required />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                      Description
+                    </label>
+                    <textarea className="input" placeholder="What's the event about?" value={form.description}
+                      onChange={e => setForm({ ...form, description: e.target.value })}
+                      style={{ minHeight: 80, resize: 'vertical' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                      Giveaway
+                    </label>
+                    <input className="input" placeholder="e.g. Free pair of gloves, $100 gift card" value={form.giveaway}
+                      onChange={e => setForm({ ...form, giveaway: e.target.value })} />
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                      What are you giving away at this event? This shows on the scan page.
+                    </p>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                      Background Image
+                    </label>
+                    <input type="file" accept="image/*"
+                      onChange={e => {
+                        const file = e.target.files?.[0] || null
+                        setForm({ ...form, image: file, existingImage: file ? '' : form.existingImage })
+                      }}
+                      style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }} />
+                    {(form.image || form.existingImage) && (
+                      <div style={{ marginTop: 10 }}>
+                        <img
+                          src={previewImageUrl}
+                          alt="Preview"
+                          style={{ height: 80, borderRadius: 8, objectFit: 'cover', display: 'block' }}
+                        />
+                        <button type="button" onClick={() => setForm({ ...form, image: null, existingImage: '' })}
+                          style={{ fontSize: '0.75rem', color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', marginTop: 6 }}>
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                      This image fills the full scan page background. Use a high-quality photo.
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                    <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
+                      onClick={() => { setShowModal(false); setEditingEvent(null) }}>Cancel</button>
+                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={uploading}>
+                      {uploading ? 'Saving...' : editingEvent ? 'Save Changes' : 'Create Event'}
                     </button>
                   </div>
-                )}
+                </form>
+
+                {/* Right: Phone Preview */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 8 }}>
+                    Live Preview
+                  </label>
+                  <div style={{
+                    width: 290, borderRadius: 32, border: '3px solid #3F3F46',
+                    overflow: 'hidden', background: '#09090B',
+                    height: 580, overflowY: 'auto',
+                  }}>
+                    <ScanPage previewData={eventPreviewData} />
+                  </div>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-                <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
-                  onClick={() => { setShowModal(false); setEditingEvent(null) }}>Cancel</button>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={uploading}>
-                  {uploading ? 'Saving...' : editingEvent ? 'Save Changes' : 'Create Event'}
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Entries Modal */}
       {viewingEntries && (

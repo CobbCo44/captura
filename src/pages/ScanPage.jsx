@@ -32,7 +32,7 @@ export default function ScanPage({ previewData } = {}) {
   const [showWarranty, setShowWarranty] = useState(false)
   const [warrantyForm, setWarrantyForm] = useState({ firstName: '', lastName: '', email: '', phone: '', purchaseDate: '', retailer: '', consent: false })
   const [warrantyRegistered, setWarrantyRegistered] = useState(false)
-  const [event, setEvent] = useState(null)
+  const [event, setEvent] = useState(previewData?.event || null)
   const [eventForm, setEventForm] = useState({ firstName: '', lastName: '', email: '', phone: '', consent: false })
   const [eventSubmitted, setEventSubmitted] = useState(false)
   const scanLogged = useRef(false)
@@ -49,6 +49,7 @@ export default function ScanPage({ previewData } = {}) {
     setProduct(previewData.product || null)
     setBrand(previewData.brand || null)
     setActivePromo(previewData.promo || null)
+    if (previewData.event) setEvent(previewData.event)
   }, [previewData])
 
   // Countdown timer for promo

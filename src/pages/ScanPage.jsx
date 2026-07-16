@@ -453,7 +453,7 @@ export default function ScanPage({ previewData } = {}) {
     e.preventDefault()
     if (isPreview) { setEventSubmitted(true); return }
     if (supabase && event && qrCode) {
-      const { data: inserted } = await supabase.from('event_entries').insert({
+      const { data: inserted, error: insertErr } = await supabase.from('event_entries').insert({
         event_id: event.id,
         brand_id: qrCode.brand_id,
         qr_code_id: qrCode.id,
@@ -467,6 +467,7 @@ export default function ScanPage({ previewData } = {}) {
         region: location?.region || null,
         country: location?.country || null,
       }).select('id').single()
+      if (insertErr) console.error('Event entry insert error:', insertErr)
       logBillingEvent(qrCode.brand_id, eventForm.email, eventForm.phone, 'event', inserted?.id)
       upsertContactAndClaimSerial(qrCode.brand_id, eventForm.firstName, eventForm.email, eventForm.phone, 'event', eventForm.consent)
       syncToShopify({

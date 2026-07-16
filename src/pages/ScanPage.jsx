@@ -590,8 +590,9 @@ export default function ScanPage({ previewData } = {}) {
 
   // Event scan page
   if (isEventQR) {
+    const bgPos = event.bg_position || 'center'
     const eventBg = event.image_url
-      ? { backgroundImage: `url(${event.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+      ? { backgroundImage: `url(${event.image_url})`, backgroundSize: 'cover', backgroundPosition: bgPos }
       : { background: 'linear-gradient(165deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)' }
 
     const eventSocials = brand ? [

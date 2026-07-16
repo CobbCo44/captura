@@ -27,7 +27,7 @@ export default function Events({ brand }) {
     ctaText: '',
   })
 
-  const [form, setForm] = useState({ name: '', description: '', giveaway: '', image: null, existingImage: '', logoSize: 48, logoAlign: 'center', logo: null, existingLogo: '' })
+  const [form, setForm] = useState({ name: '', description: '', giveaway: '', image: null, existingImage: '', logoSize: 48, logoAlign: 'center', logo: null, existingLogo: '', bgPosition: 'center' })
   const [uploading, setUploading] = useState(false)
 
   const scanUrl = 'https://meetcaptura.com'
@@ -76,13 +76,13 @@ export default function Events({ brand }) {
   // Event CRUD
   const openCreate = () => {
     setEditingEvent(null)
-    setForm({ name: '', description: '', giveaway: '', image: null, existingImage: '', logoSize: 48, logoAlign: 'center', logo: null, existingLogo: '' })
+    setForm({ name: '', description: '', giveaway: '', image: null, existingImage: '', logoSize: 48, logoAlign: 'center', logo: null, existingLogo: '', bgPosition: 'center' })
     setShowModal(true)
   }
 
   const openEdit = (ev) => {
     setEditingEvent(ev)
-    setForm({ name: ev.name, description: ev.description || '', giveaway: ev.giveaway || '', image: null, existingImage: ev.image_url || '', logoSize: ev.logo_size || 48, logoAlign: ev.logo_align || 'center', logo: null, existingLogo: ev.logo_url || '' })
+    setForm({ name: ev.name, description: ev.description || '', giveaway: ev.giveaway || '', image: null, existingImage: ev.image_url || '', logoSize: ev.logo_size || 48, logoAlign: ev.logo_align || 'center', logo: null, existingLogo: ev.logo_url || '', bgPosition: ev.bg_position || 'center' })
     setShowModal(true)
   }
 
@@ -132,7 +132,7 @@ export default function Events({ brand }) {
 
     if (editingEvent) {
       const { data, error } = await supabase.from('events')
-        .update({ name: form.name, description: form.description, giveaway: form.giveaway, image_url: imageUrl, logo_size: form.logoSize, logo_align: form.logoAlign, logo_url: logoUrl })
+        .update({ name: form.name, description: form.description, giveaway: form.giveaway, image_url: imageUrl, logo_size: form.logoSize, logo_align: form.logoAlign, logo_url: logoUrl, bg_position: form.bgPosition })
         .eq('id', editingEvent.id)
         .select('*, qr_codes(*)').single()
       if (!error && data) {
@@ -148,6 +148,7 @@ export default function Events({ brand }) {
         logo_size: form.logoSize,
         logo_align: form.logoAlign,
         logo_url: logoUrl,
+        bg_position: form.bgPosition,
       }).select('*, qr_codes(*)').single()
       if (error) {
         alert(`Error: ${error.message}`)
@@ -576,6 +577,7 @@ export default function Events({ brand }) {
             logo_size: form.logoSize,
             logo_align: form.logoAlign,
             logo_url: form.logo ? URL.createObjectURL(form.logo) : (form.existingLogo || null),
+            bg_position: form.bgPosition,
           },
         }
 
@@ -644,6 +646,36 @@ export default function Events({ brand }) {
                       This image fills the full scan page background. Use a high-quality photo.
                     </p>
                   </div>
+                  {(form.image || form.existingImage) && (
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                        Image Focus
+                      </label>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {[
+                          { value: 'top', label: 'Top' },
+                          { value: 'center', label: 'Center' },
+                          { value: 'bottom', label: 'Bottom' },
+                          { value: 'left', label: 'Left' },
+                          { value: 'right', label: 'Right' },
+                        ].map(pos => (
+                          <button key={pos.value} type="button"
+                            onClick={() => setForm({ ...form, bgPosition: pos.value })}
+                            style={{
+                              padding: '6px 14px', borderRadius: 8, cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600,
+                              background: form.bgPosition === pos.value ? '#FAFAFA' : 'var(--bg-card)',
+                              color: form.bgPosition === pos.value ? '#09090B' : 'var(--text-muted)',
+                              border: form.bgPosition === pos.value ? 'none' : '1px solid var(--border)',
+                            }}>
+                            {pos.label}
+                          </button>
+                        ))}
+                      </div>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                        Choose which part of the image to focus on when it fills the screen.
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
                       Event Logo

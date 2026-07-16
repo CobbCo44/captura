@@ -150,7 +150,7 @@ export default function Dashboard() {
         transition: 'transform 0.2s',
       }} className="sidebar">
         <div style={{ padding: '0 20px', marginBottom: 32 }}>
-          <img src="/images/meetcaptura-logo.png" alt="meetcaptura" style={{ height: 22, marginBottom: 12, filter: 'invert(1)' }} />
+          <img src="/images/meetcaptura-logo.png" alt="meetcaptura" style={{ height: 36, marginBottom: 12, filter: 'invert(1)' }} />
           <div ref={switcherRef} style={{ position: 'relative' }}>
             <button
               onClick={() => setSwitcherOpen(!switcherOpen)}

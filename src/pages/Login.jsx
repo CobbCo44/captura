@@ -41,7 +41,7 @@ export default function Login() {
     }}>
       <div style={{ width: '100%', maxWidth: 420 }}>
         <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <img src="/images/meetcaptura-logo.png" alt="meetcaptura" style={{ height: 28, marginBottom: 8 }} />
+          <img src="/images/meetcaptura-logo.png" alt="meetcaptura" style={{ height: 48, marginBottom: 8 }} />
           <p style={{ color: 'var(--text-muted)' }}>
             Welcome back
           </p>

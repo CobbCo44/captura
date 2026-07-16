@@ -377,7 +377,7 @@ export default function ScanPage({ previewData } = {}) {
 
   // Build the TCPA consent text for checkbox B (used in form and stored as evidence)
   const brandNameForConsent = brand?.name || 'this brand'
-  const marketingConsentText = `I agree to receive recurring marketing texts, emails, and calls from ${brandNameForConsent}, delivered via Captura, including by automated technology, at the contact info I provided. Consent is not a condition of entry or purchase. Msg frequency varies. Msg & data rates may apply. Reply STOP to cancel, HELP for help.`
+  const marketingConsentText = `I agree to receive recurring marketing texts, emails, and calls from ${brandNameForConsent}, including by automated technology, at the contact info I provided. My information was collected by Captura on behalf of ${brandNameForConsent}. Consent is not a condition of entry or purchase. Msg frequency varies. Msg & data rates may apply. Reply STOP to cancel, HELP for help.`
 
   const handlePromoEntry = async (e) => {
     e.preventDefault()

@@ -41,6 +41,7 @@ export default function ScanPage({ previewData } = {}) {
   const isPreview = !!previewData
   // V2 serialization: data from lookup_serial RPC when /21/ segment is present
   const [serialData, setSerialData] = useState(null)
+  const [showEventForm, setShowEventForm] = useState(false)
 
   // Keep preview data in sync
   useEffect(() => {
@@ -564,8 +565,6 @@ export default function ScanPage({ previewData } = {}) {
   }
 
   // Event scan page
-  const [showEventForm, setShowEventForm] = useState(false)
-
   if (isEventQR) {
     const eventBg = event.image_url
       ? { backgroundImage: `url(${event.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }

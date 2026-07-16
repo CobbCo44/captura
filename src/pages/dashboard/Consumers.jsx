@@ -155,6 +155,7 @@ export default function Consumers({ brand }) {
         date: ev.entered_at,
         channel: emailToChannel[key] || '-',
         contactId: emailToContactId[key] || null,
+        marketingConsent: ev.marketing_consent || false,
       }
     }),
   ].sort((a, b) => new Date(b.date) - new Date(a.date))

@@ -33,7 +33,7 @@ export default function ScanPage({ previewData } = {}) {
   const [warrantyForm, setWarrantyForm] = useState({ firstName: '', lastName: '', email: '', phone: '', purchaseDate: '', retailer: '', consent: false })
   const [warrantyRegistered, setWarrantyRegistered] = useState(false)
   const [event, setEvent] = useState(previewData?.event || null)
-  const [eventForm, setEventForm] = useState({ firstName: '', lastName: '', email: '', phone: '', consent: false })
+  const [eventForm, setEventForm] = useState({ firstName: '', lastName: '', email: '', phone: '', ageConsent: false, marketingConsent: false })
   const [eventSubmitted, setEventSubmitted] = useState(false)
   const scanLogged = useRef(false)
   const [descExpanded, setDescExpanded] = useState(false)
@@ -468,7 +468,10 @@ export default function ScanPage({ previewData } = {}) {
   const handleEventSubmit = async (e) => {
     e.preventDefault()
     if (isPreview) { setEventSubmitted(true); return }
+    if (locationPromise.current) await locationPromise.current
+    const loc = locationRef.current
     if (supabase && event && qrCode) {
+      const now = new Date().toISOString()
       const { data: inserted, error: insertErr } = await supabase.from('event_entries').insert({
         event_id: event.id,
         brand_id: qrCode.brand_id,
@@ -477,14 +480,20 @@ export default function ScanPage({ previewData } = {}) {
         last_name: eventForm.lastName,
         email: eventForm.email,
         phone: eventForm.phone,
-        latitude: location?.lat || null,
-        longitude: location?.lng || null,
-        city: location?.city ? `${location.city}, ${location.region}` : null,
-        region: location?.region || null,
-        country: location?.country || null,
+        latitude: loc?.lat || null,
+        longitude: loc?.lng || null,
+        city: loc?.city ? `${loc.city}, ${loc.region}` : null,
+        region: loc?.region || null,
+        country: loc?.country || null,
+        age_attestation: true,
+        age_attestation_timestamp: now,
+        marketing_consent: eventForm.marketingConsent,
+        consent_timestamp: eventForm.marketingConsent ? now : null,
+        consent_ip: eventForm.marketingConsent ? (loc?.ip || null) : null,
+        consent_text_shown: eventForm.marketingConsent ? marketingConsentText : null,
       }).select('id').single()
       logBillingEvent(qrCode.brand_id, eventForm.email, eventForm.phone, 'event', inserted?.id)
-      upsertContactAndClaimSerial(qrCode.brand_id, eventForm.firstName, eventForm.email, eventForm.phone, 'event', eventForm.consent)
+      upsertContactAndClaimSerial(qrCode.brand_id, eventForm.firstName, eventForm.email, eventForm.phone, 'event', eventForm.marketingConsent)
       syncToShopify({
         firstName: eventForm.firstName,
         lastName: eventForm.lastName,
@@ -775,12 +784,22 @@ export default function ScanPage({ previewData } = {}) {
                 <input className="input" type="tel" placeholder="Phone Number" value={eventForm.phone}
                   onChange={e => setEventForm({ ...eventForm, phone: e.target.value })} required
                   style={{ background: '#27272A', border: '1px solid #3F3F46', color: '#FAFAFA' }} />
+                {/* Checkbox A: Age + Rules (required) */}
                 <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={eventForm.consent} required
-                    onChange={e => setEventForm({ ...eventForm, consent: e.target.checked })}
+                  <input type="checkbox" checked={eventForm.ageConsent} required
+                    onChange={e => setEventForm({ ...eventForm, ageConsent: e.target.checked })}
                     style={{ marginTop: 3, accentColor: accentBg }} />
                   <span style={{ color: '#71717A', fontSize: '0.7rem', lineHeight: 1.5 }}>
-                    I am 18 years or older and agree to receive communications from this brand via text, email, or phone. I understand my data will be used in accordance with the <a href="/privacy" target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Privacy Policy</a>. Message and data rates may apply. Reply STOP to opt out.
+                    I am 18 or older and agree to the <a href={`/rules/${event.id || ''}`} target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Official Rules</a> and <a href="/privacy" target="_blank" style={{ color: '#A1A1AA', textDecoration: 'underline' }}>Privacy Policy</a>. No purchase necessary.
+                  </span>
+                </label>
+                {/* Checkbox B: Marketing opt-in (optional) */}
+                <label style={{ display: 'flex', gap: 8, alignItems: 'flex-start', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={eventForm.marketingConsent}
+                    onChange={e => setEventForm({ ...eventForm, marketingConsent: e.target.checked })}
+                    style={{ marginTop: 3, accentColor: accentBg }} />
+                  <span style={{ color: '#71717A', fontSize: '0.65rem', lineHeight: 1.5 }}>
+                    {marketingConsentText}
                   </span>
                 </label>
                 <button type="submit" style={{
@@ -791,6 +810,9 @@ export default function ScanPage({ previewData } = {}) {
                 }}>
                   {event.giveaway ? 'Enter to Win' : 'Sign Up'}
                 </button>
+                <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.55rem', lineHeight: 1.5, textAlign: 'center', margin: '-4px 0 0' }}>
+                  Entry gives you 1 giveaway entry in exchange for your contact information. See our Notice of Financial Incentive in the <a href="/privacy" target="_blank" style={{ color: 'rgba(255,255,255,0.3)', textDecoration: 'underline' }}>Privacy Policy</a>. You may withdraw at any time by replying STOP or emailing privacy@meetcaptura.com.
+                </p>
               </form>
             </div>
           </div>

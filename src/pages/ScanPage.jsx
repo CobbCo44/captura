@@ -467,7 +467,6 @@ export default function ScanPage({ previewData } = {}) {
         region: location?.region || null,
         country: location?.country || null,
       }).select('id').single()
-      if (insertErr) alert('Event error: ' + JSON.stringify(insertErr))
       logBillingEvent(qrCode.brand_id, eventForm.email, eventForm.phone, 'event', inserted?.id)
       upsertContactAndClaimSerial(qrCode.brand_id, eventForm.firstName, eventForm.email, eventForm.phone, 'event', eventForm.consent)
       syncToShopify({

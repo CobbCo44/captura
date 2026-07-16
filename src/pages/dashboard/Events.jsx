@@ -648,19 +648,6 @@ export default function Events({ brand }) {
                       This image fills the full scan page background. Use a high-quality photo.
                     </p>
                   </div>
-                  {(form.image || form.existingImage) && (
-                    <div>
-                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                        Image Zoom: {form.bgZoom}%
-                      </label>
-                      <input type="range" min="100" max="300" value={form.bgZoom}
-                        onChange={e => setForm({ ...form, bgZoom: parseInt(e.target.value) })}
-                        style={{ width: '100%', accentColor: '#FAFAFA' }} />
-                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
-                        100% shows the full image. Slide right to zoom in.
-                      </p>
-                    </div>
-                  )}
                   <div>
                     <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
                       Event Logo

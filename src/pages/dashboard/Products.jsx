@@ -442,6 +442,13 @@ export default function Products({ brand }) {
     setBatchesLoading(false)
   }
 
+  async function deleteBatch(batchId, productId) {
+    if (!supabase || !confirm('Delete this batch and all its serial codes? This cannot be undone.')) return
+    await supabase.from('serials').delete().eq('batch_id', batchId)
+    await supabase.from('batches').delete().eq('id', batchId)
+    loadBatches(productId)
+  }
+
   async function handleGenerateBatch(productId) {
     if (!supabase || !brand?.id || brand.id === 'demo') return
     const qty = parseInt(batchForm.quantity, 10)
@@ -921,6 +928,14 @@ export default function Products({ brand }) {
                                     marginLeft: 8,
                                   }}>
                                   Download QR
+                                </button>
+                                <button type="button" onClick={() => deleteBatch(b.id, editingProduct.id)}
+                                  style={{
+                                    background: 'none', border: 'none', color: '#ef4444',
+                                    fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap',
+                                    marginLeft: 8,
+                                  }}>
+                                  Delete
                                 </button>
                               </td>
                             </tr>

@@ -42,6 +42,7 @@ export default function ScanPage({ previewData } = {}) {
   // V2 serialization: data from lookup_serial RPC when /21/ segment is present
   const [serialData, setSerialData] = useState(null)
   const [showEventForm, setShowEventForm] = useState(false)
+  const [syncDebug, setSyncDebug] = useState(null)
 
   // Keep preview data in sync
   useEffect(() => {
@@ -312,12 +313,11 @@ export default function ScanPage({ previewData } = {}) {
   async function syncToShopify(customerData) {
     const syncBrandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
     if (!syncBrandId) {
-      console.warn('Shopify sync skipped: no brand ID available')
+      setSyncDebug('SYNC: no brand ID')
       return
     }
     try {
       const payload = { brandId: syncBrandId, customer: customerData }
-      console.log('Shopify sync sending:', JSON.stringify(payload).slice(0, 300))
       const res = await fetch('/.netlify/functions/sync-shopify-customer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -325,17 +325,17 @@ export default function ScanPage({ previewData } = {}) {
       })
       const body = await res.text()
       if (!res.ok) {
-        console.error('Shopify sync failed:', res.status, body)
+        setSyncDebug(`SYNC FAIL: ${res.status} ${body.slice(0, 100)}`)
       } else {
         const result = JSON.parse(body)
         if (result.skipped) {
-          console.warn('Shopify sync skipped by server:', result.reason || 'no credentials')
+          setSyncDebug(`SYNC SKIP: ${result.reason || 'no creds'}`)
         } else {
-          console.log('Shopify sync success:', result.customerId)
+          setSyncDebug(`SYNC OK: ${result.customerId}`)
         }
       }
     } catch (err) {
-      console.error('Shopify sync error:', err)
+      setSyncDebug(`SYNC ERR: ${err.message}`)
     }
   }
 
@@ -1182,6 +1182,19 @@ export default function ScanPage({ previewData } = {}) {
               </p>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Debug toast - shows Shopify sync result */}
+      {syncDebug && (
+        <div onClick={() => setSyncDebug(null)} style={{
+          position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)',
+          background: syncDebug.startsWith('SYNC OK') ? '#166534' : '#991B1B',
+          color: '#fff', padding: '10px 20px', borderRadius: 10, fontSize: '0.8rem',
+          fontFamily: 'monospace', zIndex: 9999, maxWidth: '90vw', wordBreak: 'break-all',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+        }}>
+          {syncDebug}
         </div>
       )}
     </div>

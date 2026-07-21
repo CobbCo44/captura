@@ -443,9 +443,13 @@ export default function Products({ brand }) {
   }
 
   async function deleteBatch(batchId, productId) {
-    if (!supabase || !confirm('Delete this batch and all its serial codes? This cannot be undone.')) return
-    await supabase.from('serials').delete().eq('batch_id', batchId)
-    await supabase.from('batches').delete().eq('id', batchId)
+    if (!supabase) return
+    if (!window.confirm('Delete this batch and all its serial codes? This cannot be undone.')) return
+    const { error } = await supabase.from('batches').delete().eq('id', batchId)
+    if (error) {
+      console.error('Delete batch error:', error)
+      alert('Failed to delete batch: ' + error.message)
+    }
     loadBatches(productId)
   }
 

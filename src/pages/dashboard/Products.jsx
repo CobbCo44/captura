@@ -785,10 +785,27 @@ export default function Products({ brand }) {
               <div className="card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                   <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Serialized QR Codes</label>
-                  <button type="button" className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
-                    onClick={() => { setShowBatchForm(!showBatchForm); if (!channels.length) loadChannels() }}>
-                    {showBatchForm ? 'Cancel' : '+ Generate Batch'}
-                  </button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {batches.length > 0 && (
+                      <button type="button" style={{
+                        fontSize: '0.85rem', padding: '8px 16px', background: 'none',
+                        border: '1px solid #ef4444', color: '#ef4444', borderRadius: 8, cursor: 'pointer',
+                      }} onClick={async () => {
+                        if (!confirm(`Delete all ${batches.length} batches and their serial codes? This cannot be undone.`)) return
+                        for (const b of batches) {
+                          await supabase.from('serials').delete().eq('batch_id', b.id)
+                          await supabase.from('batches').delete().eq('id', b.id)
+                        }
+                        loadBatches(editingProduct.id)
+                      }}>
+                        Delete All
+                      </button>
+                    )}
+                    <button type="button" className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+                      onClick={() => { setShowBatchForm(!showBatchForm); if (!channels.length) loadChannels() }}>
+                      {showBatchForm ? 'Cancel' : '+ Generate Batch'}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Inline batch generation form */}

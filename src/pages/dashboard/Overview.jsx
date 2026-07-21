@@ -27,18 +27,19 @@ export default function Overview({ brand }) {
     const scans = scansRes.data || []
     const cities = new Set(scans.map(s => s.city).filter(Boolean))
 
-    // Scans by day (last 7 days)
+    // Scans by day (last 7 days) — use local timezone so today's scans show under today
     const dayMap = {}
     const now = new Date()
+    const localDateKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now)
       d.setDate(d.getDate() - i)
-      const key = d.toISOString().split('T')[0]
-      dayMap[key] = 0
+      dayMap[localDateKey(d)] = 0
     }
     scans.forEach(s => {
-      const day = s.scanned_at?.split('T')[0]
-      if (day && dayMap[day] !== undefined) dayMap[day]++
+      if (!s.scanned_at) return
+      const day = localDateKey(new Date(s.scanned_at))
+      if (dayMap[day] !== undefined) dayMap[day]++
     })
 
     setStats({

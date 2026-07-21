@@ -645,139 +645,146 @@ export default function Products({ brand }) {
           {editingProduct ? 'Edit Product' : 'Add Product'}
         </h1>
 
-        <div style={{ maxWidth: 560 }}>
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
 
-            {/* Image Upload */}
-            <div className="card">
-              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 10 }}>
-                Product Images
-              </label>
+            {/* ===== LEFT COLUMN ===== */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {/* Image Upload */}
+              <div className="card">
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 10 }}>
+                  Product Images
+                </label>
 
-              {(form.existingImages.length > 0 || form.images.length > 0) && (
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-                  {form.existingImages.map((url, i) => (
-                    <div key={`existing-${i}`} style={{ position: 'relative' }}>
-                      <img src={url} alt={`Image ${i + 1}`}
-                        style={{ width: 90, height: 90, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
-                      <button type="button" onClick={() => removeExistingImage(i)}
-                        style={{
-                          position: 'absolute', top: -6, right: -6,
-                          background: '#EF4444', color: 'white', border: 'none',
-                          borderRadius: '50%', width: 22, height: 22, fontSize: '0.75rem',
-                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>x</button>
-                    </div>
-                  ))}
-                  {form.images.map((img, i) => (
-                    <div key={`new-${i}`} style={{ position: 'relative' }}>
-                      <img src={img.preview} alt={`New ${i + 1}`}
-                        style={{ width: 90, height: 90, borderRadius: 8, objectFit: 'cover', border: '2px solid var(--success)' }} />
-                      <button type="button" onClick={() => removeNewImage(i)}
-                        style={{
-                          position: 'absolute', top: -6, right: -6,
-                          background: '#EF4444', color: 'white', border: 'none',
-                          borderRadius: '50%', width: 22, height: 22, fontSize: '0.75rem',
-                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>x</button>
-                    </div>
-                  ))}
-                </div>
-              )}
+                {(form.existingImages.length > 0 || form.images.length > 0) && (
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+                    {form.existingImages.map((url, i) => (
+                      <div key={`existing-${i}`} style={{ position: 'relative' }}>
+                        <img src={url} alt={`Image ${i + 1}`}
+                          style={{ width: 90, height: 90, borderRadius: 8, objectFit: 'cover', border: '1px solid var(--border)' }} />
+                        <button type="button" onClick={() => removeExistingImage(i)}
+                          style={{
+                            position: 'absolute', top: -6, right: -6,
+                            background: '#EF4444', color: 'white', border: 'none',
+                            borderRadius: '50%', width: 22, height: 22, fontSize: '0.75rem',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>x</button>
+                      </div>
+                    ))}
+                    {form.images.map((img, i) => (
+                      <div key={`new-${i}`} style={{ position: 'relative' }}>
+                        <img src={img.preview} alt={`New ${i + 1}`}
+                          style={{ width: 90, height: 90, borderRadius: 8, objectFit: 'cover', border: '2px solid var(--success)' }} />
+                        <button type="button" onClick={() => removeNewImage(i)}
+                          style={{
+                            position: 'absolute', top: -6, right: -6,
+                            background: '#EF4444', color: 'white', border: 'none',
+                            borderRadius: '50%', width: 22, height: 22, fontSize: '0.75rem',
+                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>x</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-              <label style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: '100%', height: (form.existingImages.length + form.images.length) > 0 ? 50 : 100, borderRadius: 8,
-                border: '2px dashed var(--border)', cursor: 'pointer',
-                color: 'var(--text-muted)', fontSize: '0.9rem',
-              }}>
-                <span>+ {(form.existingImages.length + form.images.length) > 0 ? 'Add more images' : 'Click to upload images'}</span>
-                <input type="file" accept="image/*" multiple onChange={handleImageSelect}
-                  style={{ display: 'none' }} />
-              </label>
-            </div>
-
-            {/* Details */}
-            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Details</label>
-              <input className="input" placeholder="Product Name" value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })} required />
-              <input className="input" placeholder="SKU (optional)" value={form.sku}
-                onChange={e => setForm({ ...form, sku: e.target.value })} />
-              <input className="input" placeholder="GTIN / UPC / Barcode (optional)" value={form.gtin}
-                onChange={e => setForm({ ...form, gtin: e.target.value })} />
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: -8 }}>
-                The product barcode number. When set, QR codes use a GS1 Digital Link URL that works at retail checkout.
-              </p>
-              <textarea className="input" placeholder="Product Description" value={form.description}
-                onChange={e => setForm({ ...form, description: e.target.value })}
-                style={{ minHeight: 100, resize: 'vertical' }} />
-            </div>
-
-            {/* Marketing Content */}
-            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Marketing Content</label>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: -8 }}>
-                Video and content shown on the scan page.
-              </p>
-              <input className="input" placeholder="Heading (e.g. Setup Guide, How to Use)" value={form.contentTitle}
-                onChange={e => setForm({ ...form, contentTitle: e.target.value })} />
-              <input className="input" placeholder="Link URL (video, tutorial, etc.)" value={form.contentUrl}
-                onChange={e => setForm({ ...form, contentUrl: e.target.value })} />
-            </div>
-
-            {/* Reorder */}
-            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Reorder Link</label>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: -8 }}>
-                For consumable products (supplements, beauty, etc.). Consumers see a "Reorder" button that links directly to your product page.
-              </p>
-              <input className="input" placeholder="https://yourbrand.com/product/buy" value={form.reorderUrl}
-                onChange={e => setForm({ ...form, reorderUrl: e.target.value })} />
-            </div>
-
-            {/* Warranty */}
-            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Warranty Registration</label>
-                <div onClick={() => setForm({ ...form, warrantyEnabled: !form.warrantyEnabled })} style={{
-                  width: 44, height: 24, borderRadius: 12, cursor: 'pointer',
-                  background: form.warrantyEnabled ? '#22C55E' : '#3F3F46',
-                  position: 'relative', transition: 'background 0.2s',
+                <label style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '100%', height: (form.existingImages.length + form.images.length) > 0 ? 50 : 100, borderRadius: 8,
+                  border: '2px dashed var(--border)', cursor: 'pointer',
+                  color: 'var(--text-muted)', fontSize: '0.9rem',
                 }}>
-                  <div style={{
-                    width: 18, height: 18, borderRadius: '50%', background: 'white',
-                    position: 'absolute', top: 3,
-                    left: form.warrantyEnabled ? 23 : 3,
-                    transition: 'left 0.2s',
-                  }} />
-                </div>
+                  <span>+ {(form.existingImages.length + form.images.length) > 0 ? 'Add more images' : 'Click to upload images'}</span>
+                  <input type="file" accept="image/*" multiple onChange={handleImageSelect}
+                    style={{ display: 'none' }} />
+                </label>
               </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: -8 }}>
-                When enabled, consumers see a "Register Your Warranty" section on the scan page. They provide their contact info, purchase date, and retailer.
-              </p>
-              {form.warrantyEnabled && (
-                <>
-                  <input className="input" placeholder="Warranty Duration (e.g. 1 Year, 2 Years, Lifetime)"
-                    value={form.warrantyDuration}
-                    onChange={e => setForm({ ...form, warrantyDuration: e.target.value })} />
-                  <textarea className="input" placeholder="Warranty Terms (what's covered, what's not)"
-                    value={form.warrantyTerms}
-                    onChange={e => setForm({ ...form, warrantyTerms: e.target.value })}
-                    style={{ minHeight: 80, resize: 'vertical' }} />
-                </>
-              )}
+
+              {/* Details */}
+              <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Details</label>
+                <input className="input" placeholder="Product Name" value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })} required />
+                <input className="input" placeholder="SKU (optional)" value={form.sku}
+                  onChange={e => setForm({ ...form, sku: e.target.value })} />
+                <input className="input" placeholder="GTIN / UPC / Barcode (optional)" value={form.gtin}
+                  onChange={e => setForm({ ...form, gtin: e.target.value })} />
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: -8 }}>
+                  The product barcode number. When set, QR codes use a GS1 Digital Link URL that works at retail checkout.
+                </p>
+                <textarea className="input" placeholder="Product Description" value={form.description}
+                  onChange={e => setForm({ ...form, description: e.target.value })}
+                  style={{ minHeight: 100, resize: 'vertical' }} />
+              </div>
             </div>
 
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: 12 }}>
-              <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
-                onClick={goBack}>Cancel</button>
-              <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={uploading}>
-                {uploading ? 'Saving...' : editingProduct ? 'Save Changes' : 'Add Product'}
-              </button>
+            {/* ===== RIGHT COLUMN ===== */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {/* Marketing Content */}
+              <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Marketing Content</label>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: -8 }}>
+                  Video and content shown on the scan page.
+                </p>
+                <input className="input" placeholder="Heading (e.g. Setup Guide, How to Use)" value={form.contentTitle}
+                  onChange={e => setForm({ ...form, contentTitle: e.target.value })} />
+                <input className="input" placeholder="Link URL (video, tutorial, etc.)" value={form.contentUrl}
+                  onChange={e => setForm({ ...form, contentUrl: e.target.value })} />
+              </div>
+
+              {/* Reorder */}
+              <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Reorder Link</label>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: -8 }}>
+                  For consumable products (supplements, beauty, etc.). Consumers see a "Reorder" button that links directly to your product page.
+                </p>
+                <input className="input" placeholder="https://yourbrand.com/product/buy" value={form.reorderUrl}
+                  onChange={e => setForm({ ...form, reorderUrl: e.target.value })} />
+              </div>
+
+              {/* Warranty */}
+              <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Warranty Registration</label>
+                  <div onClick={() => setForm({ ...form, warrantyEnabled: !form.warrantyEnabled })} style={{
+                    width: 44, height: 24, borderRadius: 12, cursor: 'pointer',
+                    background: form.warrantyEnabled ? '#22C55E' : '#3F3F46',
+                    position: 'relative', transition: 'background 0.2s',
+                  }}>
+                    <div style={{
+                      width: 18, height: 18, borderRadius: '50%', background: 'white',
+                      position: 'absolute', top: 3,
+                      left: form.warrantyEnabled ? 23 : 3,
+                      transition: 'left 0.2s',
+                    }} />
+                  </div>
+                </div>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: -8 }}>
+                  When enabled, consumers see a "Register Your Warranty" section on the scan page. They provide their contact info, purchase date, and retailer.
+                </p>
+                {form.warrantyEnabled && (
+                  <>
+                    <input className="input" placeholder="Warranty Duration (e.g. 1 Year, 2 Years, Lifetime)"
+                      value={form.warrantyDuration}
+                      onChange={e => setForm({ ...form, warrantyDuration: e.target.value })} />
+                    <textarea className="input" placeholder="Warranty Terms (what's covered, what's not)"
+                      value={form.warrantyTerms}
+                      onChange={e => setForm({ ...form, warrantyTerms: e.target.value })}
+                      style={{ minHeight: 80, resize: 'vertical' }} />
+                  </>
+                )}
+              </div>
             </div>
-          </form>
+          </div>
+
+          {/* Actions — full width below grid */}
+          <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+            <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
+              onClick={goBack}>Cancel</button>
+            <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={uploading}>
+              {uploading ? 'Saving...' : editingProduct ? 'Save Changes' : 'Add Product'}
+            </button>
+          </div>
+        </form>
 
           {/* Serialized QR Codes Section - only for existing products with a GTIN */}
           {editingProduct && editingProduct.gtin && (
@@ -785,27 +792,10 @@ export default function Products({ brand }) {
               <div className="card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                   <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Serialized QR Codes</label>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {batches.length > 0 && (
-                      <button type="button" style={{
-                        fontSize: '0.85rem', padding: '8px 16px', background: 'none',
-                        border: '1px solid #ef4444', color: '#ef4444', borderRadius: 8, cursor: 'pointer',
-                      }} onClick={async () => {
-                        if (!confirm(`Delete all ${batches.length} batches and their serial codes? This cannot be undone.`)) return
-                        for (const b of batches) {
-                          await supabase.from('serials').delete().eq('batch_id', b.id)
-                          await supabase.from('batches').delete().eq('id', b.id)
-                        }
-                        loadBatches(editingProduct.id)
-                      }}>
-                        Delete All
-                      </button>
-                    )}
-                    <button type="button" className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
-                      onClick={() => { setShowBatchForm(!showBatchForm); if (!channels.length) loadChannels() }}>
-                      {showBatchForm ? 'Cancel' : '+ Generate Batch'}
-                    </button>
-                  </div>
+                  <button type="button" className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+                    onClick={() => { setShowBatchForm(!showBatchForm); if (!channels.length) loadChannels() }}>
+                    {showBatchForm ? 'Cancel' : '+ Generate Batch'}
+                  </button>
                 </div>
 
                 {/* Inline batch generation form */}
@@ -899,7 +889,7 @@ export default function Products({ brand }) {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                       <thead>
                         <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                          {['Date', 'Qty', 'Channel', 'PO Ref', 'Claimed', '', ''].map((h, idx) => (
+                          {['Date', 'Qty', 'Channel', 'PO Ref', 'Claimed', ''].map((h, idx) => (
                             <th key={idx} style={{
                               padding: '10px 12px', textAlign: 'left',
                               fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
@@ -930,7 +920,7 @@ export default function Products({ brand }) {
                                   {counts.claimed} / {counts.total}
                                 </span>
                               </td>
-                              <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                                 <button type="button" onClick={() => exportBatchCSV(b.id)}
                                   style={{
                                     background: 'none', border: 'none', color: '#FAFAFA',
@@ -942,20 +932,17 @@ export default function Products({ brand }) {
                                   style={{
                                     background: 'none', border: 'none', color: 'var(--success)',
                                     fontSize: '0.8rem', cursor: 'pointer',
-                                    marginLeft: 4,
+                                    marginLeft: 6,
                                   }}>
                                   Download
                                 </button>
-                              </td>
-                              <td style={{ padding: '10px 4px', width: 30 }}>
                                 <button type="button" onClick={() => deleteBatch(b.id, editingProduct.id)}
-                                  title="Delete batch"
                                   style={{
                                     background: 'none', border: 'none', color: '#ef4444',
-                                    fontSize: '0.95rem', cursor: 'pointer', padding: '2px 6px',
-                                    lineHeight: 1,
+                                    fontSize: '0.8rem', cursor: 'pointer',
+                                    marginLeft: 6,
                                   }}>
-                                  &times;
+                                  Delete
                                 </button>
                               </td>
                             </tr>
@@ -968,7 +955,6 @@ export default function Products({ brand }) {
               </div>
             </div>
           )}
-        </div>
 
         {/* QR Style & Download Modal */}
         {qrModal && (

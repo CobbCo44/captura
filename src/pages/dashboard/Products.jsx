@@ -882,8 +882,8 @@ export default function Products({ brand }) {
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                       <thead>
                         <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                          {['Date', 'Qty', 'Channel', 'PO Ref', 'Claimed', ''].map(h => (
-                            <th key={h} style={{
+                          {['Date', 'Qty', 'Channel', 'PO Ref', 'Claimed', '', ''].map((h, idx) => (
+                            <th key={idx} style={{
                               padding: '10px 12px', textAlign: 'left',
                               fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
                               textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap',
@@ -913,29 +913,32 @@ export default function Products({ brand }) {
                                   {counts.claimed} / {counts.total}
                                 </span>
                               </td>
-                              <td style={{ padding: '10px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                              <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
                                 <button type="button" onClick={() => exportBatchCSV(b.id)}
                                   style={{
                                     background: 'none', border: 'none', color: '#FAFAFA',
-                                    fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap',
+                                    fontSize: '0.8rem', cursor: 'pointer',
                                   }}>
                                   CSV
                                 </button>
                                 <button type="button" onClick={() => openQrModal(b)}
                                   style={{
                                     background: 'none', border: 'none', color: 'var(--success)',
-                                    fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap',
-                                    marginLeft: 8,
+                                    fontSize: '0.8rem', cursor: 'pointer',
+                                    marginLeft: 4,
                                   }}>
-                                  Download QR
+                                  Download
                                 </button>
+                              </td>
+                              <td style={{ padding: '10px 4px', width: 30 }}>
                                 <button type="button" onClick={() => deleteBatch(b.id, editingProduct.id)}
+                                  title="Delete batch"
                                   style={{
                                     background: 'none', border: 'none', color: '#ef4444',
-                                    fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap',
-                                    marginLeft: 8,
+                                    fontSize: '0.95rem', cursor: 'pointer', padding: '2px 6px',
+                                    lineHeight: 1,
                                   }}>
-                                  Delete
+                                  &times;
                                 </button>
                               </td>
                             </tr>

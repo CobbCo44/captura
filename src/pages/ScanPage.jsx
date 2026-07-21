@@ -426,7 +426,7 @@ export default function ScanPage({ previewData } = {}) {
       }).select('id').single()
       logBillingEvent(brandId, promoForm.email, promoForm.phone, 'promo', inserted?.id)
       upsertContactAndClaimSerial(brandId, promoForm.firstName, promoForm.email, promoForm.phone, 'promo', promoForm.marketingConsent)
-      syncToShopify({
+      await syncToShopify({
         firstName: promoForm.firstName,
         lastName: promoForm.lastName,
         email: promoForm.email,
@@ -436,7 +436,7 @@ export default function ScanPage({ previewData } = {}) {
         product: product?.name || null,
         serial: lookupSerial || null,
         source: 'Promo Entry',
-        city: location?.city ? `${location.city}, ${location.region}` : null,
+        city: loc?.city ? `${loc.city}, ${loc.region}` : null,
       })
     }
     setPromoEntered(true)
@@ -445,6 +445,8 @@ export default function ScanPage({ previewData } = {}) {
   const handleWarrantySubmit = async (e) => {
     e.preventDefault()
     if (isPreview) { setWarrantyRegistered(true); return }
+    if (locationPromise.current) await locationPromise.current
+    const loc = locationRef.current
     const warBrandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
     if (supabase && warBrandId) {
       const { data: inserted } = await supabase.from('warranty_registrations').insert({
@@ -457,16 +459,16 @@ export default function ScanPage({ previewData } = {}) {
         phone: warrantyForm.phone,
         purchase_date: warrantyForm.purchaseDate || null,
         retailer: warrantyForm.retailer || null,
-        latitude: location?.lat || null,
-        longitude: location?.lng || null,
-        city: location?.city ? `${location.city}, ${location.region}` : null,
-        region: location?.region || null,
-        country: location?.country || null,
+        latitude: loc?.lat || null,
+        longitude: loc?.lng || null,
+        city: loc?.city ? `${loc.city}, ${loc.region}` : null,
+        region: loc?.region || null,
+        country: loc?.country || null,
         consent: warrantyForm.consent,
       }).select('id').single()
       logBillingEvent(warBrandId, warrantyForm.email, warrantyForm.phone, 'warranty', inserted?.id)
       upsertContactAndClaimSerial(warBrandId, warrantyForm.firstName, warrantyForm.email, warrantyForm.phone, 'warranty', warrantyForm.consent)
-      syncToShopify({
+      await syncToShopify({
         firstName: warrantyForm.firstName,
         lastName: warrantyForm.lastName,
         email: warrantyForm.email,
@@ -476,7 +478,7 @@ export default function ScanPage({ previewData } = {}) {
         product: product?.name || null,
         serial: lookupSerial || null,
         source: 'Warranty Registration',
-        city: location?.city ? `${location.city}, ${location.region}` : null,
+        city: loc?.city ? `${loc.city}, ${loc.region}` : null,
       })
     }
     setWarrantyRegistered(true)
@@ -487,12 +489,13 @@ export default function ScanPage({ previewData } = {}) {
     if (isPreview) { setEventSubmitted(true); return }
     if (locationPromise.current) await locationPromise.current
     const loc = locationRef.current
-    if (supabase && event && qrCode) {
+    const evtBrandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
+    if (supabase && event && evtBrandId) {
       const now = new Date().toISOString()
       const { data: inserted, error: insertErr } = await supabase.from('event_entries').insert({
         event_id: event.id,
-        brand_id: qrCode.brand_id,
-        qr_code_id: qrCode.id,
+        brand_id: evtBrandId,
+        qr_code_id: qrCode?.id || null,
         first_name: eventForm.firstName,
         last_name: eventForm.lastName,
         email: eventForm.email,
@@ -509,9 +512,9 @@ export default function ScanPage({ previewData } = {}) {
         consent_ip: eventForm.marketingConsent ? (loc?.ip || null) : null,
         consent_text_shown: eventForm.marketingConsent ? marketingConsentText : null,
       }).select('id').single()
-      logBillingEvent(qrCode.brand_id, eventForm.email, eventForm.phone, 'event', inserted?.id)
-      upsertContactAndClaimSerial(qrCode.brand_id, eventForm.firstName, eventForm.email, eventForm.phone, 'event', eventForm.marketingConsent)
-      syncToShopify({
+      logBillingEvent(evtBrandId, eventForm.email, eventForm.phone, 'event', inserted?.id)
+      upsertContactAndClaimSerial(evtBrandId, eventForm.firstName, eventForm.email, eventForm.phone, 'event', eventForm.marketingConsent)
+      await syncToShopify({
         firstName: eventForm.firstName,
         lastName: eventForm.lastName,
         email: eventForm.email,
@@ -521,7 +524,7 @@ export default function ScanPage({ previewData } = {}) {
         product: null,
         serial: null,
         source: 'Event Signup',
-        city: location?.city ? `${location.city}, ${location.region}` : null,
+        city: loc?.city ? `${loc.city}, ${loc.region}` : null,
       })
     }
     setEventSubmitted(true)

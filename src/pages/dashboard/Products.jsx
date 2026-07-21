@@ -445,7 +445,7 @@ export default function Products({ brand }) {
   async function deleteBatch(batchId, productId) {
     if (!supabase) return
     if (!window.confirm('Delete this batch and all its serial codes? This cannot be undone.')) return
-    const { error } = await supabase.from('batches').delete().eq('id', batchId)
+    const { error } = await supabase.rpc('delete_batch', { p_batch_id: batchId })
     if (error) {
       console.error('Delete batch error:', error)
       alert('Failed to delete batch: ' + error.message)

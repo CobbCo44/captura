@@ -42,7 +42,6 @@ export default function ScanPage({ previewData } = {}) {
   // V2 serialization: data from lookup_serial RPC when /21/ segment is present
   const [serialData, setSerialData] = useState(null)
   const [showEventForm, setShowEventForm] = useState(false)
-  const [syncDebug, setSyncDebug] = useState(null)
 
   // Keep preview data in sync
   useEffect(() => {
@@ -312,30 +311,19 @@ export default function ScanPage({ previewData } = {}) {
 
   async function syncToShopify(customerData) {
     const syncBrandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
-    if (!syncBrandId) {
-      setSyncDebug('SYNC: no brand ID')
-      return
-    }
+    if (!syncBrandId) return
     try {
-      const payload = { brandId: syncBrandId, customer: customerData }
       const res = await fetch('/.netlify/functions/sync-shopify-customer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ brandId: syncBrandId, customer: customerData }),
       })
-      const body = await res.text()
       if (!res.ok) {
-        setSyncDebug(`SYNC FAIL: ${res.status} ${body.slice(0, 100)}`)
-      } else {
-        const result = JSON.parse(body)
-        if (result.skipped) {
-          setSyncDebug(`SYNC SKIP: ${result.reason || 'no creds'}`)
-        } else {
-          setSyncDebug(`SYNC OK: ${result.customerId}`)
-        }
+        const errBody = await res.text().catch(() => '')
+        console.error('Shopify sync failed:', res.status, errBody)
       }
     } catch (err) {
-      setSyncDebug(`SYNC ERR: ${err.message}`)
+      console.error('Shopify sync error:', err)
     }
   }
 
@@ -1185,18 +1173,6 @@ export default function ScanPage({ previewData } = {}) {
         </div>
       )}
 
-      {/* Debug toast - shows Shopify sync result */}
-      {syncDebug && (
-        <div onClick={() => setSyncDebug(null)} style={{
-          position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)',
-          background: syncDebug.startsWith('SYNC OK') ? '#166534' : '#991B1B',
-          color: '#fff', padding: '10px 20px', borderRadius: 10, fontSize: '0.8rem',
-          fontFamily: 'monospace', zIndex: 9999, maxWidth: '90vw', wordBreak: 'break-all',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-        }}>
-          {syncDebug}
-        </div>
-      )}
     </div>
   )
 }

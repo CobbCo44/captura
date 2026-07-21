@@ -414,18 +414,15 @@ export default function Products({ brand }) {
 
   async function deleteChannel(channelId, channelName) {
     if (!supabase) return
-    if (!window.confirm(`Delete channel "${channelName}"? Any batches using this channel cannot be deleted.`)) return
-    const { error } = await supabase.from('channels').delete().eq('id', channelId)
+    if (!window.confirm(`Delete channel "${channelName}" and all its batches? This cannot be undone.`)) return
+    const { error } = await supabase.rpc('delete_channel', { p_channel_id: channelId })
     if (error) {
-      if (error.message?.includes('violates foreign key')) {
-        alert(`Cannot delete "${channelName}" because it has batches assigned to it. Delete those batches first.`)
-      } else {
-        alert('Failed to delete channel: ' + error.message)
-      }
+      alert('Failed to delete channel: ' + error.message)
       return
     }
     if (batchForm.channelId === channelId) setBatchForm(f => ({ ...f, channelId: '' }))
     loadChannels()
+    if (editingProduct) loadBatches(editingProduct.id)
   }
 
   async function loadBatches(productId) {

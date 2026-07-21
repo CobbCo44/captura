@@ -121,7 +121,7 @@ export default function ScanPage({ previewData } = {}) {
     if (lookupShortId) {
       const { data, error } = await supabase
         .from('qr_codes')
-        .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
+        .select('*, products(*), promos(*), events(*), brands:brand_id(id, name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
         .eq('short_id', lookupShortId)
         .single()
       if (!error && data) qr = data
@@ -161,24 +161,35 @@ export default function ScanPage({ previewData } = {}) {
         // Try to find a QR code for this product so we get promo/event/brand data
         const { data: qrData } = await supabase
           .from('qr_codes')
-          .select('*, products(*), promos(*), events(*), brands:brand_id(name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
+          .select('*, products(*), promos(*), events(*), brands:brand_id(id, name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
           .eq('product_id', prod.id)
           .limit(1)
-          .single()
+          .maybeSingle()
 
         if (qrData) {
           qr = qrData
         } else {
-          // Product exists but no QR code — show the product directly
+          // Product exists but no QR code — load brand and promos directly
           const { data: brandData } = await supabase
             .from('brands')
-            .select('name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website')
+            .select('id, name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website')
             .eq('id', prod.brand_id)
             .single()
           setProduct(prod)
           setBrand(brandData)
           setLoading(false)
           getLocationAndLogScan(null, resolvedSerialData || { brand_id: prod.brand_id, product_id: prod.id })
+          // Still load promos so promo entry + winner display works without a QR code
+          const { data: promoData } = await supabase
+            .from('promos')
+            .select('*')
+            .eq('brand_id', prod.brand_id)
+            .or('active.eq.true,winner_announced_at.not.is.null')
+            .order('active', { ascending: false })
+            .order('winner_announced_at', { ascending: false, nullsFirst: false })
+            .limit(1)
+            .maybeSingle()
+          if (promoData) setActivePromo(promoData)
           return
         }
       }
@@ -197,21 +208,19 @@ export default function ScanPage({ previewData } = {}) {
     setLoading(false)
 
     // Only show promos on product QR codes, never on event QR codes
+    // Always query brand-level for the best promo (active or most recent winner)
+    // instead of relying on the QR code's direct promo_id which may be stale
     if (!qr.events) {
-      if (qr.promos) {
-        setActivePromo(qr.promos)
-      } else {
-        // Check for active promo or most recent winner
-        const { data: promoData } = await supabase
-          .from('promos')
-          .select('*')
-          .eq('brand_id', qr.brand_id)
-          .or('active.eq.true,winner_announced_at.not.is.null')
-          .order('winner_announced_at', { ascending: false, nullsFirst: false })
-          .limit(1)
-          .single()
-        if (promoData) setActivePromo(promoData)
-      }
+      const { data: promoData } = await supabase
+        .from('promos')
+        .select('*')
+        .eq('brand_id', qr.brand_id)
+        .or('active.eq.true,winner_announced_at.not.is.null')
+        .order('active', { ascending: false })
+        .order('winner_announced_at', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle()
+      if (promoData) setActivePromo(promoData)
     }
 
     // Get location, then log scan with it
@@ -301,18 +310,23 @@ export default function ScanPage({ previewData } = {}) {
   }
 
   async function syncToShopify(customerData) {
-    if (!qrCode?.brand_id) return
+    const syncBrandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
+    if (!syncBrandId) return
     try {
-      await fetch('/.netlify/functions/sync-shopify-customer', {
+      const res = await fetch('/.netlify/functions/sync-shopify-customer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          brandId: qrCode.brand_id,
+          brandId: syncBrandId,
           customer: customerData,
         }),
       })
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '')
+        console.error('Shopify sync failed:', res.status, errBody)
+      }
     } catch (err) {
-      // Shopify sync is best-effort, don't block the consumer experience
+      console.error('Shopify sync error:', err)
     }
   }
 
@@ -386,13 +400,14 @@ export default function ScanPage({ previewData } = {}) {
     // Ensure geo/IP is available
     if (locationPromise.current) await locationPromise.current
     const loc = locationRef.current
-    if (supabase && activePromo && qrCode) {
+    const brandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
+    if (supabase && activePromo && brandId) {
       const now = new Date().toISOString()
       const { data: inserted } = await supabase.from('promo_entries').insert({
         promo_id: activePromo.id,
-        brand_id: qrCode.brand_id,
-        qr_code_id: qrCode.id,
-        product_id: qrCode.product_id || null,
+        brand_id: brandId,
+        qr_code_id: qrCode?.id || null,
+        product_id: qrCode?.product_id || product?.id || null,
         first_name: promoForm.firstName,
         last_name: promoForm.lastName,
         email: promoForm.email,
@@ -409,8 +424,8 @@ export default function ScanPage({ previewData } = {}) {
         consent_ip: promoForm.marketingConsent ? (loc?.ip || null) : null,
         consent_text_shown: promoForm.marketingConsent ? marketingConsentText : null,
       }).select('id').single()
-      logBillingEvent(qrCode.brand_id, promoForm.email, promoForm.phone, 'promo', inserted?.id)
-      upsertContactAndClaimSerial(qrCode.brand_id, promoForm.firstName, promoForm.email, promoForm.phone, 'promo', promoForm.marketingConsent)
+      logBillingEvent(brandId, promoForm.email, promoForm.phone, 'promo', inserted?.id)
+      upsertContactAndClaimSerial(brandId, promoForm.firstName, promoForm.email, promoForm.phone, 'promo', promoForm.marketingConsent)
       syncToShopify({
         firstName: promoForm.firstName,
         lastName: promoForm.lastName,
@@ -430,11 +445,12 @@ export default function ScanPage({ previewData } = {}) {
   const handleWarrantySubmit = async (e) => {
     e.preventDefault()
     if (isPreview) { setWarrantyRegistered(true); return }
-    if (supabase && qrCode) {
+    const warBrandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
+    if (supabase && warBrandId) {
       const { data: inserted } = await supabase.from('warranty_registrations').insert({
-        brand_id: qrCode.brand_id,
-        product_id: qrCode.product_id,
-        qr_code_id: qrCode.id,
+        brand_id: warBrandId,
+        product_id: qrCode?.product_id || product?.id || null,
+        qr_code_id: qrCode?.id || null,
         first_name: warrantyForm.firstName,
         last_name: warrantyForm.lastName,
         email: warrantyForm.email,
@@ -448,8 +464,8 @@ export default function ScanPage({ previewData } = {}) {
         country: location?.country || null,
         consent: warrantyForm.consent,
       }).select('id').single()
-      logBillingEvent(qrCode.brand_id, warrantyForm.email, warrantyForm.phone, 'warranty', inserted?.id)
-      upsertContactAndClaimSerial(qrCode.brand_id, warrantyForm.firstName, warrantyForm.email, warrantyForm.phone, 'warranty', warrantyForm.consent)
+      logBillingEvent(warBrandId, warrantyForm.email, warrantyForm.phone, 'warranty', inserted?.id)
+      upsertContactAndClaimSerial(warBrandId, warrantyForm.firstName, warrantyForm.email, warrantyForm.phone, 'warranty', warrantyForm.consent)
       syncToShopify({
         firstName: warrantyForm.firstName,
         lastName: warrantyForm.lastName,

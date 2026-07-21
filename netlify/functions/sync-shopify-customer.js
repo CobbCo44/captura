@@ -53,7 +53,7 @@ export default async (req) => {
     let existingCustomerId = null
     if (customer.email) {
       const searchRes = await fetch(
-        `https://${store}.myshopify.com/admin/api/2024-01/customers/search.json?query=email:${encodeURIComponent(customer.email)}`,
+        `https://${store}.myshopify.com/admin/api/2025-10/customers/search.json?query=email:${encodeURIComponent(customer.email)}`,
         {
           headers: {
             'X-Shopify-Access-Token': shopifyToken,
@@ -140,7 +140,7 @@ export default async (req) => {
     if (existingCustomerId) {
       // Update existing customer - merge tags
       const getRes = await fetch(
-        `https://${store}.myshopify.com/admin/api/2024-01/customers/${existingCustomerId}.json`,
+        `https://${store}.myshopify.com/admin/api/2025-10/customers/${existingCustomerId}.json`,
         {
           headers: {
             'X-Shopify-Access-Token': shopifyToken,
@@ -166,7 +166,7 @@ export default async (req) => {
       delete customerData.metafields
 
       response = await fetch(
-        `https://${store}.myshopify.com/admin/api/2024-01/customers/${existingCustomerId}.json`,
+        `https://${store}.myshopify.com/admin/api/2025-10/customers/${existingCustomerId}.json`,
         {
           method: 'PUT',
           headers: {
@@ -179,7 +179,7 @@ export default async (req) => {
     } else {
       // Create new customer
       response = await fetch(
-        `https://${store}.myshopify.com/admin/api/2024-01/customers.json`,
+        `https://${store}.myshopify.com/admin/api/2025-10/customers.json`,
         {
           method: 'POST',
           headers: {

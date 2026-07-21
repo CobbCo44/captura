@@ -34,8 +34,8 @@ export default async (req) => {
       .single()
 
     if (!brand?.shopify_store || !brand?.shopify_token) {
-      // No Shopify connected, silently skip
-      return new Response(JSON.stringify({ skipped: true }), {
+      console.log('Shopify sync skipped - no credentials for brand:', brandId)
+      return new Response(JSON.stringify({ skipped: true, reason: 'no_credentials' }), {
         headers: { 'Content-Type': 'application/json' },
       })
     }

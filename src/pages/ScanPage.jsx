@@ -311,19 +311,28 @@ export default function ScanPage({ previewData } = {}) {
 
   async function syncToShopify(customerData) {
     const syncBrandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
-    if (!syncBrandId) return
+    if (!syncBrandId) {
+      console.warn('Shopify sync skipped: no brand ID available')
+      return
+    }
     try {
+      const payload = { brandId: syncBrandId, customer: customerData }
+      console.log('Shopify sync sending:', JSON.stringify(payload).slice(0, 300))
       const res = await fetch('/.netlify/functions/sync-shopify-customer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          brandId: syncBrandId,
-          customer: customerData,
-        }),
+        body: JSON.stringify(payload),
       })
+      const body = await res.text()
       if (!res.ok) {
-        const errBody = await res.text().catch(() => '')
-        console.error('Shopify sync failed:', res.status, errBody)
+        console.error('Shopify sync failed:', res.status, body)
+      } else {
+        const result = JSON.parse(body)
+        if (result.skipped) {
+          console.warn('Shopify sync skipped by server:', result.reason || 'no credentials')
+        } else {
+          console.log('Shopify sync success:', result.customerId)
+        }
       }
     } catch (err) {
       console.error('Shopify sync error:', err)

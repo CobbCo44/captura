@@ -412,6 +412,22 @@ export default function Products({ brand }) {
     setChannels(data || [])
   }
 
+  async function deleteChannel(channelId, channelName) {
+    if (!supabase) return
+    if (!window.confirm(`Delete channel "${channelName}"? Any batches using this channel cannot be deleted.`)) return
+    const { error } = await supabase.from('channels').delete().eq('id', channelId)
+    if (error) {
+      if (error.message?.includes('violates foreign key')) {
+        alert(`Cannot delete "${channelName}" because it has batches assigned to it. Delete those batches first.`)
+      } else {
+        alert('Failed to delete channel: ' + error.message)
+      }
+      return
+    }
+    if (batchForm.channelId === channelId) setBatchForm(f => ({ ...f, channelId: '' }))
+    loadChannels()
+  }
+
   async function loadBatches(productId) {
     if (!supabase || !brand?.id || brand.id === 'demo' || !productId) return
     setBatchesLoading(true)
@@ -822,14 +838,42 @@ export default function Products({ brand }) {
                       <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
                         Channel
                       </label>
-                      <select className="input" value={batchForm.channelId}
-                        onChange={e => setBatchForm({ ...batchForm, channelId: e.target.value })}>
-                        <option value="">Select channel</option>
+                      <div style={{
+                        border: '1px solid var(--border)', borderRadius: 8,
+                        maxHeight: 180, overflowY: 'auto', background: 'var(--card-bg)',
+                      }}>
                         {channels.map(ch => (
-                          <option key={ch.id} value={ch.id}>{ch.name} ({ch.type})</option>
+                          <div key={ch.id} style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '8px 12px', cursor: 'pointer',
+                            borderBottom: '1px solid var(--border)',
+                            background: batchForm.channelId === ch.id ? 'var(--bg)' : 'transparent',
+                          }} onClick={() => setBatchForm({ ...batchForm, channelId: ch.id })}>
+                            <span style={{
+                              fontSize: '0.85rem',
+                              fontWeight: batchForm.channelId === ch.id ? 600 : 400,
+                              color: batchForm.channelId === ch.id ? 'var(--success)' : '#FAFAFA',
+                            }}>
+                              {batchForm.channelId === ch.id && '✓ '}{ch.name} ({ch.type})
+                            </span>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); deleteChannel(ch.id, ch.name) }}
+                              style={{
+                                background: 'none', border: 'none', color: '#ef4444',
+                                fontSize: '0.75rem', cursor: 'pointer', padding: '2px 6px',
+                                opacity: 0.7,
+                              }}>
+                              Remove
+                            </button>
+                          </div>
                         ))}
-                        <option value="__new__">+ Add new channel</option>
-                      </select>
+                        <div style={{
+                          padding: '8px 12px', cursor: 'pointer',
+                          color: 'var(--success)', fontSize: '0.85rem',
+                          background: batchForm.channelId === '__new__' ? 'var(--bg)' : 'transparent',
+                        }} onClick={() => setBatchForm({ ...batchForm, channelId: '__new__' })}>
+                          + Add new channel
+                        </div>
+                      </div>
                     </div>
                     {batchForm.channelId === '__new__' && (
                       <div style={{ display: 'flex', gap: 10 }}>

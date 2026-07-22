@@ -24,36 +24,39 @@ export default async (req, context) => {
     }), { status: 200, headers })
   }
 
-  // Fallback: try ipapi.co then ip-api.com
-  try {
-    const res = await fetch('https://ipapi.co/json/')
-    const data = await res.json()
-    if (data && data.city && !data.error) {
-      return new Response(JSON.stringify({
-        lat: data.latitude,
-        lng: data.longitude,
-        city: data.city,
-        region: data.region_code || data.region,
-        country: data.country_code,
-        ip: data.ip || clientIp,
-      }), { status: 200, headers })
-    }
-  } catch { /* fall through */ }
+  // Fallback: try ipapi.co then ip-api.com — pass CLIENT IP so we geolocate
+  // the user, not the Netlify function server
+  if (clientIp) {
+    try {
+      const res = await fetch(`https://ipapi.co/${clientIp}/json/`)
+      const data = await res.json()
+      if (data && data.city && !data.error) {
+        return new Response(JSON.stringify({
+          lat: data.latitude,
+          lng: data.longitude,
+          city: data.city,
+          region: data.region_code || data.region,
+          country: data.country_code,
+          ip: data.ip || clientIp,
+        }), { status: 200, headers })
+      }
+    } catch { /* fall through */ }
 
-  try {
-    const res = await fetch('https://ip-api.com/json/?fields=status,lat,lon,city,region,countryCode,query')
-    const data = await res.json()
-    if (data && data.status === 'success' && data.city) {
-      return new Response(JSON.stringify({
-        lat: data.lat,
-        lng: data.lon,
-        city: data.city,
-        region: data.region,
-        country: data.countryCode,
-        ip: data.query || clientIp,
-      }), { status: 200, headers })
-    }
-  } catch { /* fall through */ }
+    try {
+      const res = await fetch(`https://ip-api.com/json/${clientIp}?fields=status,lat,lon,city,region,countryCode,query`)
+      const data = await res.json()
+      if (data && data.status === 'success' && data.city) {
+        return new Response(JSON.stringify({
+          lat: data.lat,
+          lng: data.lon,
+          city: data.city,
+          region: data.region,
+          country: data.countryCode,
+          ip: data.query || clientIp,
+        }), { status: 200, headers })
+      }
+    } catch { /* fall through */ }
+  }
 
   return new Response(JSON.stringify({
     lat: null, lng: null, city: null, region: null, country: null, ip: clientIp,

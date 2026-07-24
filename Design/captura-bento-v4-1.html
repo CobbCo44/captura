@@ -1,0 +1,417 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  * { box-sizing: border-box; }
+
+  #root {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #14141A; color: #E9E9EE;
+    padding: 20px 16px 44px;
+  }
+  #root .wrap { max-width: 1000px; margin: 0 auto; }
+  #root .kicker {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px;
+    letter-spacing: 0.16em; text-transform: uppercase; color: #6E6E80;
+    margin-bottom: 6px;
+  }
+  #root h1 {
+    font-family: 'Oswald', sans-serif; text-transform: uppercase;
+    font-size: clamp(23px, 5vw, 32px); letter-spacing: 0.02em;
+    margin: 0 0 6px; font-weight: 600;
+  }
+  #root .lede { font-size: 13.5px; color: #8C8C9E; margin: 0 0 22px; max-width: 64ch; }
+
+  #root .cols { display: grid; grid-template-columns: 1fr 390px; gap: 26px; align-items: start; }
+  @media (max-width: 900px) { #root .cols { grid-template-columns: 1fr; } }
+
+  #root .panel { border: 1px solid #2C2C38; background: #1B1B23; padding: 15px 16px; margin-bottom: 14px; }
+  #root .panel h2 {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10px;
+    letter-spacing: 0.14em; text-transform: uppercase; color: #6E6E80;
+    margin: 0 0 11px; font-weight: 500;
+  }
+  #root .seg { display: flex; gap: 6px; flex-wrap: wrap; }
+  #root .seg button {
+    font-size: 12.5px; font-weight: 500; padding: 8px 12px;
+    background: transparent; border: 1px solid #3A3A48; color: #A8A8BC;
+    cursor: pointer; border-radius: 3px; transition: all 0.14s;
+    font-family: 'Inter', sans-serif;
+  }
+  #root .seg button:hover { border-color: #6E6E80; color: #E9E9EE; }
+  #root .seg button[aria-pressed="true"] { background: #E9E9EE; border-color: #E9E9EE; color: #14141A; }
+
+  #root .toggles { display: flex; flex-direction: column; gap: 8px; }
+  #root .tgl {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; font-size: 13px; color: #A8A8BC;
+  }
+  #root .tgl button {
+    width: 42px; height: 24px; border-radius: 12px; border: 1px solid #3A3A48;
+    background: #23232E; cursor: pointer; position: relative; flex: none;
+    transition: background 0.15s;
+  }
+  #root .tgl button::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 18px; height: 18px; border-radius: 50%; background: #6E6E80;
+    transition: transform 0.15s, background 0.15s;
+  }
+  #root .tgl button[aria-pressed="true"] { background: #2E5E45; }
+  #root .tgl button[aria-pressed="true"]::after { transform: translateX(18px); background: #57C08A; }
+
+  #root .note {
+    font-size: 12px; color: #6E6E80; line-height: 1.5; margin: 12px 0 0;
+    border-left: 2px solid #3A3A48; padding-left: 10px;
+  }
+  #root .note b { color: #A8A8BC; font-weight: 600; }
+
+  #root .phone-col { position: sticky; top: 16px; }
+  #root .phone {
+    width: 100%; max-width: 390px; margin: 0 auto;
+    border: 9px solid #26262F; border-radius: 34px; overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5); background: #000;
+  }
+  #root .screen { height: 730px; overflow-y: auto; overflow-x: hidden; }
+  #root .cap {
+    text-align: center; font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: #6E6E80; margin-top: 10px;
+  }
+
+  /* ============ SCAN PAGE ============ */
+  #scan {
+    --accent: #E8382E; --accent-ink: #fff;
+    --surface: #000; --tile: #101013;
+    --ink: #fff; --ink2: rgba(255,255,255,0.56);
+    --line: rgba(255,255,255,0.11);
+    --r: 14px;
+    background: var(--surface); color: var(--ink);
+    font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.5;
+  }
+
+  #scan .bar {
+    background: var(--accent); color: var(--accent-ink);
+    height: 46px; display: flex; align-items: center;
+    padding: 0 14px; position: sticky; top: 0; z-index: 6;
+  }
+  #scan .bar .mark {
+    font-family: 'Oswald', sans-serif; font-size: 15px; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase;
+  }
+
+  #scan .top {
+    display: grid; grid-template-columns: 116px 1fr;
+    gap: 14px; align-items: center; padding: 14px 14px 10px;
+  }
+  #scan .top .shot {
+    aspect-ratio: 1; background: var(--tile); border-radius: var(--r);
+    display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+  }
+  #scan .top .shot::before {
+    content: ""; position: absolute; width: 80%; aspect-ratio: 1;
+    border-radius: 50%; background: var(--accent); opacity: 0.15; filter: blur(7px);
+  }
+  #scan .top .shot svg { position: relative; width: 86%; }
+  #scan .top h2 {
+    font-family: 'Oswald', sans-serif; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.02em;
+    font-size: 21px; line-height: 1.1; margin: 0 0 3px;
+  }
+  #scan .top p { font-size: 12px; color: var(--ink2); margin: 0; }
+
+  /* ---------- BENTO ---------- */
+  #scan .bento {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 84px; gap: 9px; padding: 2px 14px 16px;
+  }
+  #scan .tile {
+    background: var(--tile); border: 1px solid var(--line);
+    border-radius: var(--r); position: relative; overflow: hidden;
+    cursor: pointer; transition: border-color 0.14s;
+  }
+  #scan .tile:hover { border-color: rgba(255,255,255,0.3); }
+
+  /* PROMO / GIVEAWAY — leads the grid, full width, 2 rows */
+  #scan .t-promo {
+    grid-column: span 4; grid-row: span 2;
+    display: flex; flex-direction: column; justify-content: flex-end; padding: 13px;
+  }
+  #scan .t-promo .bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
+  #scan .t-promo .scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.82) 100%); }
+  #scan .t-promo > * { position: relative; z-index: 1; }
+  #scan .t-promo .row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+  #scan .t-promo h3 {
+    font-family: 'Oswald', sans-serif; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.02em; font-size: 20px; line-height: 1.08; margin: 8px 0 2px; color: #fff;
+  }
+  #scan .t-promo .sub { font-size: 11px; color: rgba(255,255,255,0.74); margin: 0; }
+  #scan .t-promo .cd {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px;
+    letter-spacing: 0.07em; color: rgba(255,255,255,0.72);
+    margin: 3px 0 0; font-variant-numeric: tabular-nums;
+  }
+  #scan .t-promo button {
+    flex: none; border: none; cursor: pointer;
+    background: var(--accent); color: var(--accent-ink);
+    border-radius: 9px; padding: 12px 20px; font-family: 'Inter', sans-serif;
+    font-size: 14px; font-weight: 700; white-space: nowrap;
+  }
+  #scan .pill {
+    align-self: flex-start; display: inline-flex; align-items: center; gap: 5px;
+    background: var(--accent); color: var(--accent-ink);
+    font-family: 'IBM Plex Mono', monospace; font-size: 8.5px;
+    letter-spacing: 0.12em; text-transform: uppercase; font-weight: 500;
+    padding: 3px 7px; border-radius: 3px; margin-bottom: auto;
+  }
+  #scan .pill .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent-ink); animation: pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+  /* VIDEO — second, full width */
+  #scan .t-video { grid-column: span 4; grid-row: span 2; }
+  #scan .t-video .vbg { position: absolute; inset: 0; background: linear-gradient(140deg, #2E4A2C 0%, #5C7A3E 45%, #14181A 100%); }
+  #scan .t-video .vscrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.1), rgba(0,0,0,0.68)); }
+  #scan .t-video .play {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -58%);
+    width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.93);
+  }
+  #scan .t-video .play::after {
+    content: ""; position: absolute; top: 50%; left: 50%;
+    transform: translate(-38%, -50%);
+    border-left: 13px solid #111; border-top: 8px solid transparent; border-bottom: 8px solid transparent;
+  }
+  #scan .t-video .lbl {
+    position: absolute; left: 12px; right: 12px; bottom: 10px;
+    font-size: 12.5px; font-weight: 600; color: #fff; z-index: 1;
+  }
+  #scan .t-video .lbl small { font-weight: 400; font-size: 10px; color: rgba(255,255,255,0.7); margin-left: 6px; }
+
+  /* utility tiles */
+  #scan .t-icon { display: flex; flex-direction: column; justify-content: flex-end; padding: 10px 11px; }
+  #scan .t-icon .glyph { font-size: 17px; margin-bottom: auto; }
+  #scan .t-icon .lbl { font-size: 12px; font-weight: 600; line-height: 1.15; }
+  #scan .t-icon .lbl small { display: block; font-weight: 400; font-size: 9.5px; color: var(--ink2); margin-top: 1px; }
+  #scan .s2 { grid-column: span 2; }
+  #scan .s4 { grid-column: span 4; }
+
+  /* winner history tile */
+  #scan .t-winner { display: flex; flex-direction: column; justify-content: flex-end; padding: 10px 11px; }
+  #scan .t-winner .wpill {
+    align-self: flex-start;
+    border: 1px solid var(--accent); color: var(--accent);
+    font-family: 'IBM Plex Mono', monospace; font-size: 8px;
+    letter-spacing: 0.12em; text-transform: uppercase; font-weight: 500;
+    padding: 2px 6px; border-radius: 3px; margin-bottom: auto;
+  }
+  #scan .t-winner .lbl { font-size: 12px; font-weight: 600; line-height: 1.2; }
+  #scan .t-winner .lbl small { display: block; font-weight: 400; font-size: 9.5px; color: var(--ink2); margin-top: 1px; }
+
+  /* content */
+  #scan .content { padding: 16px 14px; border-top: 1px solid var(--line); }
+  #scan .content h4 {
+    font-family: 'Oswald', sans-serif; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.02em; font-size: 13px; margin: 0 0 7px;
+  }
+  #scan .desc {
+    color: var(--ink2); font-size: 13px; margin: 0;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  #scan .desc.open { -webkit-line-clamp: unset; }
+  #scan .more { background: none; border: none; padding: 5px 0 0; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; }
+  #scan .feat { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin: 14px 0 0; padding: 0; list-style: none; }
+  #scan .feat li { font-size: 11.5px; color: var(--ink2); padding-left: 11px; position: relative; line-height: 1.4; }
+  #scan .feat li::before {
+    content: ""; position: absolute; left: 0; top: 6px;
+    width: 4px; height: 4px; background: var(--accent); border-radius: 1px;
+  }
+
+  #scan .socialrow { padding: 6px 14px 14px; }
+  #scan .socialrow h5 { text-align: center; font-size: 13px; font-weight: 600; margin: 10px 0 12px; }
+  #scan .socialrow .icons { display: flex; gap: 12px; justify-content: center; }
+  #scan .socialrow .icons i {
+    width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-style: normal; font-size: 12px; font-weight: 600; color: var(--ink2);
+    background: var(--tile);
+  }
+
+  #scan .foot { padding: 14px 14px 22px; border-top: 1px solid var(--line); text-align: center; }
+  #scan .foot .pb { font-size: 11px; color: var(--ink2); margin: 0 0 4px; }
+  #scan .foot .pb b { color: var(--ink); }
+  #scan .foot .legal { font-size: 9px; color: var(--ink2); opacity: 0.7; margin: 0; }
+
+  @media (prefers-reduced-motion: reduce) { #root *, #scan * { transition: none !important; animation: none !important; } }
+</style>
+
+<div id="root">
+<div class="wrap">
+  <div class="kicker">Captura · Bento v4.1</div>
+  <h1>The giveaway leads. Always.</h1>
+  <p class="lede">Same as v4, plus: when warranty is off, the empty half-tile fills with <b>winner history</b> — proof the giveaway is real, pulled straight from the promos table. Toggle warranty off to see it swap in next to Reorder.</p>
+
+  <div class="cols">
+    <div>
+      <div class="panel">
+        <h2>Promo state</h2>
+        <div class="seg" id="states"></div>
+        <p class="note"><b>"Evergreen only"</b> is the new resting state — no flagship promo scheduled, so the monthly giveaway holds the top slot. The grid is never askless and never says "sign up."</p>
+      </div>
+
+      <div class="panel">
+        <h2>Product config</h2>
+        <div class="toggles">
+          <div class="tgl"><span>Video</span><button id="tg-video" aria-pressed="true"></button></div>
+          <div class="tgl"><span>Warranty</span><button id="tg-warranty" aria-pressed="true"></button></div>
+          <div class="tgl"><span>Reorder</span><button id="tg-reorder" aria-pressed="true"></button></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Grid order</h2>
+        <p class="note" style="margin-top:0"><b>1. Giveaway</b> — flagship if one exists, evergreen otherwise. Full width, image, scrim, one big button. First thing under the product name.</p>
+        <p class="note"><b>2. Video</b> — the payoff, full width, plays in place.</p>
+        <p class="note"><b>3. Utilities</b> — reorder / warranty, whatever exists.</p>
+        <p class="note"><b>Entry form is the capture.</b> Name, email, phone optional, texts checkbox. The VIP list still exists — it's just what you join when you enter. The word "signup" never renders.</p>
+      </div>
+    </div>
+
+    <div class="phone-col">
+      <div class="phone"><div class="screen">
+        <div id="scan">
+          <div class="bar"><span class="mark">44 PRO</span></div>
+
+          <div class="top">
+            <div class="shot">
+              <svg viewBox="0 0 200 150" xmlns="http://www.w3.org/2000/svg">
+                <g transform="translate(14,10)"><path d="M12 60 Q8 24 24 20 Q32 18 34 34 L36 52 L40 22 Q42 6 54 8 Q64 10 62 28 L60 54 L66 24 Q70 10 80 14 Q88 18 84 34 L78 62 Q88 54 94 60 Q100 66 92 78 L74 104 Q66 118 48 118 Q26 118 18 100 Z" fill="#E8382E"/><path d="M12 60 Q8 24 24 20 Q32 18 34 34 L36 52 L40 22 Q42 6 54 8 L54 118 Q26 118 18 100 Z" fill="#F2C230"/><rect x="18" y="88" width="60" height="18" rx="2" fill="#1E3FA8"/><text x="48" y="102" font-family="Oswald" font-size="13" font-weight="700" fill="#F2C230" text-anchor="middle">44</text></g>
+                <g transform="translate(106,10)"><path d="M76 60 Q80 24 64 20 Q56 18 54 34 L52 52 L48 22 Q46 6 34 8 Q24 10 26 28 L28 54 L22 24 Q18 10 8 14 Q0 18 4 34 L10 62 Q0 54 -6 60 Q-12 66 -4 78 L14 104 Q22 118 40 118 Q62 118 70 100 Z" fill="#E8382E"/><path d="M76 60 Q80 24 64 20 Q56 18 54 34 L52 52 L48 22 Q46 6 34 8 L34 118 Q62 118 70 100 Z" fill="#F2C230"/><rect x="10" y="88" width="60" height="18" rx="2" fill="#1E3FA8"/><text x="40" y="102" font-family="Oswald" font-size="13" font-weight="700" fill="#F2C230" text-anchor="middle">44</text></g>
+              </svg>
+            </div>
+            <div>
+              <h2>Batting Gloves</h2>
+              <p>Elite Series · PRX</p>
+            </div>
+          </div>
+
+          <div class="bento" id="bento"></div>
+
+          <div class="content">
+            <h4>About this product</h4>
+            <p class="desc" id="desc">Built for the grind. Premium sheepskin palm with reinforced stitching at the wear points, a compression-molded knuckle guard, and a neoprene wrist wrap that holds through a full bucket of swings. Broken in out of the bag, sized to stay tight through a season of reps.</p>
+            <button class="more" id="more">Read more</button>
+            <ul class="feat">
+              <li>Premium sheepskin palm</li>
+              <li>Reinforced stitching</li>
+              <li>Molded knuckle guard</li>
+              <li>Neoprene wrist wrap</li>
+            </ul>
+          </div>
+
+          <div class="socialrow">
+            <h5>Follow Us</h5>
+            <div class="icons"><i>IG</i><i>TT</i><i>FB</i></div>
+          </div>
+
+          <div class="foot">
+            <p class="pb">Powered by <b>Captura</b></p>
+            <p class="legal">Approximate location may be collected to improve this experience. Privacy Policy</p>
+          </div>
+        </div>
+      </div></div>
+      <p class="cap">Toggle it · 390px</p>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const STATES = {
+  evergreen: { label: 'Evergreen only' },
+  scheduled: { label: 'Flagship scheduled' },
+  live:      { label: 'Flagship live' },
+  closed:    { label: 'Closed' },
+  winner:    { label: 'Winner' }
+};
+
+let cur = { s: 'live', video: true, warranty: true, reorder: true };
+
+function promoConfig() {
+  const flagImg = `linear-gradient(135deg,#3A2418 0%,#6B4A2C 45%,#1B1410 100%)`;
+  const everImg = `linear-gradient(135deg,#1E2430 0%,#3A4A62 45%,#12141A 100%)`;
+  switch (cur.s) {
+    case 'live':      return { img: flagImg, pill: 'Live now', dot: true,  h: 'Tap It Tuesday', sub: 'One entry per glove you own.', cd: 'Closes in 6h 41m', cta: 'Enter to win' };
+    case 'scheduled': return { img: flagImg, pill: 'Next drop', dot: false, h: 'Tap It Tuesday', sub: 'Free bat of your choosing.', cd: 'Starts in 2d 4h', cta: 'Get the alert' };
+    case 'closed':    return { img: flagImg, pill: 'Entries closed', dot: false, h: 'Tap It Tuesday', sub: 'Winner drawn Thursday.', cd: null, cta: 'Get notified' };
+    case 'winner':    return { img: flagImg, pill: 'Winner', dot: false, h: 'M. Alvarez won', sub: 'Chula Vista, CA · next drop Tuesday', cd: null, cta: 'Get the next one' };
+    default:          return { img: everImg, pill: 'This month', dot: true, h: 'Win the Monthly Gear Drop', sub: 'Gloves, grips, and a bag. Drawn Aug 1.', cd: null, cta: 'Enter free' };
+  }
+}
+
+function render() {
+  const promo = promoConfig();
+  let tiles = [];
+
+  // 1. GIVEAWAY LEADS
+  tiles.push(`<div class="tile t-promo">
+    <div class="bg" style="background:${promo.img}"></div><div class="scrim"></div>
+    <span class="pill">${promo.dot ? '<span class="dot"></span>' : ''}${promo.pill}</span>
+    <h3>${promo.h}</h3>
+    <div class="row">
+      <div>
+        ${promo.sub ? `<p class="sub">${promo.sub}</p>` : ''}
+        ${promo.cd ? `<p class="cd">${promo.cd}</p>` : ''}
+      </div>
+      <button>${promo.cta}</button>
+    </div>
+  </div>`);
+
+  // 2. VIDEO
+  if (cur.video) {
+    tiles.push(`<div class="tile t-video">
+      <div class="vbg"></div><div class="vscrim"></div><div class="play"></div>
+      <div class="lbl">Keep those mits ready<small>2:14 · 44 Pro</small></div>
+    </div>`);
+  }
+
+  // 3. UTILITIES — winner history auto-fills when warranty is off
+  const utils = [];
+  if (cur.reorder) utils.push(`<div class="tile t-icon SPAN"><span class="glyph">🔁</span><span class="lbl">Reorder<small>Buy again</small></span></div>`);
+  if (cur.warranty) {
+    utils.push(`<div class="tile t-icon SPAN"><span class="glyph">🛡️</span><span class="lbl">Warranty<small>Register</small></span></div>`);
+  } else {
+    // no warranty -> winner history takes the slot (proof the giveaway is real)
+    utils.push(`<div class="tile t-winner SPAN"><span class="wpill">Last winner</span><span class="lbl">M. Alvarez · Chula Vista<small>Won the June gear drop</small></span></div>`);
+  }
+
+  utils.forEach(u => {
+    const span = utils.length === 1 ? 's4' : 's2';
+    tiles.push(u.replace('SPAN', span));
+  });
+
+  document.getElementById('bento').innerHTML = tiles.join('');
+  document.querySelectorAll('#states button').forEach(b => b.setAttribute('aria-pressed', b.dataset.s === cur.s));
+}
+
+document.getElementById('states').innerHTML = Object.entries(STATES)
+  .map(([k, s]) => `<button data-s="${k}">${s.label}</button>`).join('');
+document.querySelectorAll('#states button').forEach(b => b.onclick = () => { cur.s = b.dataset.s; render(); });
+
+['video', 'warranty', 'reorder'].forEach(key => {
+  const btn = document.getElementById('tg-' + key);
+  btn.onclick = () => {
+    cur[key] = !cur[key];
+    btn.setAttribute('aria-pressed', cur[key]);
+    render();
+  };
+});
+
+document.getElementById('more').onclick = e => {
+  const d = document.getElementById('desc');
+  const open = d.classList.toggle('open');
+  e.target.textContent = open ? 'Read less' : 'Read more';
+};
+
+render();
+</script>

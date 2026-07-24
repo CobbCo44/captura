@@ -887,7 +887,7 @@ export default function ScanPage({ previewData } = {}) {
           display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 13,
         }}>
           {hasPromoImage && (
-            <div style={{ position: 'absolute', inset: 0, backgroundImage: `url(${activePromo.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+            <div style={{ position: 'absolute', inset: 0, backgroundImage: `url(${activePromo.image_url})`, backgroundSize: 'cover', backgroundPosition: activePromo.image_position || 'center' }} />
           )}
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.82) 100%)' }} />
 
@@ -1069,8 +1069,8 @@ export default function ScanPage({ previewData } = {}) {
             {product.description}
           </p>
           <button onClick={() => setDescExpanded(!descExpanded)} style={{
-            background: 'none', border: 'none', padding: '5px 0 0', color: 'var(--accent)',
-            fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter', sans-serif",
+            background: 'none', border: 'none', padding: '5px 0 0', color: 'var(--ink)',
+            fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter', sans-serif", textDecoration: 'underline',
           }}>
             {descExpanded ? 'Read less' : 'Read more'}
           </button>

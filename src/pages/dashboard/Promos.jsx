@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
 
 export default function Promos({ brand }) {
@@ -8,8 +8,11 @@ export default function Promos({ brand }) {
   const [editingPromo, setEditingPromo] = useState(null)
   const [viewingEntries, setViewingEntries] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [form, setForm] = useState({ title: '', description: '', prize: '', image: null, existingImage: '' })
+  const [form, setForm] = useState({ title: '', description: '', prize: '', image: null, existingImage: '', imagePosition: 'center' })
   const [uploading, setUploading] = useState(false)
+  const [dragging, setDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ y: 0, startPct: 50 })
+  const previewRef = useRef(null)
 
   useEffect(() => {
     loadPromos()
@@ -42,15 +45,43 @@ export default function Promos({ brand }) {
 
   const openCreate = () => {
     setEditingPromo(null)
-    setForm({ title: '', description: '', prize: '', image: null, existingImage: '', winner_name: '', winner_city: '' })
+    setForm({ title: '', description: '', prize: '', image: null, existingImage: '', winner_name: '', winner_city: '', imagePosition: 'center' })
     setShowModal(true)
   }
 
   const openEdit = (p) => {
     setEditingPromo(p)
-    setForm({ title: p.title, description: p.description || '', prize: p.prize || '', image: null, existingImage: p.image_url || '', winner_name: p.winner_name || '', winner_city: p.winner_city || '' })
+    setForm({ title: p.title, description: p.description || '', prize: p.prize || '', image: null, existingImage: p.image_url || '', winner_name: p.winner_name || '', winner_city: p.winner_city || '', imagePosition: p.image_position || 'center' })
     setShowModal(true)
   }
+
+  // Parse "center 30%" to just the Y percentage number
+  const getYPct = (pos) => {
+    if (!pos || pos === 'center') return 50
+    const match = pos.match(/(\d+)%/)
+    return match ? parseInt(match[1]) : 50
+  }
+
+  const handleDragStart = useCallback((e) => {
+    e.preventDefault()
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY
+    setDragging(true)
+    setDragStart({ y: clientY, startPct: getYPct(form.imagePosition) })
+  }, [form.imagePosition])
+
+  const handleDragMove = useCallback((e) => {
+    if (!dragging || !previewRef.current) return
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY
+    const rect = previewRef.current.getBoundingClientRect()
+    const delta = clientY - dragStart.y
+    const pctDelta = (delta / rect.height) * 100
+    const newPct = Math.max(0, Math.min(100, dragStart.startPct + pctDelta))
+    setForm(f => ({ ...f, imagePosition: `center ${Math.round(newPct)}%` }))
+  }, [dragging, dragStart])
+
+  const handleDragEnd = useCallback(() => {
+    setDragging(false)
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -78,7 +109,7 @@ export default function Promos({ brand }) {
     }
 
     if (editingPromo) {
-      const updatePayload = { title: form.title, description: form.description, prize: form.prize, image_url: imageUrl, winner_name: form.winner_name || null, winner_city: form.winner_city || null }
+      const updatePayload = { title: form.title, description: form.description, prize: form.prize, image_url: imageUrl, image_position: form.imagePosition || 'center', winner_name: form.winner_name || null, winner_city: form.winner_city || null }
       // Auto-set winner_announced_at when a winner name is provided
       if (form.winner_name?.trim()) {
         updatePayload.winner_announced_at = editingPromo.winner_announced_at || new Date().toISOString()
@@ -102,6 +133,7 @@ export default function Promos({ brand }) {
         description: form.description,
         prize: form.prize,
         image_url: imageUrl,
+        image_position: form.imagePosition || 'center',
         active: false,
       }).select().single()
       if (error) {
@@ -259,91 +291,154 @@ export default function Promos({ brand }) {
       )}
 
       {/* Create/Edit Modal */}
-      {showModal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50
-        }} onClick={() => { setShowModal(false); setEditingPromo(null) }}>
-          <div className="card" style={{ width: 440, maxWidth: '90vw' }} onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20 }}>
-              {editingPromo ? 'Edit Promo' : 'Create Promo'}
-            </h2>
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  Promo Title
-                </label>
-                <input className="input" placeholder="e.g. Tap it Tuesdays" value={form.title}
-                  onChange={e => setForm({ ...form, title: e.target.value })} required />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  Description
-                </label>
-                <textarea className="input" placeholder="What's the promo about?" value={form.description}
-                  onChange={e => setForm({ ...form, description: e.target.value })}
-                  style={{ minHeight: 80, resize: 'vertical' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  Prize
-                </label>
-                <input className="input" placeholder="e.g. Free pair of 44 Pro gloves" value={form.prize}
-                  onChange={e => setForm({ ...form, prize: e.target.value })} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                  Background Image (optional)
-                </label>
-                <input type="file" accept="image/*"
-                  onChange={e => {
-                    const file = e.target.files?.[0] || null
-                    setForm({ ...form, image: file, existingImage: file ? '' : form.existingImage })
-                  }}
-                  style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }} />
-                {(form.image || form.existingImage) && (
-                  <div style={{ marginTop: 10 }}>
-                    <img
-                      src={form.image ? URL.createObjectURL(form.image) : form.existingImage}
-                      alt="Preview"
-                      style={{ height: 120, borderRadius: 8, objectFit: 'cover', display: 'block' }}
-                    />
-                    <button type="button" onClick={() => setForm({ ...form, image: null, existingImage: '' })}
-                      style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.8rem', cursor: 'pointer', marginTop: 6, padding: 0 }}>
-                      Remove
+      {showModal && (() => {
+        const previewImageUrl = form.image ? URL.createObjectURL(form.image) : (form.existingImage || null)
+        const hasImage = !!previewImageUrl
+        const accentBg = brand?.accent_color || '#F97316'
+
+        return (
+          <div style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50
+          }} onClick={() => { setShowModal(false); setEditingPromo(null) }}>
+            <div className="card" style={{ width: 860, maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 20 }}>
+                {editingPromo ? 'Edit Promo' : 'Create Promo'}
+              </h2>
+              <div style={{ display: 'grid', gridTemplateColumns: hasImage ? '1fr 280px' : '1fr', gap: 28 }}>
+                {/* Left: Form fields */}
+                <form onSubmit={handleSubmit} id="promo-form" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                      Promo Title
+                    </label>
+                    <input className="input" placeholder="e.g. Tap it Tuesdays" value={form.title}
+                      onChange={e => setForm({ ...form, title: e.target.value })} required />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                      Description
+                    </label>
+                    <textarea className="input" placeholder="What's the promo about?" value={form.description}
+                      onChange={e => setForm({ ...form, description: e.target.value })}
+                      style={{ minHeight: 80, resize: 'vertical' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                      Prize
+                    </label>
+                    <input className="input" placeholder="e.g. Free pair of 44 Pro gloves" value={form.prize}
+                      onChange={e => setForm({ ...form, prize: e.target.value })} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                      Background Image (optional)
+                    </label>
+                    <input type="file" accept="image/*"
+                      onChange={e => {
+                        const file = e.target.files?.[0] || null
+                        setForm({ ...form, image: file, existingImage: file ? '' : form.existingImage })
+                      }}
+                      style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }} />
+                    {hasImage && (
+                      <button type="button" onClick={() => setForm({ ...form, image: null, existingImage: '', imagePosition: 'center' })}
+                        style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.8rem', cursor: 'pointer', marginTop: 6, padding: 0 }}>
+                        Remove image
+                      </button>
+                    )}
+                  </div>
+                  {editingPromo && (
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                          Winner Name
+                        </label>
+                        <input className="input" placeholder="Leave blank until announced" value={form.winner_name}
+                          onChange={e => setForm({ ...form, winner_name: e.target.value })} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                          Winner City
+                        </label>
+                        <input className="input" placeholder="e.g. San Diego, CA" value={form.winner_city}
+                          onChange={e => setForm({ ...form, winner_city: e.target.value })} />
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                    <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
+                      onClick={() => { setShowModal(false); setEditingPromo(null) }}>Cancel</button>
+                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={uploading}>
+                      {uploading ? 'Saving...' : editingPromo ? 'Save Changes' : 'Create Promo'}
                     </button>
+                  </div>
+                </form>
+
+                {/* Right: Live preview with drag-to-position */}
+                {hasImage && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      Preview — drag image to reposition
+                    </label>
+                    <div
+                      ref={previewRef}
+                      onMouseDown={handleDragStart}
+                      onTouchStart={handleDragStart}
+                      onMouseMove={handleDragMove}
+                      onTouchMove={handleDragMove}
+                      onMouseUp={handleDragEnd}
+                      onTouchEnd={handleDragEnd}
+                      onMouseLeave={handleDragEnd}
+                      style={{
+                        width: '100%', aspectRatio: '4 / 2.1', borderRadius: 12,
+                        position: 'relative', overflow: 'hidden',
+                        cursor: dragging ? 'grabbing' : 'grab', userSelect: 'none',
+                        border: '1px solid var(--border)',
+                      }}
+                    >
+                      <div style={{
+                        position: 'absolute', inset: 0,
+                        backgroundImage: `url(${previewImageUrl})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: form.imagePosition || 'center',
+                      }} />
+                      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.82) 100%)' }} />
+
+                      <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 1 }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          background: accentBg, color: '#fff',
+                          fontFamily: "'IBM Plex Mono', monospace", fontSize: 7,
+                          letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 500,
+                          padding: '2px 6px', borderRadius: 3,
+                        }}>
+                          <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#fff' }} />
+                          Live now
+                        </span>
+                      </div>
+
+                      <div style={{ position: 'absolute', bottom: 10, left: 10, right: 10, zIndex: 1 }}>
+                        <h3 style={{
+                          fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em',
+                          fontSize: 14, lineHeight: 1.1, margin: '0 0 3px', color: '#fff',
+                        }}>
+                          {form.title || 'Promo Title'}
+                        </h3>
+                        {form.description && (
+                          <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.74)', margin: 0 }}>{form.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0, textAlign: 'center' }}>
+                      This is how the promo tile looks on the scan page
+                    </p>
                   </div>
                 )}
               </div>
-              {editingPromo && (
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                      Winner Name
-                    </label>
-                    <input className="input" placeholder="Leave blank until announced" value={form.winner_name}
-                      onChange={e => setForm({ ...form, winner_name: e.target.value })} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
-                      Winner City
-                    </label>
-                    <input className="input" placeholder="e.g. San Diego, CA" value={form.winner_city}
-                      onChange={e => setForm({ ...form, winner_city: e.target.value })} />
-                  </div>
-                </div>
-              )}
-              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-                <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
-                  onClick={() => { setShowModal(false); setEditingPromo(null) }}>Cancel</button>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={uploading}>
-                  {uploading ? 'Saving...' : editingPromo ? 'Save Changes' : 'Create Promo'}
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Entries Modal */}
       {viewingEntries && (

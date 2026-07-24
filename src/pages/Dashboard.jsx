@@ -88,6 +88,21 @@ export default function Dashboard() {
     setSwitcherOpen(false)
   }
 
+  const deleteBrand = async (brandToDelete) => {
+    if (brands.length <= 1) return
+    if (!window.confirm(`Delete "${brandToDelete.name}" and ALL its products, QR codes, promos, consumers, and scans? This cannot be undone.`)) return
+    const { error } = await supabase.from('brands').delete().eq('id', brandToDelete.id)
+    if (error) {
+      alert('Failed to delete brand: ' + error.message)
+      return
+    }
+    const remaining = brands.filter(b => b.id !== brandToDelete.id)
+    setBrands(remaining)
+    if (brand?.id === brandToDelete.id) {
+      setBrand(remaining[0] || null)
+    }
+  }
+
   const createNewBrand = async () => {
     if (!newBrandName.trim() || !supabase) return
     setCreatingBrand(true)
@@ -182,15 +197,16 @@ export default function Dashboard() {
                 boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
               }}>
                 {brands.map(b => (
-                  <button
+                  <div
                     key={b.id}
-                    onClick={() => switchBrand(b)}
+                    className="brand-row"
                     style={{
                       width: '100%', display: 'flex', alignItems: 'center', gap: 8,
                       padding: '9px 12px', background: b.id === brand?.id ? 'rgba(255,255,255,0.08)' : 'transparent',
-                      border: 'none', cursor: 'pointer', color: '#FAFAFA',
+                      cursor: 'pointer', color: '#FAFAFA',
                       fontSize: '0.82rem', textAlign: 'left',
                     }}
+                    onClick={() => switchBrand(b)}
                   >
                     {b.logo_url ? (
                       <img src={b.logo_url} alt="" style={{
@@ -207,7 +223,18 @@ export default function Dashboard() {
                       {b.name}
                     </span>
                     {b.id === brand?.id && <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>✓</span>}
-                  </button>
+                    {brands.length > 1 && (
+                      <span
+                        onClick={(e) => { e.stopPropagation(); deleteBrand(b) }}
+                        style={{
+                          fontSize: '0.65rem', cursor: 'pointer',
+                          padding: '2px 6px', borderRadius: 4, color: '#ef4444',
+                          opacity: 0.5,
+                        }}
+                        title={`Delete ${b.name}`}
+                      >✕</span>
+                    )}
+                  </div>
                 ))}
                 <div style={{ borderTop: '1px solid var(--border)' }}>
                   {!showNewBrand ? (

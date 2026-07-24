@@ -137,8 +137,12 @@ export default function ScanPage({ previewData } = {}) {
         resolvedSerialData = serialResult[0]
         setSerialData(resolvedSerialData)
         // Serial found — now load the product and QR/brand data using the product_id
+      } else {
+        // Serial not found (deleted or invalid) — show not found, don't fall through
+        setNotFound(true)
+        setLoading(false)
+        return
       }
-      // If serial not found, fall through to static GTIN lookup (bogus serial fallback)
     }
 
     // Path 3: static GTIN lookup (/01/:gtin with no serial, or bogus serial fallback)

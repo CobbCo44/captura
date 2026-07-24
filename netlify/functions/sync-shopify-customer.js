@@ -49,7 +49,7 @@ export default async (req) => {
       .replace(/\/$/, '')
       .trim()
 
-    // Search for existing customer by email first
+    // Search for existing customer by email first, then fallback to phone
     let existingCustomerId = null
     if (customer.email) {
       const searchRes = await fetch(
@@ -65,6 +65,29 @@ export default async (req) => {
         const searchData = await searchRes.json()
         if (searchData.customers && searchData.customers.length > 0) {
           existingCustomerId = searchData.customers[0].id
+        }
+      }
+    }
+
+    // If no match by email, search by phone to avoid duplicate phone errors
+    if (!existingCustomerId && customer.phone) {
+      let searchPhone = customer.phone.replace(/\D/g, '')
+      if (searchPhone.length === 10) searchPhone = '1' + searchPhone
+      if (searchPhone.length >= 10) {
+        const phoneSearchRes = await fetch(
+          `https://${store}.myshopify.com/admin/api/2025-10/customers/search.json?query=phone:${encodeURIComponent('+' + searchPhone)}`,
+          {
+            headers: {
+              'X-Shopify-Access-Token': shopifyToken,
+              'Content-Type': 'application/json',
+            },
+          }
+        )
+        if (phoneSearchRes.ok) {
+          const phoneData = await phoneSearchRes.json()
+          if (phoneData.customers && phoneData.customers.length > 0) {
+            existingCustomerId = phoneData.customers[0].id
+          }
         }
       }
     }
@@ -193,8 +216,51 @@ export default async (req) => {
 
     if (!response.ok) {
       const errText = await response.text()
-      console.error('Shopify API error:', errText)
-      return new Response(JSON.stringify({ error: 'Shopify sync failed' }), {
+      console.error('Shopify API error:', response.status, errText, 'Customer:', customer.email, customer.phone)
+
+      // If create failed due to duplicate (phone/email taken), try to find and update instead
+      if (!existingCustomerId && response.status === 422 && errText.includes('has already been taken')) {
+        console.log('Shopify duplicate detected, attempting to find and update existing customer')
+        // Search broadly by name + phone/email
+        const fallbackQuery = customer.email || (formattedPhone ? `phone:${encodeURIComponent(formattedPhone)}` : '')
+        if (fallbackQuery) {
+          const fallbackRes = await fetch(
+            `https://${store}.myshopify.com/admin/api/2025-10/customers/search.json?query=${encodeURIComponent(fallbackQuery)}`,
+            {
+              headers: {
+                'X-Shopify-Access-Token': shopifyToken,
+                'Content-Type': 'application/json',
+              },
+            }
+          )
+          if (fallbackRes.ok) {
+            const fallbackData = await fallbackRes.json()
+            if (fallbackData.customers && fallbackData.customers.length > 0) {
+              delete customerData.metafields
+              const retryRes = await fetch(
+                `https://${store}.myshopify.com/admin/api/2025-10/customers/${fallbackData.customers[0].id}.json`,
+                {
+                  method: 'PUT',
+                  headers: {
+                    'X-Shopify-Access-Token': shopifyToken,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({ customer: customerData }),
+                }
+              )
+              if (retryRes.ok) {
+                const retryData = await retryRes.json()
+                console.log('Shopify sync recovered via fallback update:', retryData.customer.id)
+                return new Response(JSON.stringify({ success: true, customerId: retryData.customer.id, recovered: true }), {
+                  headers: { 'Content-Type': 'application/json' },
+                })
+              }
+            }
+          }
+        }
+      }
+
+      return new Response(JSON.stringify({ error: 'Shopify sync failed', details: errText }), {
         status: response.status,
         headers: { 'Content-Type': 'application/json' },
       })

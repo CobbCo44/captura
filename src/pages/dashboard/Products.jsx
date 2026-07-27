@@ -269,20 +269,6 @@ export default function Products({ brand }) {
     return null
   }
 
-
-    setDownloadProgress({ current: 0, total: serials.length, type: 'pdf' })
-
-    const pdf = new jsPDF({ orientation: 'portrait', unit: 'in', format: 'letter' })
-    const cols = 4
-    const rows = 5
-    const perPage = cols * rows
-    const pageW = 8.5
-    const pageH = 11
-    const marginX = 0.5
-    const marginY = 0.5
-    const cellW = (pageW - marginX * 2) / cols
-    const cellH = (pageH - marginY * 2) / rows
-    const qrSize = Math.min(cellW, cellH) * 0.72
   // ========== FORM VIEW ==========
   if (view === 'form') {
     return (

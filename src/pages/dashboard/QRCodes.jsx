@@ -7,12 +7,14 @@ import { buildGS1DigitalLink } from '../../lib/gs1'
 export default function QRCodes({ brand }) {
   const [qrCodes, setQrCodes] = useState([])
   const [products, setProducts] = useState([])
+  const [channels, setChannels] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [editingQR, setEditingQR] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     productId: '',
+    channelId: '',
     fgColor: '#18181B',
     bgColor: '#FFFFFF',
     logoFile: null,
@@ -44,10 +46,11 @@ export default function QRCodes({ brand }) {
       setLoading(false)
       return
     }
-    const [qrRes, prodRes, scansRes] = await Promise.all([
-      supabase.from('qr_codes').select('*, products(name, sku, gtin)').eq('brand_id', brand.id).is('event_id', null).order('created_at', { ascending: false }),
+    const [qrRes, prodRes, scansRes, channelRes] = await Promise.all([
+      supabase.from('qr_codes').select('*, products(name, sku, gtin), channels:channel_id(id, name, type)').eq('brand_id', brand.id).is('event_id', null).order('created_at', { ascending: false }),
       supabase.from('products').select('id, name, sku, gtin').eq('brand_id', brand.id).order('name'),
       supabase.from('scans').select('qr_code_id').eq('brand_id', brand.id),
+      supabase.from('channels').select('*').eq('brand_id', brand.id).order('name'),
     ])
     // Count scans per QR code
     const scanCounts = {}
@@ -59,12 +62,13 @@ export default function QRCodes({ brand }) {
     }))
     setQrCodes(qrWithCounts)
     setProducts(prodRes.data || [])
+    setChannels(channelRes.data || [])
     setLoading(false)
   }
 
   const openCreate = () => {
     setEditingQR(null)
-    setForm({ productId: '', fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoRawFile: null, existingLogoUrl: null, logoScale: 0.25, ctaText: '' })
+    setForm({ productId: '', channelId: '', fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoRawFile: null, existingLogoUrl: null, logoScale: 0.25, ctaText: '' })
     setShowModal(true)
   }
 
@@ -72,6 +76,7 @@ export default function QRCodes({ brand }) {
     setEditingQR(qr)
     setForm({
       productId: qr.product_id,
+      channelId: qr.channel_id || '',
       fgColor: qr.fg_color || '#18181B',
       bgColor: qr.bg_color || '#FFFFFF',
       logoFile: qr.logo_url || null,
@@ -135,6 +140,7 @@ export default function QRCodes({ brand }) {
       logo_url: logoUrl,
       logo_scale: form.logoScale,
       cta_text: form.ctaText || null,
+      channel_id: form.channelId || null,
     }
 
     if (editingQR) {
@@ -142,7 +148,7 @@ export default function QRCodes({ brand }) {
       const { data, error } = await supabase.from('qr_codes')
         .update({ ...qrData, product_id: form.productId })
         .eq('id', editingQR.id)
-        .select('*, products(name, sku, gtin)').single()
+        .select('*, products(name, sku, gtin), channels:channel_id(id, name, type)').single()
 
       if (error) {
         alert(`Error updating QR code: ${error.message}`)
@@ -157,7 +163,7 @@ export default function QRCodes({ brand }) {
         product_id: form.productId,
         short_id: shortId,
         ...qrData,
-      }).select('*, products(name, sku, gtin)').single()
+      }).select('*, products(name, sku, gtin), channels:channel_id(id, name, type)').single()
 
       if (error) {
         alert(`Error creating QR code: ${error.message}`)
@@ -166,7 +172,7 @@ export default function QRCodes({ brand }) {
       }
     }
 
-    setForm({ productId: '', fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoRawFile: null, existingLogoUrl: null, logoScale: 0.25, ctaText: '' })
+    setForm({ productId: '', channelId: '', fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoRawFile: null, existingLogoUrl: null, logoScale: 0.25, ctaText: '' })
     setEditingQR(null)
     setShowModal(false)
     setSaving(false)
@@ -389,6 +395,17 @@ export default function QRCodes({ brand }) {
               <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 4 }}>
                 {qr.products?.sku || ''}
               </div>
+              {qr.channels?.name && (
+                <div style={{ marginBottom: 4 }}>
+                  <span style={{
+                    display: 'inline-block', padding: '2px 8px', borderRadius: 6,
+                    fontSize: '0.75rem', fontWeight: 500,
+                    background: 'rgba(34, 197, 94, 0.1)', color: 'var(--success)',
+                  }}>
+                    {qr.channels.name}
+                  </span>
+                </div>
+              )}
               <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 12 }}>
                 {qr.scan_count} scan{qr.scan_count !== 1 ? 's' : ''} &middot; {qr.short_id}
               </div>
@@ -451,6 +468,22 @@ export default function QRCodes({ brand }) {
                           <option key={p.id} value={p.id}>{p.name} {p.sku ? `(${p.sku})` : ''}</option>
                         ))}
                       </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                        Retail Channel (optional)
+                      </label>
+                      <select className="input" value={form.channelId}
+                        onChange={e => setForm({ ...form, channelId: e.target.value })}>
+                        <option value="">No channel</option>
+                        {channels.map(ch => (
+                          <option key={ch.id} value={ch.id}>{ch.name} ({ch.type})</option>
+                        ))}
+                      </select>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 4 }}>
+                        Tag this QR with a retail channel to track where scans come from. Manage channels in Settings.
+                      </p>
                     </div>
 
                     <div>

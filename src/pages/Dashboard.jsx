@@ -14,6 +14,7 @@ import Insights from './dashboard/Insights'
 import Consumers from './dashboard/Consumers'
 import Events from './dashboard/Events'
 import Settings from './dashboard/Settings'
+import Loyalty from './dashboard/Loyalty'
 
 const navItems = [
   { path: '', label: 'Overview', icon: '◎' },
@@ -25,6 +26,7 @@ const navItems = [
   { path: 'socials', label: 'Socials', icon: '🔗' },
   { path: 'scans', label: 'Scans', icon: '📍' },
   { path: 'consumers', label: 'Consumers', icon: '👥' },
+  { path: 'loyalty', label: 'Loyalty', icon: '⭐' },
   { path: 'insights', label: 'Insights', icon: '📊' },
   { path: 'settings', label: 'Settings', icon: '⚙' },
 ]
@@ -357,6 +359,7 @@ export default function Dashboard() {
           <Route path="scans" element={<Scans brand={brand} />} />
           <Route path="vip" element={<VIPMembers brand={brand} />} />
           <Route path="consumers" element={<Consumers brand={brand} />} />
+          <Route path="loyalty" element={<Loyalty brand={brand} />} />
           <Route path="insights" element={<Insights brand={brand} />} />
           <Route path="settings" element={<Settings brand={brand} onBrandUpdate={setBrand} />} />
         </Routes>

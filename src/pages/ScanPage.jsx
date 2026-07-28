@@ -42,6 +42,12 @@ export default function ScanPage({ previewData } = {}) {
   // V2 serialization: data from lookup_serial RPC when /21/ segment is present
   const [serialData, setSerialData] = useState(null)
   const [showEventForm, setShowEventForm] = useState(false)
+  const [showLoyalty, setShowLoyalty] = useState(false)
+  const [loyaltyForm, setLoyaltyForm] = useState({ firstName: '', email: '' })
+  const [loyaltyState, setLoyaltyState] = useState(null)
+  const [loyaltyRewards, setLoyaltyRewards] = useState([])
+  const [loyaltySubmitting, setLoyaltySubmitting] = useState(false)
+  const [loyaltyRedeemed, setLoyaltyRedeemed] = useState(null)
 
   // Keep preview data in sync
   useEffect(() => {
@@ -228,6 +234,34 @@ export default function ScanPage({ previewData } = {}) {
         .limit(1)
         .maybeSingle()
       if (promoData) setActivePromo(promoData)
+    }
+
+    // Load loyalty rewards if product has loyalty enabled
+    if (qr?.products?.loyalty_enabled || product?.loyalty_enabled) {
+      const loyaltyBrandId = qr?.brand_id || brand?.id
+      if (loyaltyBrandId) {
+        const { data: rewards } = await supabase
+          .from('loyalty_rewards')
+          .select('*')
+          .eq('brand_id', loyaltyBrandId)
+          .eq('active', true)
+          .order('points_required', { ascending: true })
+        if (rewards) setLoyaltyRewards(rewards)
+      }
+
+      // Check if returning consumer
+      const savedEmail = localStorage.getItem(`loyalty_email_${qr?.brand_id}`)
+      const savedContactId = localStorage.getItem(`loyalty_contact_${qr?.brand_id}`)
+      if (savedEmail && savedContactId && qr?.brand_id) {
+        const { data: balanceData } = await supabase.rpc('get_loyalty_balance', {
+          p_contact_id: savedContactId,
+          p_brand_id: qr.brand_id,
+        })
+        if (balanceData) {
+          setLoyaltyState({ ...balanceData, returning: true })
+          setLoyaltyForm({ firstName: '', email: savedEmail })
+        }
+      }
     }
 
     // Get location, then log scan with it
@@ -534,6 +568,55 @@ export default function ScanPage({ previewData } = {}) {
     setEventSubmitted(true)
   }
 
+  const handleLoyaltySubmit = async (e) => {
+    e.preventDefault()
+    setLoyaltySubmitting(true)
+    const brandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
+    try {
+      const { data: contactId } = await supabase.rpc('get_or_create_contact', {
+        p_brand_id: brandId,
+        p_first_name: loyaltyForm.firstName,
+        p_email: loyaltyForm.email,
+        p_phone: null,
+        p_source: 'loyalty',
+        p_sms_consent: false,
+      })
+      if (contactId) {
+        const { data: result } = await supabase.rpc('award_loyalty_point', {
+          p_brand_id: brandId,
+          p_contact_id: contactId,
+          p_product_id: product?.id,
+          p_cooldown_hours: product?.loyalty_cooldown_hours || 24,
+        })
+        if (result) {
+          setLoyaltyState(result)
+          localStorage.setItem(`loyalty_email_${brandId}`, loyaltyForm.email)
+          localStorage.setItem(`loyalty_contact_${brandId}`, contactId)
+        }
+      }
+    } catch (err) {
+      console.error('Loyalty error:', err)
+    }
+    setLoyaltySubmitting(false)
+  }
+
+  const handleLoyaltyRedeem = async (reward) => {
+    const brandId = qrCode?.brand_id || brand?.id
+    const contactId = localStorage.getItem(`loyalty_contact_${brandId}`)
+    if (!contactId) return
+    const { data: result } = await supabase.rpc('redeem_loyalty_reward', {
+      p_contact_id: contactId,
+      p_brand_id: brandId,
+      p_reward_id: reward.id,
+    })
+    if (result?.success) {
+      setLoyaltyRedeemed(result)
+      setLoyaltyState(prev => ({ ...prev, balance: result.new_balance }))
+    } else if (result?.error) {
+      alert(result.error)
+    }
+  }
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -596,6 +679,19 @@ export default function ScanPage({ previewData } = {}) {
   }
   if (activePromo?.winner_name) {
     utilTiles.push({ type: 'winner', winnerName: `${activePromo.winner_name}${activePromo.winner_city ? ' \u00B7 ' + activePromo.winner_city : ''}`, sub: 'Won the last drop' })
+  }
+  if (product?.loyalty_enabled) {
+    utilTiles.push({
+      key: 'loyalty',
+      label: loyaltyState?.returning ? `${loyaltyState.balance} Points` : 'Loyalty',
+      sub: loyaltyState?.returning ? 'View rewards' : 'Earn points',
+      icon: (
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        </svg>
+      ),
+      action: () => setShowLoyalty(true),
+    })
   }
 
   // Token CSS vars matching reference
@@ -984,7 +1080,10 @@ export default function ScanPage({ previewData } = {}) {
               display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '10px 11px',
               transition: 'border-color 0.14s',
             }}>
-              <span style={{ width: 20, height: 20, marginBottom: 'auto', color: 'var(--accent)' }} dangerouslySetInnerHTML={{ __html: tile.icon }} />
+              {typeof tile.icon === 'string'
+                ? <span style={{ width: 20, height: 20, marginBottom: 'auto', color: 'var(--accent)' }} dangerouslySetInnerHTML={{ __html: tile.icon }} />
+                : <span style={{ width: 20, height: 20, marginBottom: 'auto', color: 'var(--accent)' }}>{tile.icon}</span>
+              }
               <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.15, color: 'var(--ink)' }}>
                 {tile.label}
                 <small style={{ display: 'block', fontWeight: 400, fontSize: '9.5px', color: 'var(--ink2)', marginTop: 1 }}>{tile.sub}</small>
@@ -1176,6 +1275,133 @@ export default function ScanPage({ previewData } = {}) {
                 Entry gives you 1 giveaway entry in exchange for your contact information. See our Notice of Financial Incentive in the <a href="/privacy" target="_blank" style={{ color: 'var(--ink2, rgba(255,255,255,0.36))', textDecoration: 'underline' }}>Privacy Policy</a>. You may withdraw at any time by replying STOP or emailing privacy@meetcaptura.com.
               </p>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* LOYALTY MODAL */}
+      {showLoyalty && (
+        <div onClick={() => setShowLoyalty(false)} style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: '100%', maxWidth: 480,
+            background: 'var(--tile, #18181B)', border: '1px solid var(--line, rgba(255,255,255,0.11))',
+            borderRadius: '18px 18px 0 0', padding: '24px 20px 32px',
+            animation: 'captura-slide-up 0.25s ease-out',
+            maxHeight: '85vh', overflowY: 'auto',
+          }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '0 auto 20px' }} />
+
+            {/* State A: Not identified */}
+            {!loyaltyState && (
+              <form onSubmit={handleLoyaltySubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--ink, #fff)', margin: 0, textAlign: 'center' }}>Earn Loyalty Points</h3>
+                <p style={{ color: 'var(--ink2, rgba(255,255,255,0.56))', fontSize: '0.85rem', textAlign: 'center', margin: 0 }}>Sign up to start earning points with every scan</p>
+                <input className="input" placeholder="First Name" value={loyaltyForm.firstName} onChange={e => setLoyaltyForm({ ...loyaltyForm, firstName: e.target.value })} required />
+                <input className="input" type="email" placeholder="Email" value={loyaltyForm.email} onChange={e => setLoyaltyForm({ ...loyaltyForm, email: e.target.value })} required />
+                <button type="submit" disabled={loyaltySubmitting} style={{
+                  width: '100%', padding: 14, ...btnStyle, border: 'none', borderRadius: 'var(--r, 14px)',
+                  fontWeight: 700, cursor: loyaltySubmitting ? 'wait' : 'pointer', fontSize: 14,
+                  opacity: loyaltySubmitting ? 0.6 : 1,
+                }}>
+                  {loyaltySubmitting ? 'Joining...' : 'Join & Earn Your First Point'}
+                </button>
+              </form>
+            )}
+
+            {/* State B: Identified */}
+            {loyaltyState && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                {/* Redeemed success */}
+                {loyaltyRedeemed ? (
+                  <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                    <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>
+                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.8" style={{ display: 'inline' }}>
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                      </svg>
+                    </div>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--ink, #fff)', margin: '0 0 4px' }}>
+                      {loyaltyRedeemed.reward_name || 'Reward Redeemed!'}
+                    </h3>
+                    <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent)', margin: '8px 0' }}>
+                      {loyaltyRedeemed.reward_value || 'Enjoy your reward!'}
+                    </p>
+                    <button onClick={() => { setLoyaltyRedeemed(null); setShowLoyalty(false) }} style={{
+                      marginTop: 12, padding: '14px 32px', ...btnStyle, border: 'none',
+                      borderRadius: 'var(--r, 14px)', fontWeight: 700, cursor: 'pointer', fontSize: 14,
+                    }}>Done</button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Points balance */}
+                    <div style={{ textAlign: 'center', padding: '12px 0' }}>
+                      <div style={{ fontSize: '3rem', fontWeight: 800, color: 'var(--accent)', lineHeight: 1 }}>
+                        {loyaltyState.balance}
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--ink2, rgba(255,255,255,0.56))', marginTop: 4 }}>Points</div>
+                    </div>
+
+                    {/* Point earned message */}
+                    {loyaltyState.awarded && (
+                      <div style={{
+                        textAlign: 'center', padding: '12px 16px',
+                        background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)',
+                        borderRadius: 'var(--r, 14px)',
+                      }}>
+                        <span style={{ color: '#4ade80', fontWeight: 600, fontSize: '0.9rem' }}>Point earned!</span>
+                      </div>
+                    )}
+
+                    {/* Cooldown message */}
+                    {loyaltyState.awarded === false && loyaltyState.cooldown_remaining_minutes > 0 && (
+                      <div style={{
+                        textAlign: 'center', padding: '12px 16px',
+                        background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--line, rgba(255,255,255,0.11))',
+                        borderRadius: 'var(--r, 14px)',
+                      }}>
+                        <span style={{ color: 'var(--ink2, rgba(255,255,255,0.56))', fontSize: '0.85rem' }}>
+                          Scan again in {Math.floor(loyaltyState.cooldown_remaining_minutes / 60)}h {loyaltyState.cooldown_remaining_minutes % 60}m to earn your next point
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Rewards list */}
+                    <div>
+                      <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--ink, #fff)', margin: '4px 0 10px' }}>Available Rewards</h4>
+                      {loyaltyRewards.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {loyaltyRewards.map(reward => (
+                            <div key={reward.id} style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                              padding: '12px 14px', background: 'rgba(255,255,255,0.05)',
+                              border: '1px solid var(--line, rgba(255,255,255,0.11))',
+                              borderRadius: 'var(--r, 14px)',
+                            }}>
+                              <div>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--ink, #fff)' }}>{reward.name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--ink2, rgba(255,255,255,0.56))' }}>{reward.points_required} points</div>
+                              </div>
+                              {loyaltyState.balance >= reward.points_required && (
+                                <button onClick={() => handleLoyaltyRedeem(reward)} style={{
+                                  padding: '8px 16px', ...btnStyle, border: 'none',
+                                  borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: '0.8rem',
+                                }}>Redeem</button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p style={{ color: 'var(--ink2, rgba(255,255,255,0.56))', fontSize: '0.85rem', textAlign: 'center', padding: '16px 0' }}>Rewards coming soon</p>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

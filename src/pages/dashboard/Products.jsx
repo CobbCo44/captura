@@ -5,7 +5,7 @@ export default function Products({ brand }) {
   const [products, setProducts] = useState([])
   const [view, setView] = useState('list') // 'list' or 'form'
   const [editingProduct, setEditingProduct] = useState(null)
-  const [form, setForm] = useState({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', images: [], existingImages: [] })
+  const [form, setForm] = useState({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', loyaltyEnabled: false, loyaltyCooldownHours: 24, images: [], existingImages: [] })
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -38,7 +38,7 @@ export default function Products({ brand }) {
 
   const openAdd = () => {
     setEditingProduct(null)
-    setForm({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', images: [], existingImages: [] })
+    setForm({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', loyaltyEnabled: false, loyaltyCooldownHours: 24, images: [], existingImages: [] })
     setView('form')
   }
 
@@ -56,6 +56,8 @@ export default function Products({ brand }) {
       warrantyEnabled: p.warranty_enabled || false,
       warrantyDuration: p.warranty_duration || '',
       warrantyTerms: p.warranty_terms || '',
+      loyaltyEnabled: p.loyalty_enabled || false,
+      loyaltyCooldownHours: p.loyalty_cooldown_hours || 24,
       images: [],
       existingImages: p.image_urls || [],
     })
@@ -130,6 +132,8 @@ export default function Products({ brand }) {
         warranty_enabled: form.warrantyEnabled,
         warranty_duration: form.warrantyDuration || null,
         warranty_terms: form.warrantyTerms || null,
+        loyalty_enabled: form.loyaltyEnabled,
+        loyalty_cooldown_hours: form.loyaltyCooldownHours,
         image_urls: allImageUrls,
       }
 
@@ -411,6 +415,38 @@ export default function Products({ brand }) {
                       onChange={e => setForm({ ...form, warrantyTerms: e.target.value })}
                       style={{ minHeight: 80, resize: 'vertical' }} />
                   </>
+                )}
+              </div>
+
+              {/* Loyalty Program */}
+              <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Loyalty Program</label>
+                  <div onClick={() => setForm({ ...form, loyaltyEnabled: !form.loyaltyEnabled })} style={{
+                    width: 44, height: 24, borderRadius: 12, cursor: 'pointer',
+                    background: form.loyaltyEnabled ? '#22C55E' : '#3F3F46',
+                    position: 'relative', transition: 'background 0.2s',
+                  }}>
+                    <div style={{
+                      width: 18, height: 18, borderRadius: '50%', background: 'white',
+                      position: 'absolute', top: 3,
+                      left: form.loyaltyEnabled ? 23 : 3,
+                      transition: 'left 0.2s',
+                    }} />
+                  </div>
+                </div>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: -8 }}>
+                  When enabled, consumers earn 1 point per scan. Points can be redeemed for rewards you configure in the Loyalty page.
+                </p>
+                {form.loyaltyEnabled && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                      Cooldown (hours between earning points on the same product)
+                    </label>
+                    <input className="input" type="number" min="1" placeholder="24"
+                      value={form.loyaltyCooldownHours}
+                      onChange={e => setForm({ ...form, loyaltyCooldownHours: parseInt(e.target.value) || 24 })} />
+                  </div>
                 )}
               </div>
             </div>

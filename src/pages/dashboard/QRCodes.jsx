@@ -126,7 +126,7 @@ export default function QRCodes({ brand }) {
   async function deleteChannel(channelId, channelName) {
     if (!supabase) return
     if (!window.confirm(`Delete channel "${channelName}"?`)) return
-    const { error } = await supabase.from('channels').delete().eq('id', channelId)
+    const { error } = await supabase.rpc('delete_channel', { p_channel_id: channelId })
     if (error) {
       alert('Failed to delete channel: ' + error.message)
       return
@@ -507,25 +507,14 @@ export default function QRCodes({ brand }) {
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
                         Retail Channel (optional)
                       </label>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <select className="input" style={{ flex: 1 }} value={form.channelId}
-                          onChange={e => setForm({ ...form, channelId: e.target.value })}>
-                          <option value="">No channel</option>
-                          {channels.map(ch => (
-                            <option key={ch.id} value={ch.id}>{ch.name} ({ch.type})</option>
-                          ))}
-                        </select>
-                        {form.channelId && (
-                          <button type="button" onClick={() => {
-                            const ch = channels.find(c => c.id === form.channelId)
-                            if (ch) deleteChannel(ch.id, ch.name)
-                          }} style={{
-                            background: 'none', border: 'none', color: '#ef4444',
-                            fontSize: '1rem', cursor: 'pointer', padding: '4px 6px',
-                          }}>✕</button>
-                        )}
-                      </div>
-                      <div style={{ marginTop: 6 }}>
+                      <select className="input" value={form.channelId}
+                        onChange={e => setForm({ ...form, channelId: e.target.value })}>
+                        <option value="">No channel</option>
+                        {channels.map(ch => (
+                          <option key={ch.id} value={ch.id}>{ch.name} ({ch.type})</option>
+                        ))}
+                      </select>
+                      <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
                         <button type="button" onClick={() => setShowAddChannel(!showAddChannel)}
                           style={{
                             background: 'none', border: 'none', padding: 0,
@@ -533,7 +522,37 @@ export default function QRCodes({ brand }) {
                           }}>
                           + Add Channel
                         </button>
+                        {channels.length > 0 && (
+                          <button type="button" onClick={() => setShowManageChannels(!showManageChannels)}
+                            style={{
+                              background: 'none', border: 'none', padding: 0,
+                              color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer',
+                            }}>
+                            {showManageChannels ? 'Done' : 'Remove Channel'}
+                          </button>
+                        )}
                       </div>
+                      {showManageChannels && channels.length > 0 && (
+                        <div style={{
+                          marginTop: 6, border: '1px solid var(--border)', borderRadius: 8,
+                          overflow: 'hidden',
+                        }}>
+                          {channels.map(ch => (
+                            <div key={ch.id} style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                              padding: '6px 12px', borderBottom: '1px solid var(--border)',
+                              fontSize: '0.8rem',
+                            }}>
+                              <span>{ch.name} ({ch.type})</span>
+                              <button type="button" onClick={() => deleteChannel(ch.id, ch.name)}
+                                style={{
+                                  background: 'none', border: 'none', color: '#ef4444',
+                                  fontSize: '0.85rem', cursor: 'pointer', padding: '2px 6px',
+                                }}>✕</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       {showAddChannel && (
                         <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                           <input className="input" placeholder="Channel name" style={{ flex: 1 }}

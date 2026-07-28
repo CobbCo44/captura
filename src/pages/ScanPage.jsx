@@ -1364,7 +1364,10 @@ export default function ScanPage({ previewData } = {}) {
                         borderRadius: 'var(--r, 14px)',
                       }}>
                         <span style={{ color: 'var(--ink2, rgba(255,255,255,0.56))', fontSize: '0.85rem' }}>
-                          Scan again in {Math.floor(loyaltyState.cooldown_remaining_minutes / 60)}h {loyaltyState.cooldown_remaining_minutes % 60}m to earn your next point
+                          Scan again in {loyaltyState.cooldown_remaining_minutes >= 1440
+                            ? `${Math.floor(loyaltyState.cooldown_remaining_minutes / 1440)}d ${Math.floor((loyaltyState.cooldown_remaining_minutes % 1440) / 60)}h`
+                            : `${Math.floor(loyaltyState.cooldown_remaining_minutes / 60)}h ${loyaltyState.cooldown_remaining_minutes % 60}m`
+                          } to earn your next point
                         </span>
                       </div>
                     )}

@@ -5,7 +5,7 @@ export default function Products({ brand }) {
   const [products, setProducts] = useState([])
   const [view, setView] = useState('list') // 'list' or 'form'
   const [editingProduct, setEditingProduct] = useState(null)
-  const [form, setForm] = useState({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', loyaltyEnabled: false, loyaltyCooldownHours: 24, images: [], existingImages: [] })
+  const [form, setForm] = useState({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', loyaltyEnabled: false, loyaltyCooldownDays: 1, images: [], existingImages: [] })
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [importing, setImporting] = useState(false)
@@ -38,7 +38,7 @@ export default function Products({ brand }) {
 
   const openAdd = () => {
     setEditingProduct(null)
-    setForm({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', loyaltyEnabled: false, loyaltyCooldownHours: 24, images: [], existingImages: [] })
+    setForm({ name: '', sku: '', gtin: '', description: '', contentTitle: '', contentBody: '', contentUrl: '', reorderUrl: '', warrantyEnabled: false, warrantyDuration: '', warrantyTerms: '', loyaltyEnabled: false, loyaltyCooldownDays: 1, images: [], existingImages: [] })
     setView('form')
   }
 
@@ -57,7 +57,7 @@ export default function Products({ brand }) {
       warrantyDuration: p.warranty_duration || '',
       warrantyTerms: p.warranty_terms || '',
       loyaltyEnabled: p.loyalty_enabled || false,
-      loyaltyCooldownHours: p.loyalty_cooldown_hours || 24,
+      loyaltyCooldownDays: p.loyalty_cooldown_hours ? Math.round(p.loyalty_cooldown_hours / 24) || 1 : 1,
       images: [],
       existingImages: p.image_urls || [],
     })
@@ -133,7 +133,7 @@ export default function Products({ brand }) {
         warranty_duration: form.warrantyDuration || null,
         warranty_terms: form.warrantyTerms || null,
         loyalty_enabled: form.loyaltyEnabled,
-        loyalty_cooldown_hours: form.loyaltyCooldownHours,
+        loyalty_cooldown_hours: (form.loyaltyCooldownDays || 1) * 24,
         image_urls: allImageUrls,
       }
 
@@ -441,11 +441,11 @@ export default function Products({ brand }) {
                 {form.loyaltyEnabled && (
                   <div>
                     <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
-                      Cooldown (hours between earning points on the same product)
+                      Cooldown (days between earning points on the same product)
                     </label>
-                    <input className="input" type="number" min="1" placeholder="24"
-                      value={form.loyaltyCooldownHours}
-                      onChange={e => setForm({ ...form, loyaltyCooldownHours: parseInt(e.target.value) || 24 })} />
+                    <input className="input" type="number" min="1" placeholder="1"
+                      value={form.loyaltyCooldownDays}
+                      onChange={e => setForm({ ...form, loyaltyCooldownDays: parseInt(e.target.value) || 1 })} />
                   </div>
                 )}
               </div>

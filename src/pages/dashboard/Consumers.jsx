@@ -22,17 +22,36 @@ export default function Consumers({ brand }) {
       setLoading(false)
       return
     }
-    const [vipRes, promoRes, warrantyRes, eventRes, contactsRes] = await Promise.all([
-      supabase.from('vip_members').select('*, products(name), qr_codes:qr_code_id(channel_id, channels:channel_id(name))').eq('brand_id', brand.id).order('joined_at', { ascending: false }),
-      supabase.from('promo_entries').select('*, products(name), promos(title), qr_codes:qr_code_id(channel_id, channels:channel_id(name))').eq('brand_id', brand.id).order('entered_at', { ascending: false }),
-      supabase.from('warranty_registrations').select('*, products(name), qr_codes:qr_code_id(channel_id, channels:channel_id(name))').eq('brand_id', brand.id).order('registered_at', { ascending: false }),
+    const [vipRes, promoRes, warrantyRes, eventRes, contactsRes, qrRes] = await Promise.all([
+      supabase.from('vip_members').select('*, products(name)').eq('brand_id', brand.id).order('joined_at', { ascending: false }),
+      supabase.from('promo_entries').select('*, products(name), promos(title)').eq('brand_id', brand.id).order('entered_at', { ascending: false }),
+      supabase.from('warranty_registrations').select('*, products(name)').eq('brand_id', brand.id).order('registered_at', { ascending: false }),
       supabase.from('event_entries').select('*, events(name)').eq('brand_id', brand.id).order('entered_at', { ascending: false }),
       supabase.from('contacts').select('*').eq('brand_id', brand.id).order('created_at', { ascending: false }),
+      supabase.from('qr_codes').select('id, channel_id').eq('brand_id', brand.id).not('channel_id', 'is', null),
     ])
     if (eventRes.error) console.error('Event entries query error:', eventRes.error)
-    setVipMembers(vipRes.data || [])
-    setPromoEntries(promoRes.data || [])
-    setWarrantyRegs(warrantyRes.data || [])
+
+    // Build qr_code_id -> channel name lookup
+    const qrChannelMap = {}
+    const qrCodes = qrRes.data || []
+    if (qrCodes.length > 0) {
+      const channelIds = [...new Set(qrCodes.map(q => q.channel_id).filter(Boolean))]
+      if (channelIds.length > 0) {
+        const { data: channelsData } = await supabase.from('channels').select('id, name').in('id', channelIds)
+        const channelNames = {}
+        ;(channelsData || []).forEach(ch => { channelNames[ch.id] = ch.name })
+        qrCodes.forEach(q => {
+          if (q.channel_id && channelNames[q.channel_id]) {
+            qrChannelMap[q.id] = channelNames[q.channel_id]
+          }
+        })
+      }
+    }
+
+    setVipMembers((vipRes.data || []).map(v => ({ ...v, _channel: qrChannelMap[v.qr_code_id] || null })))
+    setPromoEntries((promoRes.data || []).map(p => ({ ...p, _channel: qrChannelMap[p.qr_code_id] || null })))
+    setWarrantyRegs((warrantyRes.data || []).map(w => ({ ...w, _channel: qrChannelMap[w.qr_code_id] || null })))
     setEventEntries(eventRes.data || [])
 
     const contactsList = contactsRes.data || []
@@ -98,7 +117,7 @@ export default function Consumers({ brand }) {
         type: 'VIP',
         source: 'VIP Signup',
         date: v.joined_at,
-        channel: v.qr_codes?.channels?.name || emailToChannel[key] || '-',
+        channel: v._channel || emailToChannel[key] || '-',
         contactId: emailToContactId[key] || null,
       }
     }),
@@ -116,7 +135,7 @@ export default function Consumers({ brand }) {
         type: 'Promo',
         source: p.promos?.title || 'Promo Entry',
         date: p.entered_at,
-        channel: p.qr_codes?.channels?.name || emailToChannel[key] || '-',
+        channel: p._channel || emailToChannel[key] || '-',
         contactId: emailToContactId[key] || null,
         marketingConsent: p.marketing_consent || false,
       }
@@ -135,7 +154,7 @@ export default function Consumers({ brand }) {
         type: 'Warranty',
         source: 'Warranty Registration',
         date: w.registered_at,
-        channel: w.qr_codes?.channels?.name || emailToChannel[key] || '-',
+        channel: w._channel || emailToChannel[key] || '-',
         contactId: emailToContactId[key] || null,
       }
     }),

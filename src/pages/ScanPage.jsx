@@ -136,12 +136,15 @@ export default function ScanPage({ previewData } = {}) {
       if (serialResult && serialResult.length > 0) {
         resolvedSerialData = serialResult[0]
         setSerialData(resolvedSerialData)
-        // Serial found — now load the product and QR/brand data using the product_id
       } else {
-        // Serial not found (deleted or invalid) — show not found, don't fall through
-        setNotFound(true)
-        setLoading(false)
-        return
+        // Serial not in serials table — try as a QR code short_id
+        // (non-serialized QR codes embed the short_id in the /21/ position)
+        const { data: qrByShortId } = await supabase
+          .from('qr_codes')
+          .select('*, products(*), promos(*), events(*), brands:brand_id(id, name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
+          .eq('short_id', lookupSerial)
+          .maybeSingle()
+        if (qrByShortId) qr = qrByShortId
       }
     }
 

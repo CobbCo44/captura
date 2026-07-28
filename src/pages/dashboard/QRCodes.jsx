@@ -23,6 +23,9 @@ export default function QRCodes({ brand }) {
     logoScale: 0.25,
     ctaText: '',
   })
+  const [showAddChannel, setShowAddChannel] = useState(false)
+  const [newChannelName, setNewChannelName] = useState('')
+  const [newChannelType, setNewChannelType] = useState('retail')
 
   const scanUrl = 'https://meetcaptura.com'
 
@@ -100,6 +103,36 @@ export default function QRCodes({ brand }) {
 
   const removeLogo = () => {
     setForm({ ...form, logoFile: null, logoRawFile: null, existingLogoUrl: null })
+  }
+
+  async function addChannel() {
+    if (!supabase || !brand?.id || !newChannelName.trim()) return
+    const { data, error } = await supabase
+      .from('channels')
+      .insert({ brand_id: brand.id, name: newChannelName.trim(), type: newChannelType })
+      .select()
+      .single()
+    if (error) {
+      alert(`Error creating channel: ${error.message}`)
+      return
+    }
+    setChannels(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)))
+    setForm({ ...form, channelId: data.id })
+    setNewChannelName('')
+    setNewChannelType('retail')
+    setShowAddChannel(false)
+  }
+
+  async function deleteChannel(channelId, channelName) {
+    if (!supabase) return
+    if (!window.confirm(`Delete channel "${channelName}"?`)) return
+    const { error } = await supabase.from('channels').delete().eq('id', channelId)
+    if (error) {
+      alert('Failed to delete channel: ' + error.message)
+      return
+    }
+    setChannels(prev => prev.filter(ch => ch.id !== channelId))
+    if (form.channelId === channelId) setForm({ ...form, channelId: '' })
   }
 
   async function uploadLogo() {
@@ -474,16 +507,66 @@ export default function QRCodes({ brand }) {
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
                         Retail Channel (optional)
                       </label>
-                      <select className="input" value={form.channelId}
-                        onChange={e => setForm({ ...form, channelId: e.target.value })}>
-                        <option value="">No channel</option>
+                      <div style={{
+                        border: '1px solid var(--border)', borderRadius: 8,
+                        maxHeight: 180, overflowY: 'auto', background: 'var(--card-bg)',
+                      }}>
+                        <div style={{
+                          padding: '8px 12px', cursor: 'pointer',
+                          borderBottom: '1px solid var(--border)',
+                          background: !form.channelId ? 'var(--bg)' : 'transparent',
+                          fontSize: '0.85rem',
+                          fontWeight: !form.channelId ? 600 : 400,
+                          color: !form.channelId ? 'var(--success)' : '#FAFAFA',
+                        }} onClick={() => setForm({ ...form, channelId: '' })}>
+                          {!form.channelId && '✓ '}No channel
+                        </div>
                         {channels.map(ch => (
-                          <option key={ch.id} value={ch.id}>{ch.name} ({ch.type})</option>
+                          <div key={ch.id} style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '8px 12px', cursor: 'pointer',
+                            borderBottom: '1px solid var(--border)',
+                            background: form.channelId === ch.id ? 'var(--bg)' : 'transparent',
+                          }} onClick={() => setForm({ ...form, channelId: ch.id })}>
+                            <span style={{
+                              fontSize: '0.85rem',
+                              fontWeight: form.channelId === ch.id ? 600 : 400,
+                              color: form.channelId === ch.id ? 'var(--success)' : '#FAFAFA',
+                            }}>
+                              {form.channelId === ch.id && '✓ '}{ch.name} ({ch.type})
+                            </span>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); deleteChannel(ch.id, ch.name) }}
+                              style={{
+                                background: 'none', border: 'none', color: '#ef4444',
+                                fontSize: '0.85rem', cursor: 'pointer', padding: '2px 6px',
+                                opacity: 0.7,
+                              }}>
+                              ✕
+                            </button>
+                          </div>
                         ))}
-                      </select>
-                      <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 4 }}>
-                        Tag this QR with a retail channel to track where scans come from. Manage channels in Settings.
-                      </p>
+                        <div style={{
+                          padding: '8px 12px', cursor: 'pointer',
+                          color: 'var(--success)', fontSize: '0.85rem',
+                        }} onClick={() => setShowAddChannel(!showAddChannel)}>
+                          + Add Channel
+                        </div>
+                      </div>
+                      {showAddChannel && (
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                          <input className="input" placeholder="Channel name" style={{ flex: 1 }}
+                            value={newChannelName} onChange={e => setNewChannelName(e.target.value)} />
+                          <select className="input" style={{ width: 110 }}
+                            value={newChannelType} onChange={e => setNewChannelType(e.target.value)}>
+                            <option value="retail">Retail</option>
+                            <option value="dtc">DTC</option>
+                            <option value="distributor">Distributor</option>
+                            <option value="event">Event</option>
+                          </select>
+                          <button type="button" className="btn btn-primary" style={{ padding: '8px 14px', fontSize: '0.8rem' }}
+                            onClick={addChannel}>Add</button>
+                        </div>
+                      )}
                     </div>
 
                     <div>

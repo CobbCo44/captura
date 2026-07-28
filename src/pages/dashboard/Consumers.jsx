@@ -28,25 +28,24 @@ export default function Consumers({ brand }) {
       supabase.from('warranty_registrations').select('*, products(name)').eq('brand_id', brand.id).order('registered_at', { ascending: false }),
       supabase.from('event_entries').select('*, events(name)').eq('brand_id', brand.id).order('entered_at', { ascending: false }),
       supabase.from('contacts').select('*').eq('brand_id', brand.id).order('created_at', { ascending: false }),
-      supabase.from('qr_codes').select('id, channel_id').eq('brand_id', brand.id).not('channel_id', 'is', null),
+      supabase.from('channels').select('id, name').eq('brand_id', brand.id),
     ])
     if (eventRes.error) console.error('Event entries query error:', eventRes.error)
 
     // Build qr_code_id -> channel name lookup
     const qrChannelMap = {}
-    const qrCodes = qrRes.data || []
-    if (qrCodes.length > 0) {
-      const channelIds = [...new Set(qrCodes.map(q => q.channel_id).filter(Boolean))]
-      if (channelIds.length > 0) {
-        const { data: channelsData } = await supabase.from('channels').select('id, name').in('id', channelIds)
-        const channelNames = {}
-        ;(channelsData || []).forEach(ch => { channelNames[ch.id] = ch.name })
-        qrCodes.forEach(q => {
-          if (q.channel_id && channelNames[q.channel_id]) {
-            qrChannelMap[q.id] = channelNames[q.channel_id]
-          }
-        })
-      }
+    const channelsList = qrRes.data || []
+    const channelNames = {}
+    channelsList.forEach(ch => { channelNames[ch.id] = ch.name })
+
+    // Get all QR codes for this brand to map qr_code_id -> channel
+    const { data: allQrCodes } = await supabase.from('qr_codes').select('*').eq('brand_id', brand.id)
+    if (allQrCodes) {
+      allQrCodes.forEach(q => {
+        if (q.channel_id && channelNames[q.channel_id]) {
+          qrChannelMap[q.id] = channelNames[q.channel_id]
+        }
+      })
     }
 
     setVipMembers((vipRes.data || []).map(v => ({ ...v, _channel: qrChannelMap[v.qr_code_id] || null })))

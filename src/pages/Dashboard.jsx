@@ -77,7 +77,9 @@ export default function Dashboard() {
         allBrands = newBrand ? [newBrand] : []
       }
       setBrands(allBrands)
-      setBrand(allBrands[0] || { id: 'demo', name: 'My Brand' })
+      const savedBrandId = localStorage.getItem('captura_brand_id')
+      const savedBrand = savedBrandId && allBrands.find(b => b.id === savedBrandId)
+      setBrand(savedBrand || allBrands[0] || { id: 'demo', name: 'My Brand' })
       setLoading(false)
     }
     loadBrands()
@@ -85,6 +87,7 @@ export default function Dashboard() {
 
   const switchBrand = (b) => {
     setBrand(b)
+    localStorage.setItem('captura_brand_id', b.id)
     setSwitcherOpen(false)
   }
 

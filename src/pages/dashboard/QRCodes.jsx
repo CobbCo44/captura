@@ -507,53 +507,35 @@ export default function QRCodes({ brand }) {
                       <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
                         Retail Channel (optional)
                       </label>
-                      <div style={{
-                        border: '1px solid var(--border)', borderRadius: 8,
-                        maxHeight: 180, overflowY: 'auto', background: 'var(--card-bg)',
-                      }}>
-                        <div style={{
-                          padding: '8px 12px', cursor: 'pointer',
-                          borderBottom: '1px solid var(--border)',
-                          background: !form.channelId ? 'var(--bg)' : 'transparent',
-                          fontSize: '0.85rem',
-                          fontWeight: !form.channelId ? 600 : 400,
-                          color: !form.channelId ? 'var(--success)' : '#FAFAFA',
-                        }} onClick={() => setForm({ ...form, channelId: '' })}>
-                          {!form.channelId && '✓ '}No channel
-                        </div>
-                        {channels.map(ch => (
-                          <div key={ch.id} style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                            padding: '8px 12px', cursor: 'pointer',
-                            borderBottom: '1px solid var(--border)',
-                            background: form.channelId === ch.id ? 'var(--bg)' : 'transparent',
-                          }} onClick={() => setForm({ ...form, channelId: ch.id })}>
-                            <span style={{
-                              fontSize: '0.85rem',
-                              fontWeight: form.channelId === ch.id ? 600 : 400,
-                              color: form.channelId === ch.id ? 'var(--success)' : '#FAFAFA',
-                            }}>
-                              {form.channelId === ch.id && '✓ '}{ch.name} ({ch.type})
-                            </span>
-                            <button type="button" onClick={(e) => { e.stopPropagation(); deleteChannel(ch.id, ch.name) }}
-                              style={{
-                                background: 'none', border: 'none', color: '#ef4444',
-                                fontSize: '0.85rem', cursor: 'pointer', padding: '2px 6px',
-                                opacity: 0.7,
-                              }}>
-                              ✕
-                            </button>
-                          </div>
-                        ))}
-                        <div style={{
-                          padding: '8px 12px', cursor: 'pointer',
-                          color: 'var(--success)', fontSize: '0.85rem',
-                        }} onClick={() => setShowAddChannel(!showAddChannel)}>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <select className="input" style={{ flex: 1 }} value={form.channelId}
+                          onChange={e => setForm({ ...form, channelId: e.target.value })}>
+                          <option value="">No channel</option>
+                          {channels.map(ch => (
+                            <option key={ch.id} value={ch.id}>{ch.name} ({ch.type})</option>
+                          ))}
+                        </select>
+                        {form.channelId && (
+                          <button type="button" onClick={() => {
+                            const ch = channels.find(c => c.id === form.channelId)
+                            if (ch) deleteChannel(ch.id, ch.name)
+                          }} style={{
+                            background: 'none', border: 'none', color: '#ef4444',
+                            fontSize: '1rem', cursor: 'pointer', padding: '4px 6px',
+                          }}>✕</button>
+                        )}
+                      </div>
+                      <div style={{ marginTop: 6 }}>
+                        <button type="button" onClick={() => setShowAddChannel(!showAddChannel)}
+                          style={{
+                            background: 'none', border: 'none', padding: 0,
+                            color: 'var(--success)', fontSize: '0.8rem', cursor: 'pointer',
+                          }}>
                           + Add Channel
-                        </div>
+                        </button>
                       </div>
                       {showAddChannel && (
-                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                           <input className="input" placeholder="Channel name" style={{ flex: 1 }}
                             value={newChannelName} onChange={e => setNewChannelName(e.target.value)} />
                           <select className="input" style={{ width: 110 }}

@@ -24,6 +24,7 @@ export default function QRCodes({ brand }) {
     ctaText: '',
   })
   const [showAddChannel, setShowAddChannel] = useState(false)
+  const [showManageChannels, setShowManageChannels] = useState(false)
   const [newChannelName, setNewChannelName] = useState('')
   const [newChannelType, setNewChannelType] = useState('retail')
 

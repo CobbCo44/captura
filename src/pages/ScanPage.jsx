@@ -249,17 +249,31 @@ export default function ScanPage({ previewData } = {}) {
         if (rewards) setLoyaltyRewards(rewards)
       }
 
-      // Check if returning consumer
+      // Check if returning consumer — auto-award point for this product
       const savedEmail = localStorage.getItem(`loyalty_email_${qr?.brand_id}`)
       const savedContactId = localStorage.getItem(`loyalty_contact_${qr?.brand_id}`)
       if (savedEmail && savedContactId && qr?.brand_id) {
-        const { data: balanceData } = await supabase.rpc('get_loyalty_balance', {
-          p_contact_id: savedContactId,
-          p_brand_id: qr.brand_id,
-        })
-        if (balanceData) {
-          setLoyaltyState({ ...balanceData, returning: true })
-          setLoyaltyForm({ firstName: '', email: savedEmail })
+        const loyaltyProduct = product || qr?.products
+        if (loyaltyProduct?.loyalty_enabled) {
+          const { data: awardResult } = await supabase.rpc('award_loyalty_point', {
+            p_brand_id: qr.brand_id,
+            p_contact_id: savedContactId,
+            p_product_id: loyaltyProduct.id,
+            p_cooldown_hours: loyaltyProduct.loyalty_cooldown_hours || 24,
+          })
+          if (awardResult) {
+            setLoyaltyState({ ...awardResult, returning: true })
+            setLoyaltyForm({ firstName: '', email: savedEmail })
+          }
+        } else {
+          const { data: balanceData } = await supabase.rpc('get_loyalty_balance', {
+            p_contact_id: savedContactId,
+            p_brand_id: qr.brand_id,
+          })
+          if (balanceData) {
+            setLoyaltyState({ ...balanceData, returning: true })
+            setLoyaltyForm({ firstName: '', email: savedEmail })
+          }
         }
       }
     }

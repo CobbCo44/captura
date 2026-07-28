@@ -23,9 +23,9 @@ export default function Consumers({ brand }) {
       return
     }
     const [vipRes, promoRes, warrantyRes, eventRes, contactsRes] = await Promise.all([
-      supabase.from('vip_members').select('*, products(name)').eq('brand_id', brand.id).order('joined_at', { ascending: false }),
-      supabase.from('promo_entries').select('*, products(name), promos(title)').eq('brand_id', brand.id).order('entered_at', { ascending: false }),
-      supabase.from('warranty_registrations').select('*, products(name)').eq('brand_id', brand.id).order('registered_at', { ascending: false }),
+      supabase.from('vip_members').select('*, products(name), qr_codes:qr_code_id(channel_id, channels:channel_id(name))').eq('brand_id', brand.id).order('joined_at', { ascending: false }),
+      supabase.from('promo_entries').select('*, products(name), promos(title), qr_codes:qr_code_id(channel_id, channels:channel_id(name))').eq('brand_id', brand.id).order('entered_at', { ascending: false }),
+      supabase.from('warranty_registrations').select('*, products(name), qr_codes:qr_code_id(channel_id, channels:channel_id(name))').eq('brand_id', brand.id).order('registered_at', { ascending: false }),
       supabase.from('event_entries').select('*, events(name)').eq('brand_id', brand.id).order('entered_at', { ascending: false }),
       supabase.from('contacts').select('*').eq('brand_id', brand.id).order('created_at', { ascending: false }),
     ])
@@ -98,7 +98,7 @@ export default function Consumers({ brand }) {
         type: 'VIP',
         source: 'VIP Signup',
         date: v.joined_at,
-        channel: emailToChannel[key] || '-',
+        channel: v.qr_codes?.channels?.name || emailToChannel[key] || '-',
         contactId: emailToContactId[key] || null,
       }
     }),
@@ -116,7 +116,7 @@ export default function Consumers({ brand }) {
         type: 'Promo',
         source: p.promos?.title || 'Promo Entry',
         date: p.entered_at,
-        channel: emailToChannel[key] || '-',
+        channel: p.qr_codes?.channels?.name || emailToChannel[key] || '-',
         contactId: emailToContactId[key] || null,
         marketingConsent: p.marketing_consent || false,
       }
@@ -135,7 +135,7 @@ export default function Consumers({ brand }) {
         type: 'Warranty',
         source: 'Warranty Registration',
         date: w.registered_at,
-        channel: emailToChannel[key] || '-',
+        channel: w.qr_codes?.channels?.name || emailToChannel[key] || '-',
         contactId: emailToContactId[key] || null,
       }
     }),

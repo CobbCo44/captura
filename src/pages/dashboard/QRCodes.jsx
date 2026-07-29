@@ -3,6 +3,7 @@ import { supabase, generateShortId } from '../../lib/supabase'
 import BrandedQR from '../../components/BrandedQR'
 import generateQRCode from 'qr.js'
 import { buildGS1DigitalLink } from '../../lib/gs1'
+import { jsPDF } from 'jspdf'
 
 export default function QRCodes({ brand }) {
   const [qrCodes, setQrCodes] = useState([])
@@ -27,6 +28,10 @@ export default function QRCodes({ brand }) {
   const [showManageChannels, setShowManageChannels] = useState(false)
   const [newChannelName, setNewChannelName] = useState('')
   const [newChannelType, setNewChannelType] = useState('retail')
+  const [downloadModal, setDownloadModal] = useState(null) // { qr, format: 'png'|'svg' }
+  const [sheetSize, setSheetSize] = useState('1.5')
+  const [sheetQty, setSheetQty] = useState(20)
+  const [generating, setGenerating] = useState(false)
 
   const scanUrl = 'https://meetcaptura.com'
 
@@ -379,6 +384,145 @@ export default function QRCodes({ brand }) {
     ctx.closePath()
   }
 
+  // Render a single QR code to a canvas and return it as a data URL
+  const renderQRToCanvas = (qr, pxSize) => {
+    return new Promise((resolve) => {
+      const code = generateQRCode(buildScanUrl(qr.short_id, qr.products?.gtin))
+      if (!code) { resolve(null); return }
+      const matrix = code.modules
+      const gridSize = matrix.length
+      const modSize = pxSize / gridSize
+
+      const ctaText = qr.cta_text || ''
+      const bannerHeight = ctaText ? pxSize * 0.12 : 0
+      const totalHeight = pxSize + bannerHeight
+
+      const canvas = document.createElement('canvas')
+      canvas.width = pxSize
+      canvas.height = totalHeight
+      const ctx = canvas.getContext('2d')
+
+      ctx.fillStyle = qr.bg_color || '#FFFFFF'
+      ctx.fillRect(0, 0, pxSize, totalHeight)
+
+      ctx.fillStyle = qr.fg_color || '#18181B'
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          if (!matrix[y][x]) continue
+          ctx.fillRect(x * modSize, y * modSize, modSize, modSize)
+        }
+      }
+
+      if (ctaText) {
+        ctx.fillStyle = qr.fg_color || '#18181B'
+        ctx.fillRect(0, pxSize, pxSize, bannerHeight)
+        ctx.fillStyle = qr.bg_color || '#FFFFFF'
+        ctx.font = `bold ${bannerHeight * 0.5}px Inter, -apple-system, sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(ctaText.toUpperCase(), pxSize / 2, pxSize + bannerHeight / 2)
+      }
+
+      const finalize = () => resolve(canvas.toDataURL('image/png'))
+
+      if (qr.logo_url) {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => {
+          const logoScale = qr.logo_scale || 0.25
+          const logoSz = pxSize * logoScale
+          const logoPos = (pxSize - logoSz) / 2
+          const pad = logoSz * 0.12
+          ctx.fillStyle = qr.bg_color || '#FFFFFF'
+          roundRect(ctx, logoPos - pad, logoPos - pad, logoSz + pad * 2, logoSz + pad * 2, 12)
+          ctx.fill()
+          ctx.drawImage(img, logoPos, logoPos, logoSz, logoSz)
+          finalize()
+        }
+        img.onerror = finalize
+        img.src = qr.logo_url
+      } else {
+        finalize()
+      }
+    })
+  }
+
+  const generateSheet = async () => {
+    if (!downloadModal) return
+    setGenerating(true)
+    const { qr, format } = downloadModal
+    const sizeInches = parseFloat(sheetSize)
+    const qty = parseInt(sheetQty) || 1
+    const productName = qr.products?.name || qr.short_id
+
+    if (format === 'single-png') {
+      downloadPNG(qr.short_id, productName, qr)
+      setDownloadModal(null)
+      setGenerating(false)
+      return
+    }
+    if (format === 'single-svg') {
+      downloadSVG(qr.short_id, productName, qr)
+      setDownloadModal(null)
+      setGenerating(false)
+      return
+    }
+
+    // Generate PDF sticker sheet
+    const pageW = 8.5
+    const pageH = 11
+    const margin = 0.25
+    const gap = 0.15
+    const usableW = pageW - margin * 2
+    const usableH = pageH - margin * 2
+
+    const ctaText = qr.cta_text || ''
+    const aspectRatio = ctaText ? 1 + 0.12 : 1
+    const cellH = sizeInches * aspectRatio
+
+    const cols = Math.floor((usableW + gap) / (sizeInches + gap))
+    const rows = Math.floor((usableH + gap) / (cellH + gap))
+    const perPage = cols * rows
+    const totalPages = Math.ceil(qty / perPage)
+
+    // Render QR at high res
+    const pxSize = Math.max(600, Math.round(sizeInches * 300))
+    const qrDataUrl = await renderQRToCanvas(qr, pxSize)
+    if (!qrDataUrl) { setGenerating(false); return }
+
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'in', format: 'letter' })
+
+    let placed = 0
+    for (let page = 0; page < totalPages; page++) {
+      if (page > 0) pdf.addPage()
+
+      // Center the grid on the page
+      const gridW = cols * sizeInches + (cols - 1) * gap
+      const gridH = rows * cellH + (rows - 1) * gap
+      const offsetX = (pageW - gridW) / 2
+      const offsetY = (pageH - gridH) / 2
+
+      for (let r = 0; r < rows && placed < qty; r++) {
+        for (let c = 0; c < cols && placed < qty; c++) {
+          const x = offsetX + c * (sizeInches + gap)
+          const y = offsetY + r * (cellH + gap)
+          pdf.addImage(qrDataUrl, 'PNG', x, y, sizeInches, cellH)
+
+          // Light cut guide
+          pdf.setDrawColor(200, 200, 200)
+          pdf.setLineWidth(0.003)
+          pdf.rect(x, y, sizeInches, cellH)
+
+          placed++
+        }
+      }
+    }
+
+    pdf.save(`${productName}-qr-sheet-${sizeInches}in-x${qty}.pdf`)
+    setDownloadModal(null)
+    setGenerating(false)
+  }
+
   // Preview logo: use new file preview, existing URL, or null
   const previewLogo = form.logoRawFile ? form.logoFile : (form.existingLogoUrl || null)
 
@@ -445,11 +589,11 @@ export default function QRCodes({ brand }) {
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 <button className="btn btn-primary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}
-                  onClick={() => downloadPNG(qr.short_id, qr.products?.name, qr)}>
+                  onClick={() => setDownloadModal({ qr, format: 'png' })}>
                   PNG
                 </button>
                 <button className="btn btn-primary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}
-                  onClick={() => downloadSVG(qr.short_id, qr.products?.name, qr)}>
+                  onClick={() => setDownloadModal({ qr, format: 'svg' })}>
                   SVG
                 </button>
                 <button className="btn btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}
@@ -661,6 +805,98 @@ export default function QRCodes({ brand }) {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Download / Print Sheet Modal */}
+      {downloadModal && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60,
+          padding: 24,
+        }} onClick={() => !generating && setDownloadModal(null)}>
+          <div className="card" style={{ width: 440, maxWidth: '95vw' }}
+            onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: 6 }}>
+              Download QR Code
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 20 }}>
+              {downloadModal.qr.products?.name || 'QR Code'}
+            </p>
+
+            {/* Single download */}
+            <div style={{
+              display: 'flex', gap: 10, marginBottom: 20, paddingBottom: 20,
+              borderBottom: '1px solid var(--border)',
+            }}>
+              <button className="btn btn-secondary" style={{ flex: 1, fontSize: '0.85rem' }}
+                onClick={() => { downloadPNG(downloadModal.qr.short_id, downloadModal.qr.products?.name, downloadModal.qr); setDownloadModal(null) }}>
+                Download Single PNG
+              </button>
+              <button className="btn btn-secondary" style={{ flex: 1, fontSize: '0.85rem' }}
+                onClick={() => { downloadSVG(downloadModal.qr.short_id, downloadModal.qr.products?.name, downloadModal.qr); setDownloadModal(null) }}>
+                Download Single SVG
+              </button>
+            </div>
+
+            {/* Print sheet */}
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: 14 }}>
+              Print Sheet (PDF)
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 14 }}>
+              Generate a printable PDF with your QR codes laid out on 8.5 x 11" paper. Just print and cut.
+            </p>
+
+            <div style={{ display: 'flex', gap: 14, marginBottom: 16 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                  QR Code Size
+                </label>
+                <select className="input" value={sheetSize} onChange={e => setSheetSize(e.target.value)}>
+                  <option value="0.75">0.75" (small sticker)</option>
+                  <option value="1">1" (standard sticker)</option>
+                  <option value="1.5">1.5" (medium)</option>
+                  <option value="2">2" (large sticker)</option>
+                  <option value="3">3" (shelf tag)</option>
+                  <option value="4">4" (display)</option>
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                  Quantity
+                </label>
+                <input className="input" type="number" min="1" max="500" value={sheetQty}
+                  onChange={e => setSheetQty(e.target.value)} />
+              </div>
+            </div>
+
+            {(() => {
+              const sizeIn = parseFloat(sheetSize)
+              const ctaText = downloadModal.qr.cta_text || ''
+              const aspect = ctaText ? 1 + 0.12 : 1
+              const cellH = sizeIn * aspect
+              const cols = Math.floor((8 + 0.15) / (sizeIn + 0.15))
+              const rows = Math.floor((10.5 + 0.15) / (cellH + 0.15))
+              const perPage = cols * rows
+              const pages = Math.ceil((parseInt(sheetQty) || 1) / perPage)
+              return (
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 16 }}>
+                  {perPage} per page &middot; {pages} page{pages !== 1 ? 's' : ''} &middot; {cols} columns x {rows} rows
+                </p>
+              )
+            })()}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn btn-secondary" style={{ flex: 1 }}
+                onClick={() => setDownloadModal(null)} disabled={generating}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" style={{ flex: 1 }}
+                onClick={generateSheet} disabled={generating}>
+                {generating ? 'Generating...' : 'Generate Print Sheet'}
+              </button>
+            </div>
           </div>
         </div>
       )}

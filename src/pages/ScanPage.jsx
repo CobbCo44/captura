@@ -1182,12 +1182,35 @@ export default function ScanPage({ previewData } = {}) {
       {!isPromoOnly && product?.description && (
         <div style={{ padding: '16px 14px', borderTop: '1px solid var(--line)' }}>
           <h4 style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em', fontSize: 13, margin: '0 0 7px', color: 'var(--ink)' }}>About this product</h4>
-          <p style={{
-            color: 'var(--ink2)', fontSize: 13, margin: 0, lineHeight: 1.5, whiteSpace: 'pre-line',
-            ...(descExpanded ? {} : { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }),
-          }}>
-            {product.description}
-          </p>
+          {product.description.includes('<') ? (
+            <>
+              <div
+                className="rich-desc"
+                style={{
+                  color: 'var(--ink2)', fontSize: 13, lineHeight: 1.6,
+                  ...(descExpanded ? {} : { maxHeight: 60, overflow: 'hidden' }),
+                }}
+                dangerouslySetInnerHTML={{ __html: product.description }}
+              />
+              <style>{`
+                .rich-desc p { margin: 0 0 8px; }
+                .rich-desc h2 { font-size: 15px; font-weight: 700; margin: 14px 0 4px; color: var(--ink); }
+                .rich-desc h3 { font-size: 14px; font-weight: 600; margin: 10px 0 4px; color: var(--ink); }
+                .rich-desc ul, .rich-desc ol { padding-left: 18px; margin: 6px 0; }
+                .rich-desc li { margin: 2px 0; }
+                .rich-desc img { max-width: 100%; height: auto; border-radius: 8px; margin: 8px 0; display: block; }
+                .rich-desc a { color: var(--accent); text-decoration: underline; }
+                .rich-desc strong { color: var(--ink); font-weight: 700; }
+              `}</style>
+            </>
+          ) : (
+            <p style={{
+              color: 'var(--ink2)', fontSize: 13, margin: 0, lineHeight: 1.5, whiteSpace: 'pre-line',
+              ...(descExpanded ? {} : { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }),
+            }}>
+              {product.description}
+            </p>
+          )}
           <button onClick={() => setDescExpanded(!descExpanded)} style={{
             background: 'none', border: 'none', padding: '5px 0 0', color: 'var(--ink)',
             fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'Inter', sans-serif", textDecoration: 'underline',

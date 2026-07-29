@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import RichTextEditor from '../../components/RichTextEditor'
 
 export default function Products({ brand }) {
   const [products, setProducts] = useState([])
@@ -355,9 +356,12 @@ export default function Products({ brand }) {
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: -8 }}>
                   The product barcode number. When set, QR codes use a GS1 Digital Link URL that works at retail checkout.
                 </p>
-                <textarea className="input" placeholder="Product Description" value={form.description}
-                  onChange={e => setForm({ ...form, description: e.target.value })}
-                  style={{ minHeight: 100, resize: 'vertical' }} />
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: -8 }}>Product Description</label>
+                <RichTextEditor
+                  value={form.description}
+                  onChange={(html) => setForm({ ...form, description: html })}
+                  brandId={brand?.id}
+                />
               </div>
             </div>
 

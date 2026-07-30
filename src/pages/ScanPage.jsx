@@ -43,7 +43,7 @@ export default function ScanPage({ previewData } = {}) {
   const [serialData, setSerialData] = useState(null)
   const [showEventForm, setShowEventForm] = useState(false)
   const [showLoyalty, setShowLoyalty] = useState(false)
-  const [loyaltyForm, setLoyaltyForm] = useState({ firstName: '', lastName: '', email: '' })
+  const [loyaltyForm, setLoyaltyForm] = useState({ firstName: '', lastName: '', email: '', phone: '' })
   const [loyaltyState, setLoyaltyState] = useState(null)
   const [loyaltyRewards, setLoyaltyRewards] = useState([])
   const [loyaltySubmitting, setLoyaltySubmitting] = useState(false)
@@ -596,7 +596,7 @@ export default function ScanPage({ previewData } = {}) {
         p_first_name: loyaltyForm.firstName,
         p_last_name: loyaltyForm.lastName,
         p_email: loyaltyForm.email,
-        p_phone: null,
+        p_phone: loyaltyForm.phone || null,
         p_source: 'loyalty',
         p_sms_consent: false,
       })
@@ -618,7 +618,7 @@ export default function ScanPage({ previewData } = {}) {
           firstName: loyaltyForm.firstName,
           lastName: loyaltyForm.lastName,
           email: loyaltyForm.email,
-          phone: null,
+          phone: loyaltyForm.phone || null,
           tags: `captura, loyalty${serialData?.channel_name ? `, ${serialData.channel_name}` : ''}`,
           note: `Loyalty signup via Captura${serialData?.channel_name ? `\nChannel: ${serialData.channel_name}` : ''}`,
           product: product?.name || null,
@@ -1359,6 +1359,7 @@ export default function ScanPage({ previewData } = {}) {
                 <p style={{ color: 'var(--ink2, rgba(255,255,255,0.56))', fontSize: '0.85rem', textAlign: 'center', margin: 0 }}>Sign up to start earning points with every scan</p>
                 <input className="input" placeholder="First Name" value={loyaltyForm.firstName} onChange={e => setLoyaltyForm({ ...loyaltyForm, firstName: e.target.value })} required />
                 <input className="input" placeholder="Last Name" value={loyaltyForm.lastName} onChange={e => setLoyaltyForm({ ...loyaltyForm, lastName: e.target.value })} required />
+                <input className="input" type="tel" placeholder="Phone Number" value={loyaltyForm.phone} onChange={e => setLoyaltyForm({ ...loyaltyForm, phone: e.target.value })} required />
                 <input className="input" type="email" placeholder="Email" value={loyaltyForm.email} onChange={e => setLoyaltyForm({ ...loyaltyForm, email: e.target.value })} required />
                 <button type="submit" disabled={loyaltySubmitting} style={{
                   width: '100%', padding: 14, ...btnStyle, border: 'none', borderRadius: 'var(--r, 14px)',

@@ -43,7 +43,7 @@ export default function ScanPage({ previewData } = {}) {
   const [serialData, setSerialData] = useState(null)
   const [showEventForm, setShowEventForm] = useState(false)
   const [showLoyalty, setShowLoyalty] = useState(false)
-  const [loyaltyForm, setLoyaltyForm] = useState({ firstName: '', email: '' })
+  const [loyaltyForm, setLoyaltyForm] = useState({ firstName: '', lastName: '', email: '' })
   const [loyaltyState, setLoyaltyState] = useState(null)
   const [loyaltyRewards, setLoyaltyRewards] = useState([])
   const [loyaltySubmitting, setLoyaltySubmitting] = useState(false)
@@ -383,12 +383,13 @@ export default function ScanPage({ previewData } = {}) {
   }
 
   // V2: upsert contact via RPC and attempt serial claim (if serialized scan)
-  async function upsertContactAndClaimSerial(brandId, firstName, email, phone, source, consent) {
+  async function upsertContactAndClaimSerial(brandId, firstName, lastName, email, phone, source, consent) {
     if (!supabase || !email) return
     try {
       const { data: contactId } = await supabase.rpc('get_or_create_contact', {
         p_brand_id: brandId,
         p_first_name: firstName,
+        p_last_name: lastName || null,
         p_email: email,
         p_phone: phone || null,
         p_source: source,
@@ -425,7 +426,7 @@ export default function ScanPage({ previewData } = {}) {
         country: location?.country || null,
       }).select('id').single()
       logBillingEvent(qrCode.brand_id, vipForm.email, vipForm.phone, 'vip', inserted?.id)
-      upsertContactAndClaimSerial(qrCode.brand_id, vipForm.firstName, vipForm.email, vipForm.phone, 'vip', vipForm.consent)
+      upsertContactAndClaimSerial(qrCode.brand_id, vipForm.firstName, vipForm.lastName, vipForm.email, vipForm.phone, 'vip', vipForm.consent)
       syncToShopify({
         firstName: vipForm.firstName,
         lastName: vipForm.lastName,
@@ -477,7 +478,7 @@ export default function ScanPage({ previewData } = {}) {
         consent_text_shown: promoForm.marketingConsent ? marketingConsentText : null,
       }).select('id').single()
       logBillingEvent(brandId, promoForm.email, promoForm.phone, 'promo', inserted?.id)
-      upsertContactAndClaimSerial(brandId, promoForm.firstName, promoForm.email, promoForm.phone, 'promo', promoForm.marketingConsent)
+      upsertContactAndClaimSerial(brandId, promoForm.firstName, promoForm.lastName, promoForm.email, promoForm.phone, 'promo', promoForm.marketingConsent)
       await syncToShopify({
         firstName: promoForm.firstName,
         lastName: promoForm.lastName,
@@ -519,7 +520,7 @@ export default function ScanPage({ previewData } = {}) {
         consent: warrantyForm.consent,
       }).select('id').single()
       logBillingEvent(warBrandId, warrantyForm.email, warrantyForm.phone, 'warranty', inserted?.id)
-      upsertContactAndClaimSerial(warBrandId, warrantyForm.firstName, warrantyForm.email, warrantyForm.phone, 'warranty', warrantyForm.consent)
+      upsertContactAndClaimSerial(warBrandId, warrantyForm.firstName, warrantyForm.lastName, warrantyForm.email, warrantyForm.phone, 'warranty', warrantyForm.consent)
       await syncToShopify({
         firstName: warrantyForm.firstName,
         lastName: warrantyForm.lastName,
@@ -565,7 +566,7 @@ export default function ScanPage({ previewData } = {}) {
         consent_text_shown: eventForm.marketingConsent ? marketingConsentText : null,
       }).select('id').single()
       logBillingEvent(evtBrandId, eventForm.email, eventForm.phone, 'event', inserted?.id)
-      upsertContactAndClaimSerial(evtBrandId, eventForm.firstName, eventForm.email, eventForm.phone, 'event', eventForm.marketingConsent)
+      upsertContactAndClaimSerial(evtBrandId, eventForm.firstName, eventForm.lastName, eventForm.email, eventForm.phone, 'event', eventForm.marketingConsent)
       await syncToShopify({
         firstName: eventForm.firstName,
         lastName: eventForm.lastName,
@@ -590,6 +591,7 @@ export default function ScanPage({ previewData } = {}) {
       const { data: contactId } = await supabase.rpc('get_or_create_contact', {
         p_brand_id: brandId,
         p_first_name: loyaltyForm.firstName,
+        p_last_name: loyaltyForm.lastName,
         p_email: loyaltyForm.email,
         p_phone: null,
         p_source: 'loyalty',
@@ -1338,6 +1340,7 @@ export default function ScanPage({ previewData } = {}) {
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--ink, #fff)', margin: 0, textAlign: 'center' }}>Earn Loyalty Points</h3>
                 <p style={{ color: 'var(--ink2, rgba(255,255,255,0.56))', fontSize: '0.85rem', textAlign: 'center', margin: 0 }}>Sign up to start earning points with every scan</p>
                 <input className="input" placeholder="First Name" value={loyaltyForm.firstName} onChange={e => setLoyaltyForm({ ...loyaltyForm, firstName: e.target.value })} required />
+                <input className="input" placeholder="Last Name" value={loyaltyForm.lastName} onChange={e => setLoyaltyForm({ ...loyaltyForm, lastName: e.target.value })} required />
                 <input className="input" type="email" placeholder="Email" value={loyaltyForm.email} onChange={e => setLoyaltyForm({ ...loyaltyForm, email: e.target.value })} required />
                 <button type="submit" disabled={loyaltySubmitting} style={{
                   width: '100%', padding: 14, ...btnStyle, border: 'none', borderRadius: 'var(--r, 14px)',

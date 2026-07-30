@@ -56,7 +56,7 @@ export default function Loyalty({ brand }) {
     // Fetch contact details
     const { data: contacts } = await supabase
       .from('contacts')
-      .select('id, first_name, email, phone, created_at')
+      .select('id, first_name, last_name, email, phone, created_at')
       .in('id', contactIds)
 
     if (!contacts) {
@@ -213,7 +213,7 @@ export default function Loyalty({ brand }) {
     .filter(m => {
       if (!memberSearch) return true
       const q = memberSearch.toLowerCase()
-      return (m.first_name || '').toLowerCase().includes(q) || (m.email || '').toLowerCase().includes(q)
+      return (m.first_name || '').toLowerCase().includes(q) || (m.last_name || '').toLowerCase().includes(q) || (m.email || '').toLowerCase().includes(q)
     })
     .sort((a, b) => {
       if (memberSort === 'balance') return b.balance - a.balance
@@ -399,7 +399,7 @@ export default function Loyalty({ brand }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['Name', 'Email', 'Balance', 'Earned', 'Redeemed', 'Products', 'Last Activity'].map(h => (
+                    {['First', 'Last', 'Email', 'Balance', 'Earned', 'Redeemed', 'Products', 'Last Activity'].map(h => (
                       <th key={h} style={{
                         padding: '12px 16px', textAlign: 'left',
                         fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
@@ -419,6 +419,7 @@ export default function Loyalty({ brand }) {
                           </span>
                           {member.first_name || '—'}
                         </td>
+                        <td style={{ padding: '12px 16px', fontWeight: 500 }}>{member.last_name || '—'}</td>
                         <td style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>{member.email}</td>
                         <td style={{ padding: '12px 16px' }}>
                           <span style={{
@@ -440,7 +441,7 @@ export default function Loyalty({ brand }) {
                       </tr>
                       {expandedMember === member.id && (
                         <tr key={`${member.id}-history`} style={{ background: 'rgba(255,255,255,0.02)' }}>
-                          <td colSpan={7} style={{ padding: '0 16px 16px 44px' }}>
+                          <td colSpan={8} style={{ padding: '0 16px 16px 44px' }}>
                             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, marginTop: 8 }}>
                               Point History
                             </div>

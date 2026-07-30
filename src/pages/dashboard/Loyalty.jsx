@@ -62,8 +62,10 @@ export default function Loyalty({ brand }) {
     }
 
     // Fetch contacts and products in parallel
+    // Use .or() filter instead of .in() to avoid Supabase array serialization issues
+    const contactFilter = contactIds.map(id => `id.eq.${id}`).join(',')
     const [contactsRes, productsRes] = await Promise.all([
-      supabase.from('contacts').select('id, first_name, last_name, email, phone, created_at').in('id', contactIds),
+      supabase.from('contacts').select('id, first_name, last_name, email, phone, created_at').or(contactFilter),
       productIds.length > 0
         ? supabase.from('products').select('id, name').in('id', productIds)
         : { data: [] },

@@ -1,0 +1,759 @@
+import { useState, useEffect, useRef } from 'react'
+import { useParams } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+
+export default function StorefrontScanPage() {
+  const { brandId } = useParams()
+  const [brand, setBrand] = useState(null)
+  const [menuItems, setMenuItems] = useState([])
+  const [hours, setHours] = useState([])
+  const [promos, setPromos] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
+
+  // Loyalty state
+  const [loyaltyRewards, setLoyaltyRewards] = useState([])
+  const [loyaltyState, setLoyaltyState] = useState(null)
+  const [loyaltyForm, setLoyaltyForm] = useState({ firstName: '', lastName: '', email: '' })
+  const [loyaltySubmitting, setLoyaltySubmitting] = useState(false)
+  const [showLoyalty, setShowLoyalty] = useState(false)
+  const [loyaltyRedeemed, setLoyaltyRedeemed] = useState(null)
+
+  // Menu expanded
+  const [showMenu, setShowMenu] = useState(false)
+  const [menuCategory, setMenuCategory] = useState('all')
+
+  // Promo form
+  const [showPromo, setShowPromo] = useState(false)
+  const [promoForm, setPromoForm] = useState({ firstName: '', lastName: '', email: '', phone: '', ageConsent: false, marketingConsent: false })
+  const [promoSubmitting, setPromoSubmitting] = useState(false)
+  const [promoSubmitted, setPromoSubmitted] = useState(false)
+
+  const scanLogged = useRef(false)
+
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+  useEffect(() => {
+    loadStorefront()
+  }, [brandId])
+
+  async function loadStorefront() {
+    if (!supabase || !brandId) { setNotFound(true); setLoading(false); return }
+
+    // Load brand
+    const { data: brandData } = await supabase
+      .from('brands')
+      .select('*')
+      .eq('id', brandId)
+      .eq('business_type', 'storefront')
+      .single()
+
+    if (!brandData) { setNotFound(true); setLoading(false); return }
+    setBrand(brandData)
+
+    // Load menu, hours, promos, loyalty rewards in parallel
+    const [menuRes, hoursRes, promosRes, rewardsRes] = await Promise.all([
+      supabase.from('menu_items').select('*').eq('brand_id', brandId).eq('active', true).order('category').order('sort_order').order('name'),
+      supabase.from('store_hours').select('*').eq('brand_id', brandId).order('day_of_week'),
+      supabase.from('promos').select('*').eq('brand_id', brandId).eq('active', true).order('created_at', { ascending: false }),
+      supabase.from('loyalty_rewards').select('*').eq('brand_id', brandId).eq('active', true).order('points_required'),
+    ])
+
+    setMenuItems(menuRes.data || [])
+    setHours(hoursRes.data || [])
+    setPromos(promosRes.data || [])
+    setLoyaltyRewards(rewardsRes.data || [])
+
+    // Check for returning loyalty member
+    const savedEmail = localStorage.getItem(`loyalty_email_${brandId}`)
+    const savedContactId = localStorage.getItem(`loyalty_contact_${brandId}`)
+    if (savedEmail && savedContactId) {
+      // Award point (no cooldown for storefronts - every visit earns)
+      try {
+        const { data: result } = await supabase.rpc('award_loyalty_point', {
+          p_brand_id: brandId,
+          p_contact_id: savedContactId,
+          p_product_id: null,
+          p_cooldown_hours: 0,
+        })
+        if (result) setLoyaltyState({ ...result, returning: true })
+      } catch (err) {
+        // Fallback: just get balance
+        try {
+          const { data: bal } = await supabase.rpc('get_loyalty_balance', {
+            p_contact_id: savedContactId,
+            p_brand_id: brandId,
+          })
+          if (bal) setLoyaltyState({ ...bal, returning: true })
+        } catch (e) {}
+      }
+    }
+
+    // Log scan
+    if (!scanLogged.current) {
+      scanLogged.current = true
+      try {
+        const geo = await fetch('/.netlify/functions/geo').then(r => r.json()).catch(() => ({}))
+        await supabase.from('scans').insert({
+          brand_id: brandId,
+          latitude: geo.latitude || null,
+          longitude: geo.longitude || null,
+          city: geo.city || null,
+          region: geo.region || null,
+          country: geo.country || null,
+          device: /mobile/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+          user_agent: navigator.userAgent,
+        })
+      } catch (e) {}
+    }
+
+    setLoading(false)
+  }
+
+  const handleLoyaltySubmit = async (e) => {
+    e.preventDefault()
+    setLoyaltySubmitting(true)
+    try {
+      const { data: contactId } = await supabase.rpc('get_or_create_contact', {
+        p_brand_id: brandId,
+        p_first_name: loyaltyForm.firstName,
+        p_last_name: loyaltyForm.lastName,
+        p_email: loyaltyForm.email,
+        p_source: 'loyalty',
+      })
+      if (contactId) {
+        const { data: result } = await supabase.rpc('award_loyalty_point', {
+          p_brand_id: brandId,
+          p_contact_id: contactId,
+          p_product_id: null,
+          p_cooldown_hours: 0,
+        })
+        if (result) {
+          setLoyaltyState(result)
+          localStorage.setItem(`loyalty_email_${brandId}`, loyaltyForm.email)
+          localStorage.setItem(`loyalty_contact_${brandId}`, contactId)
+        }
+      }
+    } catch (err) {
+      console.error('Loyalty error:', err)
+    }
+    setLoyaltySubmitting(false)
+  }
+
+  const handleLoyaltyRedeem = async (reward) => {
+    const contactId = localStorage.getItem(`loyalty_contact_${brandId}`)
+    if (!contactId) return
+    try {
+      const { data } = await supabase.rpc('redeem_loyalty_reward', {
+        p_contact_id: contactId,
+        p_brand_id: brandId,
+        p_reward_id: reward.id,
+      })
+      if (data?.success) {
+        setLoyaltyRedeemed(data)
+        setLoyaltyState(prev => ({ ...prev, balance: data.new_balance }))
+      } else {
+        alert('Not enough points to redeem this reward.')
+      }
+    } catch (err) {
+      console.error('Redeem error:', err)
+    }
+  }
+
+  const handlePromoSubmit = async (e) => {
+    e.preventDefault()
+    if (!promoForm.ageConsent) return
+    setPromoSubmitting(true)
+    const activePromo = promos[0]
+    if (!activePromo) return
+
+    try {
+      // Get geo for consent logging
+      const geo = await fetch('/.netlify/functions/geo').then(r => r.json()).catch(() => ({}))
+      const consentText = `I am 18+ and agree to the ${brand?.name || 'brand'} giveaway rules. I agree to receive marketing communications from ${brand?.name || 'brand'}.`
+
+      await supabase.from('promo_entries').insert({
+        brand_id: brandId,
+        promo_id: activePromo.id,
+        first_name: promoForm.firstName,
+        last_name: promoForm.lastName,
+        email: promoForm.email,
+        phone: promoForm.phone || null,
+        latitude: geo.latitude || null,
+        longitude: geo.longitude || null,
+        city: geo.city || null,
+        region: geo.region || null,
+        country: geo.country || null,
+        marketing_consent: promoForm.marketingConsent,
+        consent_timestamp: promoForm.marketingConsent ? new Date().toISOString() : null,
+        consent_ip: geo.ip || null,
+        consent_text_shown: promoForm.marketingConsent ? consentText : null,
+        age_attestation: true,
+        age_attestation_timestamp: new Date().toISOString(),
+      })
+
+      // Upsert contact
+      await supabase.rpc('get_or_create_contact', {
+        p_brand_id: brandId,
+        p_first_name: promoForm.firstName,
+        p_last_name: promoForm.lastName,
+        p_email: promoForm.email,
+        p_phone: promoForm.phone || null,
+        p_source: 'promo',
+        p_sms_consent: false,
+      })
+
+      setPromoSubmitted(true)
+    } catch (err) {
+      console.error('Promo error:', err)
+    }
+    setPromoSubmitting(false)
+  }
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0A0A0A', color: '#fff' }}>
+        Loading...
+      </div>
+    )
+  }
+
+  if (notFound) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0A0A0A', color: '#fff', flexDirection: 'column', gap: 8 }}>
+        <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>Store not found</div>
+        <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>This QR code doesn't link to an active storefront.</div>
+      </div>
+    )
+  }
+
+  const accentBg = brand?.accent_hex || '#FFFFFF'
+  const accentInk = brand?.accent_ink_hex || '#000000'
+  const kit = { bg: '#0A0A0A', card: '#18181B' }
+  const headerFont = brand?.store_header_font || 'Inter'
+  const hasLogo = brand?.logo_dark_url || brand?.logo_url
+  const activePromo = promos[0]
+  const menuCategories = [...new Set(menuItems.map(i => i.category))].sort()
+
+  const today = new Date().getDay()
+  const todayHours = hours.find(h => h.day_of_week === today)
+
+  // Parse YouTube URL
+  const getYouTubeId = (url) => {
+    if (!url) return null
+    const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([^&?\s]+)/)
+    return match ? match[1] : null
+  }
+  const videoId = getYouTubeId(brand?.store_video_url)
+
+  const btnStyle = { background: accentBg, color: accentInk }
+
+  const t = {
+    '--accent': accentBg,
+    '--accent-ink': accentInk,
+    '--surface': kit.bg,
+    '--tile': kit.card,
+    '--ink': '#fff',
+    '--ink2': 'rgba(255,255,255,0.56)',
+    '--line': 'rgba(255,255,255,0.11)',
+    '--r': '14px',
+  }
+
+  // Socials
+  const socials = brand ? [
+    { key: 'social_instagram', label: 'Instagram', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>' },
+    { key: 'social_tiktok', label: 'TikTok', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 00-.79-.05A6.34 6.34 0 003.15 15.2a6.34 6.34 0 0010.86 4.48V13a8.28 8.28 0 005.58 2.15V11.7a4.79 4.79 0 01-3.77-1.85V6.69h3.77z"/></svg>' },
+    { key: 'social_twitter', label: 'X', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>' },
+    { key: 'social_facebook', label: 'Facebook', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>' },
+    { key: 'social_website', label: 'Website', svg: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>' },
+  ].filter(s => brand[s.key]) : []
+
+  return (
+    <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', background: kit.bg, color: '#fff', fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14, lineHeight: 1.5, ...t }}>
+      <style>{`
+        @keyframes captura-pulse{0%,100%{opacity:1}50%{opacity:.25}}
+        @keyframes captura-slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+      `}</style>
+
+      {/* Google Font for header */}
+      {!hasLogo && (
+        <link href={`https://fonts.googleapis.com/css2?family=${encodeURIComponent(headerFont)}:wght@700&display=swap`} rel="stylesheet" />
+      )}
+
+      {/* 1. BRAND BAR */}
+      <div style={{
+        background: accentBg, color: accentInk,
+        padding: hasLogo ? '0 14px' : '14px 14px',
+        display: 'flex', alignItems: 'center',
+        position: 'sticky', top: 0, zIndex: 6,
+        minHeight: 46,
+        justifyContent: brand?.logo_align === 'center' ? 'center' : brand?.logo_align === 'right' ? 'flex-end' : 'flex-start',
+      }}>
+        {hasLogo ? (
+          <img src={brand.logo_dark_url || brand.logo_url} alt={brand.name} style={{
+            height: Math.round(46 * (brand?.logo_size || 70) / 100), objectFit: 'contain',
+          }} />
+        ) : (
+          <div style={{
+            fontFamily: `"${headerFont}", sans-serif`, fontSize: '1.4rem', fontWeight: 700,
+            textAlign: brand?.logo_align === 'center' ? 'center' : 'left',
+            width: brand?.logo_align === 'center' ? '100%' : 'auto',
+          }}>
+            {brand.name}
+          </div>
+        )}
+      </div>
+
+      {/* 2. HOURS BAR */}
+      {todayHours && (
+        <div style={{
+          padding: '8px 14px', background: 'rgba(255,255,255,0.03)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          fontSize: '0.8rem',
+        }}>
+          <span style={{ color: 'rgba(255,255,255,0.5)' }}>Today</span>
+          {todayHours.closed ? (
+            <span style={{ color: '#ef4444', fontWeight: 600 }}>Closed</span>
+          ) : (
+            <span style={{ fontWeight: 600 }}>
+              {todayHours.open_time && todayHours.close_time
+                ? `${formatTime(todayHours.open_time)} - ${formatTime(todayHours.close_time)}`
+                : 'Open'}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* 3. BENTO GRID */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridAutoRows: 84, gap: 9, padding: '14px 14px 16px' }}>
+
+        {/* a) MENU / SERVICES TILE */}
+        {menuItems.length > 0 && (
+          <div onClick={() => setShowMenu(true)} style={{
+            gridColumn: 'span 4', gridRow: 'span 2',
+            background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
+            cursor: 'pointer', overflow: 'hidden', padding: 16,
+            display: 'flex', flexDirection: 'column', justifyContent: 'center',
+          }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--ink2)', marginBottom: 8 }}>
+              Menu / Services
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {menuItems.slice(0, 3).map(item => (
+                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{item.name}</span>
+                  {item.price != null && (
+                    <span style={{ fontSize: '0.85rem', color: 'var(--ink2)' }}>${parseFloat(item.price).toFixed(2)}</span>
+                  )}
+                </div>
+              ))}
+              {menuItems.length > 3 && (
+                <div style={{ fontSize: '0.75rem', color: accentBg, fontWeight: 600, marginTop: 2 }}>
+                  View all {menuItems.length} items
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* b) PROMO TILE */}
+        {activePromo && (
+          <div onClick={() => { setShowPromo(true); setPromoSubmitted(false) }} style={{
+            gridColumn: 'span 4', gridRow: 'span 2',
+            background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
+            position: 'relative', overflow: 'hidden', cursor: 'pointer',
+            display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 13,
+          }}>
+            {activePromo.image_url && (
+              <div style={{ position: 'absolute', inset: 0, backgroundImage: `url(${activePromo.image_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+            )}
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.8) 100%)' }} />
+            <div style={{ position: 'relative', zIndex: 1 }}>
+              <div style={{
+                display: 'inline-block', padding: '3px 10px', borderRadius: 20,
+                fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px',
+                ...btnStyle, marginBottom: 6,
+              }}>Enter to Win</div>
+              <div style={{ fontWeight: 700, fontSize: '1.1rem', lineHeight: 1.2 }}>{activePromo.title}</div>
+              {activePromo.description && (
+                <div style={{ fontSize: '0.8rem', color: 'var(--ink2)', marginTop: 2 }}>{activePromo.description}</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* c) VIDEO TILE */}
+        {videoId && (
+          <div style={{
+            gridColumn: 'span 4', gridRow: 'span 2',
+            background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
+            overflow: 'hidden',
+          }}>
+            <iframe
+              src={`https://www.youtube.com/embed/${videoId}`}
+              style={{ width: '100%', height: '100%', border: 'none' }}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          </div>
+        )}
+
+        {/* d) UTILITY TILES */}
+        {(() => {
+          const tiles = []
+
+          // Loyalty tile
+          if (loyaltyRewards.length > 0) {
+            tiles.push({
+              key: 'loyalty',
+              label: loyaltyState?.returning ? `${loyaltyState.balance} Points` : 'Loyalty',
+              sub: loyaltyState?.returning ? 'View rewards' : 'Earn points',
+              icon: (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                </svg>
+              ),
+              action: () => setShowLoyalty(true),
+            })
+          }
+
+          // Hours tile
+          if (hours.length > 0) {
+            tiles.push({
+              key: 'hours',
+              label: 'Hours',
+              sub: todayHours?.closed ? 'Closed today' : todayHours ? `Until ${formatTime(todayHours.close_time)}` : '',
+              icon: (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+                  <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                </svg>
+              ),
+              action: null,
+            })
+          }
+
+          // Location tile
+          if (brand?.store_address) {
+            tiles.push({
+              key: 'location',
+              label: 'Location',
+              sub: brand.store_address.length > 25 ? brand.store_address.slice(0, 25) + '...' : brand.store_address,
+              icon: (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+                </svg>
+              ),
+              action: () => window.open(`https://maps.google.com/?q=${encodeURIComponent(brand.store_address)}`, '_blank'),
+            })
+          }
+
+          // Phone tile
+          if (brand?.store_phone) {
+            tiles.push({
+              key: 'phone',
+              label: 'Call',
+              sub: brand.store_phone,
+              icon: (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
+                </svg>
+              ),
+              action: () => window.open(`tel:${brand.store_phone}`),
+            })
+          }
+
+          const span = tiles.length === 1 ? 4 : 2
+
+          return tiles.map(tile => (
+            <div key={tile.key} onClick={tile.action} style={{
+              gridColumn: `span ${span}`, gridRow: 'span 1',
+              background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
+              display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px',
+              cursor: tile.action ? 'pointer' : 'default',
+            }}>
+              {tile.icon}
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{tile.label}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--ink2)' }}>{tile.sub}</div>
+              </div>
+            </div>
+          ))
+        })()}
+      </div>
+
+      {/* 4. SOCIALS BAR */}
+      {socials.length > 0 && (
+        <div style={{
+          display: 'flex', justifyContent: 'center', gap: 16, padding: '8px 14px 20px',
+        }}>
+          {socials.map(s => (
+            <a key={s.key} href={brand[s.key]} target="_blank" rel="noopener noreferrer"
+              style={{ color: 'rgba(255,255,255,0.4)', width: 24, height: 24 }}
+              dangerouslySetInnerHTML={{ __html: s.svg }} />
+          ))}
+        </div>
+      )}
+
+      {/* 5. POWERED BY */}
+      <div style={{ textAlign: 'center', padding: '8px 0 20px', fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)' }}>
+        Powered by Captura
+      </div>
+
+      {/* ===== MODALS ===== */}
+
+      {/* MENU MODAL */}
+      {showMenu && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 40, display: 'flex', flexDirection: 'column' }}>
+          <div onClick={() => setShowMenu(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }} />
+          <div style={{
+            position: 'relative', marginTop: 'auto', maxHeight: '85vh', overflowY: 'auto',
+            background: kit.bg, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
+            animation: 'captura-slide-up 0.25s ease-out',
+          }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '0 auto 16px' }} />
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 16px', textAlign: 'center' }}>
+              Menu / Services
+            </h3>
+
+            {/* Category pills */}
+            {menuCategories.length > 1 && (
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
+                <button onClick={() => setMenuCategory('all')} style={{
+                  padding: '6px 14px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600,
+                  border: 'none', cursor: 'pointer', flexShrink: 0,
+                  background: menuCategory === 'all' ? accentBg : 'rgba(255,255,255,0.08)',
+                  color: menuCategory === 'all' ? accentInk : '#fff',
+                }}>All</button>
+                {menuCategories.map(cat => (
+                  <button key={cat} onClick={() => setMenuCategory(cat)} style={{
+                    padding: '6px 14px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600,
+                    border: 'none', cursor: 'pointer', flexShrink: 0,
+                    background: menuCategory === cat ? accentBg : 'rgba(255,255,255,0.08)',
+                    color: menuCategory === cat ? accentInk : '#fff',
+                  }}>{cat}</button>
+                ))}
+              </div>
+            )}
+
+            {/* Items */}
+            {(menuCategory === 'all' ? menuCategories : [menuCategory]).map(cat => (
+              <div key={cat} style={{ marginBottom: 20 }}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(255,255,255,0.4)', marginBottom: 10 }}>
+                  {cat}
+                </div>
+                {menuItems.filter(i => i.category === cat).map(item => (
+                  <div key={item.id} style={{
+                    display: 'flex', gap: 12, padding: '12px 0',
+                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                  }}>
+                    {item.image_url && (
+                      <img src={item.image_url} alt="" style={{
+                        width: 56, height: 56, borderRadius: 10, objectFit: 'cover', flexShrink: 0,
+                      }} />
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</span>
+                        {item.price != null && (
+                          <span style={{ fontWeight: 700, fontSize: '0.9rem', flexShrink: 0, marginLeft: 8 }}>
+                            ${parseFloat(item.price).toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                      {item.description && (
+                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)', marginTop: 2, lineHeight: 1.4 }}>
+                          {item.description}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* LOYALTY MODAL */}
+      {showLoyalty && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 40, display: 'flex', flexDirection: 'column' }}>
+          <div onClick={() => setShowLoyalty(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }} />
+          <div style={{
+            position: 'relative', marginTop: 'auto', maxHeight: '85vh', overflowY: 'auto',
+            background: kit.bg, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
+            animation: 'captura-slide-up 0.25s ease-out',
+          }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '0 auto 20px' }} />
+
+            {/* Not identified */}
+            {!loyaltyState && (
+              <form onSubmit={handleLoyaltySubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, textAlign: 'center' }}>Earn Loyalty Points</h3>
+                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem', textAlign: 'center', margin: 0 }}>
+                  Sign up to start earning points with every visit
+                </p>
+                <input className="input" placeholder="First Name" value={loyaltyForm.firstName}
+                  onChange={e => setLoyaltyForm({ ...loyaltyForm, firstName: e.target.value })} required
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: '0.9rem' }} />
+                <input className="input" placeholder="Last Name" value={loyaltyForm.lastName}
+                  onChange={e => setLoyaltyForm({ ...loyaltyForm, lastName: e.target.value })} required
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: '0.9rem' }} />
+                <input className="input" type="email" placeholder="Email" value={loyaltyForm.email}
+                  onChange={e => setLoyaltyForm({ ...loyaltyForm, email: e.target.value })} required
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: '0.9rem' }} />
+                <button type="submit" disabled={loyaltySubmitting} style={{
+                  width: '100%', padding: 14, ...btnStyle, border: 'none', borderRadius: 12,
+                  fontWeight: 700, cursor: loyaltySubmitting ? 'wait' : 'pointer', fontSize: 14,
+                  opacity: loyaltySubmitting ? 0.6 : 1,
+                }}>
+                  {loyaltySubmitting ? 'Joining...' : 'Join & Earn Your First Point'}
+                </button>
+              </form>
+            )}
+
+            {/* Identified */}
+            {loyaltyState && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {loyaltyRedeemed ? (
+                  <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8" style={{ display: 'inline' }}>
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '8px 0 4px' }}>
+                      {loyaltyRedeemed.reward_name || 'Reward Redeemed!'}
+                    </h3>
+                    <p style={{ fontSize: '1.5rem', fontWeight: 800, color: accentBg, margin: '8px 0' }}>
+                      {loyaltyRedeemed.reward_value || 'Enjoy your reward!'}
+                    </p>
+                    <button onClick={() => { setLoyaltyRedeemed(null); setShowLoyalty(false) }} style={{
+                      marginTop: 12, padding: '14px 32px', ...btnStyle, border: 'none',
+                      borderRadius: 12, fontWeight: 700, cursor: 'pointer', fontSize: 14,
+                    }}>Done</button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Balance */}
+                    <div style={{ textAlign: 'center', padding: '12px 0' }}>
+                      <div style={{ fontSize: '3rem', fontWeight: 800, color: accentBg, lineHeight: 1 }}>
+                        {loyaltyState.balance || 0}
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>Points</div>
+                      {loyaltyState.awarded && (
+                        <div style={{
+                          marginTop: 8, display: 'inline-block', padding: '4px 12px', borderRadius: 20,
+                          fontSize: '0.75rem', fontWeight: 600,
+                          background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e',
+                        }}>+1 point earned for this visit!</div>
+                      )}
+                    </div>
+
+                    {/* Rewards */}
+                    {loyaltyRewards.length > 0 && (
+                      <div>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>
+                          Available Rewards
+                        </div>
+                        {loyaltyRewards.map(reward => {
+                          const canRedeem = (loyaltyState.balance || 0) >= reward.points_required
+                          return (
+                            <div key={reward.id} style={{
+                              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                              padding: '12px 14px', borderRadius: 10, marginBottom: 8,
+                              background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)',
+                            }}>
+                              <div>
+                                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{reward.name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>
+                                  {reward.points_required} points
+                                </div>
+                              </div>
+                              <button onClick={() => handleLoyaltyRedeem(reward)} disabled={!canRedeem} style={{
+                                padding: '8px 16px', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: '0.8rem',
+                                cursor: canRedeem ? 'pointer' : 'not-allowed',
+                                background: canRedeem ? accentBg : 'rgba(255,255,255,0.06)',
+                                color: canRedeem ? accentInk : 'rgba(255,255,255,0.3)',
+                              }}>Redeem</button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* PROMO MODAL */}
+      {showPromo && activePromo && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 40, display: 'flex', flexDirection: 'column' }}>
+          <div onClick={() => setShowPromo(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }} />
+          <div style={{
+            position: 'relative', marginTop: 'auto', maxHeight: '85vh', overflowY: 'auto',
+            background: kit.bg, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
+            animation: 'captura-slide-up 0.25s ease-out',
+          }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '0 auto 20px' }} />
+
+            {promoSubmitted ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>🎉</div>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 4px' }}>You're entered!</h3>
+                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>Good luck!</p>
+                <button onClick={() => setShowPromo(false)} style={{
+                  marginTop: 16, padding: '14px 32px', ...btnStyle, border: 'none',
+                  borderRadius: 12, fontWeight: 700, cursor: 'pointer', fontSize: 14,
+                }}>Done</button>
+              </div>
+            ) : (
+              <form onSubmit={handlePromoSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, textAlign: 'center' }}>{activePromo.title}</h3>
+                {activePromo.description && (
+                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem', textAlign: 'center', margin: 0 }}>{activePromo.description}</p>
+                )}
+                {[
+                  { key: 'firstName', placeholder: 'First Name', required: true },
+                  { key: 'lastName', placeholder: 'Last Name', required: true },
+                  { key: 'email', placeholder: 'Email', type: 'email', required: true },
+                  { key: 'phone', placeholder: 'Phone (optional)' },
+                ].map(f => (
+                  <input key={f.key} className="input" type={f.type || 'text'} placeholder={f.placeholder}
+                    value={promoForm[f.key]} onChange={e => setPromoForm({ ...promoForm, [f.key]: e.target.value })}
+                    required={f.required}
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: '0.9rem' }} />
+                ))}
+                {/* TCPA Consent */}
+                <label style={{ display: 'flex', gap: 10, fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={promoForm.ageConsent} onChange={e => setPromoForm({ ...promoForm, ageConsent: e.target.checked })} required />
+                  I am 18 or older and agree to the giveaway rules.
+                </label>
+                <label style={{ display: 'flex', gap: 10, fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={promoForm.marketingConsent} onChange={e => setPromoForm({ ...promoForm, marketingConsent: e.target.checked })} />
+                  I'd like to receive marketing communications from {brand?.name || 'this business'}.
+                </label>
+                <button type="submit" disabled={promoSubmitting || !promoForm.ageConsent} style={{
+                  width: '100%', padding: 14, ...btnStyle, border: 'none', borderRadius: 12,
+                  fontWeight: 700, cursor: promoSubmitting ? 'wait' : 'pointer', fontSize: 14,
+                  opacity: promoSubmitting || !promoForm.ageConsent ? 0.6 : 1,
+                }}>
+                  {promoSubmitting ? 'Entering...' : 'Enter to Win'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function formatTime(timeStr) {
+  if (!timeStr) return ''
+  const [h, m] = timeStr.split(':').map(Number)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const hour = h % 12 || 12
+  return m === 0 ? `${hour} ${ampm}` : `${hour}:${m.toString().padStart(2, '0')} ${ampm}`
+}

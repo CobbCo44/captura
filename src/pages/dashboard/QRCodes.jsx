@@ -538,6 +538,65 @@ export default function QRCodes({ brand }) {
         <button className="btn btn-primary" onClick={openCreate}>+ Create QR Code</button>
       </div>
 
+      {/* Storefront Primary QR */}
+      {brand?.business_type === 'storefront' && (
+        <div className="card" style={{ marginBottom: 28, display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{
+            background: '#0A0A10', borderRadius: 12, padding: 20,
+            display: 'flex', justifyContent: 'center', flexShrink: 0,
+          }}>
+            <BrandedQR
+              url={`${scanUrl}/store/${brand.id}`}
+              fgColor={brand.accent_hex === '#FFFFFF' ? '#18181B' : (brand.accent_hex || '#18181B')}
+              bgColor="#FFFFFF"
+              logo={brand.logo_url || null}
+              logoScale={0.25}
+              size={140}
+            />
+          </div>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 6 }}>
+              Your Store QR Code
+            </div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 4 }}>{brand.name}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 12, wordBreak: 'break-all' }}>
+              {scanUrl}/store/{brand.id}
+            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.5 }}>
+              This is your main QR code. Put it on your counter, table tents, window, or register. Customers scan it to see your menu, join loyalty, and enter promos.
+            </p>
+            <button className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+              onClick={() => {
+                const code = generateQRCode(`${scanUrl}/store/${brand.id}`)
+                if (!code) return
+                const matrix = code.modules
+                const gridSize = matrix.length
+                const hiResSize = 1000
+                const modSize = hiResSize / gridSize
+                const hiRes = document.createElement('canvas')
+                hiRes.width = hiResSize
+                hiRes.height = hiResSize
+                const ctx = hiRes.getContext('2d')
+                ctx.fillStyle = '#FFFFFF'
+                ctx.fillRect(0, 0, hiResSize, hiResSize)
+                ctx.fillStyle = brand.accent_hex === '#FFFFFF' ? '#18181B' : (brand.accent_hex || '#18181B')
+                for (let y = 0; y < gridSize; y++) {
+                  for (let x = 0; x < gridSize; x++) {
+                    if (!matrix[y][x]) continue
+                    ctx.fillRect(x * modSize, y * modSize, modSize, modSize)
+                  }
+                }
+                const link = document.createElement('a')
+                link.download = `${brand.name.replace(/\s+/g, '-')}-store-qr.png`
+                link.href = hiRes.toDataURL('image/png')
+                link.click()
+              }}>
+              Download PNG
+            </button>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>Loading...</div>
       ) : qrCodes.length === 0 ? (

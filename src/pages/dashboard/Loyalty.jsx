@@ -38,72 +38,70 @@ export default function Loyalty({ brand }) {
       return
     }
 
-    // Get all loyalty points (no joins - they can fail silently)
-    const { data: points, error: pointsErr } = await supabase
-      .from('loyalty_points')
-      .select('contact_id, points, type, created_at, product_id, reward_id')
-      .eq('brand_id', brand.id)
+    try {
+      // Step 1: Get loyalty points
+      const { data: points, error: pointsErr } = await supabase
+        .from('loyalty_points')
+        .select('contact_id, points, type, created_at, product_id, reward_id')
+        .eq('brand_id', brand.id)
 
-    if (pointsErr) console.error('Loyalty points load error:', pointsErr)
-    if (!points || points.length === 0) {
-      setMembers([])
-      setMembersLoading(false)
-      return
+      if (pointsErr) { console.error('Points error:', pointsErr); setMembersLoading(false); return }
+      if (!points || points.length === 0) { setMembers([]); setMembersLoading(false); return }
+
+      // Step 2: Get contacts - use the exact same query pattern as Consumers page
+      const { data: allContacts, error: contactsErr } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('brand_id', brand.id)
+        .order('created_at', { ascending: false })
+
+      console.log('Points:', points.length, 'Contacts:', allContacts?.length, 'Contact err:', contactsErr)
+
+      if (contactsErr || !allContacts) { console.error('Contacts error:', contactsErr); setMembers([]); setMembersLoading(false); return }
+
+      // Step 3: Get products for name lookup
+      const { data: allProducts } = await supabase
+        .from('products')
+        .select('id, name')
+        .eq('brand_id', brand.id)
+
+      const productMap = {}
+      ;(allProducts || []).forEach(p => { productMap[p.id] = p.name })
+
+      // Step 4: Match contacts to loyalty points
+      const contactIdsWithPoints = new Set(points.map(p => p.contact_id).filter(Boolean))
+      const contacts = allContacts.filter(c => contactIdsWithPoints.has(c.id))
+
+      console.log('Contact IDs with points:', [...contactIdsWithPoints])
+      console.log('All contact IDs:', allContacts.map(c => c.id))
+      console.log('Matched:', contacts.length)
+
+      // Build member objects
+      const memberMap = contacts.map(contact => {
+        const contactPoints = points.filter(p => p.contact_id === contact.id)
+        const earned = contactPoints.filter(p => p.type === 'earned').reduce((sum, p) => sum + (p.points || 0), 0)
+        const redeemed = contactPoints.filter(p => p.type === 'redeemed').reduce((sum, p) => sum + Math.abs(p.points || 0), 0)
+        const lastActivity = contactPoints.reduce((latest, p) => {
+          const d = new Date(p.created_at)
+          return d > latest ? d : latest
+        }, new Date(0))
+        const productsScanned = [...new Set(contactPoints.filter(p => p.type === 'earned' && p.product_id).map(p => productMap[p.product_id]).filter(Boolean))]
+
+        return {
+          ...contact,
+          totalEarned: earned,
+          totalRedeemed: redeemed,
+          balance: earned - redeemed,
+          lastActivity,
+          productsScanned,
+          history: contactPoints.map(p => ({ ...p, products: p.product_id ? { name: productMap[p.product_id] } : null })),
+        }
+      })
+
+      setMembers(memberMap)
+    } catch (err) {
+      console.error('loadMembers error:', err)
     }
-
-    // Get unique product IDs for name lookup
-    const productIds = [...new Set(points.map(p => p.product_id).filter(Boolean))]
-
-    // Fetch ALL contacts for this brand and products in parallel
-    const [contactsRes, productsRes] = await Promise.all([
-      supabase.from('contacts').select('id, first_name, last_name, email, phone, created_at').eq('brand_id', brand.id),
-      productIds.length > 0
-        ? supabase.from('products').select('id, name').eq('brand_id', brand.id)
-        : { data: [] },
-    ])
-
-    if (contactsRes.error) console.error('Contacts load error:', contactsRes.error)
-    const allContacts = contactsRes.data || []
-    const productMap = {}
-    ;(productsRes.data || []).forEach(p => { productMap[p.id] = p.name })
-
-    // Filter to only contacts that have loyalty points
-    const contactIdsWithPoints = new Set(points.map(p => p.contact_id).filter(Boolean))
-    const contacts = allContacts.filter(c => contactIdsWithPoints.has(c.id))
-
-    console.log('DEBUG loyalty_points contact_ids:', [...contactIdsWithPoints])
-    console.log('DEBUG all contacts ids:', allContacts.map(c => c.id))
-    console.log('DEBUG matched contacts:', contacts.length)
-
-    if (contacts.length === 0) {
-      setMembers([])
-      setMembersLoading(false)
-      return
-    }
-
-    // Build member objects
-    const memberMap = contacts.map(contact => {
-      const contactPoints = points.filter(p => p.contact_id === contact.id)
-      const earned = contactPoints.filter(p => p.type === 'earned').reduce((sum, p) => sum + (p.points || 0), 0)
-      const redeemed = contactPoints.filter(p => p.type === 'redeemed').reduce((sum, p) => sum + Math.abs(p.points || 0), 0)
-      const lastActivity = contactPoints.reduce((latest, p) => {
-        const d = new Date(p.created_at)
-        return d > latest ? d : latest
-      }, new Date(0))
-      const productsScanned = [...new Set(contactPoints.filter(p => p.type === 'earned' && p.product_id).map(p => productMap[p.product_id]).filter(Boolean))]
-
-      return {
-        ...contact,
-        totalEarned: earned,
-        totalRedeemed: redeemed,
-        balance: earned - redeemed,
-        lastActivity,
-        productsScanned,
-        history: contactPoints.map(p => ({ ...p, products: p.product_id ? { name: productMap[p.product_id] } : null })),
-      }
-    })
-
-    setMembers(memberMap)
     setMembersLoading(false)
   }
 

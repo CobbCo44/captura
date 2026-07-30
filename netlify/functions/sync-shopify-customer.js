@@ -143,6 +143,18 @@ export default async (req) => {
           type: 'single_line_text_field',
           namespace: 'captura',
         },
+        customer.serial && {
+          key: 'serial_number',
+          value: customer.serial,
+          type: 'single_line_text_field',
+          namespace: 'captura',
+        },
+        customer.gtin && {
+          key: 'gtin',
+          value: customer.gtin,
+          type: 'single_line_text_field',
+          namespace: 'captura',
+        },
         customer.source && {
           key: 'source',
           value: customer.source,
@@ -185,7 +197,8 @@ export default async (req) => {
         }
       }
 
-      // Don't send metafields on update (Shopify requires different endpoint for that)
+      // Save metafields before removing from update payload
+      const metafieldsToSet = customerData.metafields || []
       delete customerData.metafields
 
       response = await fetch(
@@ -199,6 +212,23 @@ export default async (req) => {
           body: JSON.stringify({ customer: customerData }),
         }
       )
+
+      // Write metafields individually for existing customers
+      if (response.ok && metafieldsToSet.length > 0) {
+        for (const mf of metafieldsToSet) {
+          await fetch(
+            `https://${store}.myshopify.com/admin/api/2025-10/customers/${existingCustomerId}/metafields.json`,
+            {
+              method: 'POST',
+              headers: {
+                'X-Shopify-Access-Token': shopifyToken,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ metafield: { ...mf, owner_id: existingCustomerId, owner_resource: 'customer' } }),
+            }
+          ).catch(err => console.error('Metafield write error:', mf.key, err))
+        }
+      }
     } else {
       // Create new customer
       response = await fetch(

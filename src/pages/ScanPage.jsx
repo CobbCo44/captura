@@ -436,6 +436,7 @@ export default function ScanPage({ previewData } = {}) {
         note: `VIP signup via Captura QR scan${serialData?.channel_name ? `\nChannel: ${serialData.channel_name}` : ''}`,
         product: product?.name || null,
         serial: lookupSerial || null,
+        gtin: product?.gtin || lookupGtin || null,
         source: 'VIP Signup',
         city: location?.city ? `${location.city}, ${location.region}` : null,
       })
@@ -488,6 +489,7 @@ export default function ScanPage({ previewData } = {}) {
         note: `Promo entry via Captura - ${activePromo.title}${serialData?.channel_name ? `\nChannel: ${serialData.channel_name}` : ''}`,
         product: product?.name || null,
         serial: lookupSerial || null,
+        gtin: product?.gtin || lookupGtin || null,
         source: 'Promo Entry',
         city: loc?.city ? `${loc.city}, ${loc.region}` : null,
       })
@@ -530,6 +532,7 @@ export default function ScanPage({ previewData } = {}) {
         note: `Warranty registration via Captura${serialData?.channel_name ? `\nChannel: ${serialData.channel_name}` : ''}`,
         product: product?.name || null,
         serial: lookupSerial || null,
+        gtin: product?.gtin || lookupGtin || null,
         source: 'Warranty Registration',
         city: loc?.city ? `${loc.city}, ${loc.region}` : null,
       })

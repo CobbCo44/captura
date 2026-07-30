@@ -51,33 +51,27 @@ export default function Loyalty({ brand }) {
       return
     }
 
-    // Get unique contact IDs and product IDs
-    const contactIds = [...new Set(points.map(p => p.contact_id).filter(Boolean))]
+    // Get unique product IDs for name lookup
     const productIds = [...new Set(points.map(p => p.product_id).filter(Boolean))]
 
-    if (contactIds.length === 0) {
-      setMembers([])
-      setMembersLoading(false)
-      return
-    }
-
-    // Fetch contacts and products in parallel
-    // Use .or() filter instead of .in() to avoid Supabase array serialization issues
-    const contactFilter = contactIds.map(id => `id.eq.${id}`).join(',')
+    // Fetch ALL contacts for this brand and products in parallel
     const [contactsRes, productsRes] = await Promise.all([
-      supabase.from('contacts').select('id, first_name, last_name, email, phone, created_at').or(contactFilter),
+      supabase.from('contacts').select('id, first_name, last_name, email, phone, created_at').eq('brand_id', brand.id),
       productIds.length > 0
-        ? supabase.from('products').select('id, name').in('id', productIds)
+        ? supabase.from('products').select('id, name').eq('brand_id', brand.id)
         : { data: [] },
     ])
 
     if (contactsRes.error) console.error('Contacts load error:', contactsRes.error)
-    const contacts = contactsRes.data || []
+    const allContacts = contactsRes.data || []
     const productMap = {}
     ;(productsRes.data || []).forEach(p => { productMap[p.id] = p.name })
 
+    // Filter to only contacts that have loyalty points
+    const contactIdsWithPoints = new Set(points.map(p => p.contact_id).filter(Boolean))
+    const contacts = allContacts.filter(c => contactIdsWithPoints.has(c.id))
+
     if (contacts.length === 0) {
-      console.error('No contacts found for IDs:', contactIds)
       setMembers([])
       setMembersLoading(false)
       return

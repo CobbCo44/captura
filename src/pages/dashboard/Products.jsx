@@ -1,6 +1,115 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import RichTextEditor from '../../components/RichTextEditor'
+import { exportBatchCSV } from '../../lib/exportBatchCSV'
+import { buildGS1DigitalLink } from '../../lib/gs1'
+import generateQRCode from 'qr.js'
+import BrandedQR from '../../components/BrandedQR'
+import JSZip from 'jszip'
+import { jsPDF } from 'jspdf'
+
+const SCAN_DOMAIN = import.meta.env.VITE_SCAN_DOMAIN || 'https://www.meetcaptura.com'
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.lineTo(x + w - r, y)
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r)
+  ctx.lineTo(x + w, y + h - r)
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h)
+  ctx.lineTo(x + r, y + h)
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r)
+  ctx.lineTo(x, y + r)
+  ctx.quadraticCurveTo(x, y, x + r, y)
+  ctx.closePath()
+}
+
+function renderQRToCanvas(url, fgColor, bgColor, logoDataUrl, logoScale, ctaText, size = 1000) {
+  return new Promise((resolve) => {
+    const code = generateQRCode(url)
+    if (!code) { resolve(null); return }
+    const matrix = code.modules
+    const gridSize = matrix.length
+    const modSize = size / gridSize
+
+    const bannerHeight = ctaText ? size * 0.12 : 0
+    const totalHeight = size + bannerHeight
+
+    const canvas = document.createElement('canvas')
+    canvas.width = size
+    canvas.height = totalHeight
+    const ctx = canvas.getContext('2d')
+
+    ctx.fillStyle = bgColor
+    ctx.fillRect(0, 0, size, totalHeight)
+
+    ctx.fillStyle = fgColor
+    for (let y = 0; y < gridSize; y++) {
+      for (let x = 0; x < gridSize; x++) {
+        if (!matrix[y][x]) continue
+        ctx.fillRect(x * modSize, y * modSize, modSize, modSize)
+      }
+    }
+
+    if (ctaText) {
+      ctx.fillStyle = fgColor
+      ctx.fillRect(0, size, size, bannerHeight)
+      ctx.fillStyle = bgColor
+      ctx.font = `bold ${bannerHeight * 0.5}px Inter, -apple-system, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(ctaText.toUpperCase(), size / 2, size + bannerHeight / 2)
+    }
+
+    if (logoDataUrl) {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => {
+        const logoSize = size * logoScale
+        const logoPos = (size - logoSize) / 2
+        const padding = logoSize * 0.12
+        ctx.fillStyle = bgColor
+        roundRect(ctx, logoPos - padding, logoPos - padding,
+          logoSize + padding * 2, logoSize + padding * 2, 12)
+        ctx.fill()
+        ctx.drawImage(img, logoPos, logoPos, logoSize, logoSize)
+        resolve(canvas)
+      }
+      img.onerror = () => resolve(canvas)
+      img.src = logoDataUrl
+    } else {
+      resolve(canvas)
+    }
+  })
+}
+
+async function fetchAllSerials(batchId) {
+  if (!supabase) return []
+  const allSerials = []
+  const pageSize = 1000
+  let from = 0
+  while (true) {
+    const { data, error } = await supabase
+      .from('serials')
+      .select('serial, created_at')
+      .eq('batch_id', batchId)
+      .order('created_at', { ascending: true })
+      .range(from, from + pageSize - 1)
+    if (error) { alert('Error loading serials.'); return [] }
+    allSerials.push(...data)
+    if (data.length < pageSize) break
+    from += pageSize
+  }
+  return allSerials
+}
+
+function csvEscape(value) {
+  const str = String(value ?? '')
+  if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+    return '"' + str.replace(/"/g, '""') + '"'
+  }
+  return str
+}
 
 export default function Products({ brand }) {
   const [products, setProducts] = useState([])
@@ -17,6 +126,19 @@ export default function Products({ brand }) {
   const [pickerSearch, setPickerSearch] = useState('')
   const [pickerLoading, setPickerLoading] = useState(false)
 
+  // Serialization state
+  const [showBatchForm, setShowBatchForm] = useState(false)
+  const [batches, setBatches] = useState([])
+  const [batchesLoading, setBatchesLoading] = useState(false)
+  const [batchGenerating, setBatchGenerating] = useState(false)
+  const [channels, setChannels] = useState([])
+  const [batchForm, setBatchForm] = useState({ quantity: '', channelId: '', newChannelName: '', newChannelType: 'retail', poReference: '', notes: '' })
+  const [claimedCounts, setClaimedCounts] = useState({})
+
+  // QR download modal state
+  const [qrModal, setQrModal] = useState(null)
+  const [qrStyle, setQrStyle] = useState({ fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoScale: 0.25, ctaText: '' })
+  const [downloadProgress, setDownloadProgress] = useState(null)
 
   useEffect(() => {
     loadProducts()
@@ -63,6 +185,15 @@ export default function Products({ brand }) {
       existingImages: p.image_urls || [],
     })
     setView('form')
+    // Load serialization data if product has a GTIN
+    if (p.gtin) {
+      loadChannels()
+      loadBatches(p.id)
+    } else {
+      setBatches([])
+      setClaimedCounts({})
+    }
+    setShowBatchForm(false)
   }
 
   const goBack = () => {
@@ -274,6 +405,249 @@ export default function Products({ brand }) {
     return null
   }
 
+  // ========== SERIALIZATION HELPERS ==========
+
+  async function loadChannels() {
+    if (!supabase || !brand?.id || brand.id === 'demo') return
+    const { data } = await supabase
+      .from('channels')
+      .select('*')
+      .eq('brand_id', brand.id)
+      .order('name')
+    setChannels(data || [])
+  }
+
+  async function deleteChannel(channelId, channelName) {
+    if (!supabase) return
+    if (!window.confirm(`Delete channel "${channelName}" and all its batches? This cannot be undone.`)) return
+    const { error } = await supabase.rpc('delete_channel', { p_channel_id: channelId })
+    if (error) {
+      alert('Failed to delete channel: ' + error.message)
+      return
+    }
+    if (batchForm.channelId === channelId) setBatchForm(f => ({ ...f, channelId: '' }))
+    loadChannels()
+    if (editingProduct) loadBatches(editingProduct.id)
+  }
+
+  async function loadBatches(productId) {
+    if (!supabase || !brand?.id || brand.id === 'demo' || !productId) return
+    setBatchesLoading(true)
+    const { data } = await supabase
+      .from('batches')
+      .select('*, channels:channel_id(name)')
+      .eq('product_id', productId)
+      .order('created_at', { ascending: false })
+    setBatches(data || [])
+
+    // Load claimed counts for each batch
+    if (data && data.length > 0) {
+      const batchIds = data.map(b => b.id)
+      const { data: serials } = await supabase
+        .from('serials')
+        .select('batch_id, status')
+        .in('batch_id', batchIds)
+      if (serials) {
+        const counts = {}
+        serials.forEach(s => {
+          if (!counts[s.batch_id]) counts[s.batch_id] = { total: 0, claimed: 0 }
+          counts[s.batch_id].total++
+          if (s.status === 'claimed') counts[s.batch_id].claimed++
+        })
+        setClaimedCounts(counts)
+      }
+    }
+    setBatchesLoading(false)
+  }
+
+  async function deleteBatch(batchId, productId) {
+    if (!supabase) return
+    if (!window.confirm('Delete this batch and all its serial codes? This cannot be undone.')) return
+    const { error } = await supabase.rpc('delete_batch', { p_batch_id: batchId })
+    if (error) {
+      console.error('Delete batch error:', error)
+      alert('Failed to delete batch: ' + error.message)
+    }
+    loadBatches(productId)
+  }
+
+  async function handleGenerateBatch(productId) {
+    if (!supabase || !brand?.id || brand.id === 'demo') return
+    const qty = parseInt(batchForm.quantity, 10)
+    if (!qty || qty < 1 || qty > 10000) {
+      alert('Quantity must be between 1 and 10,000.')
+      return
+    }
+
+    let channelId = batchForm.channelId
+    if (channelId === '__new__') {
+      if (!batchForm.newChannelName.trim()) {
+        alert('Please enter a channel name.')
+        return
+      }
+      const { data: newChannel, error: chErr } = await supabase
+        .from('channels')
+        .insert({ brand_id: brand.id, name: batchForm.newChannelName.trim(), type: batchForm.newChannelType })
+        .select()
+        .single()
+      if (chErr) {
+        alert(`Error creating channel: ${chErr.message}`)
+        return
+      }
+      channelId = newChannel.id
+      setChannels(prev => [...prev, newChannel].sort((a, b) => a.name.localeCompare(b.name)))
+    }
+
+    if (!channelId) {
+      alert('Please select a channel.')
+      return
+    }
+
+    setBatchGenerating(true)
+    const { data, error } = await supabase.rpc('generate_batch', {
+      p_product_id: productId,
+      p_channel_id: channelId,
+      p_quantity: qty,
+      p_po_reference: batchForm.poReference || null,
+      p_notes: batchForm.notes || null,
+    })
+    if (error) {
+      alert(`Error generating batch: ${error.message}`)
+    } else {
+      setBatchForm({ quantity: '', channelId: '', newChannelName: '', newChannelType: 'retail', poReference: '', notes: '' })
+      setShowBatchForm(false)
+      loadBatches(productId)
+    }
+    setBatchGenerating(false)
+  }
+
+  // ========== QR DOWNLOAD HELPERS ==========
+
+  function openQrModal(batch) {
+    setQrStyle({ fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoScale: 0.25, ctaText: '' })
+    setDownloadProgress(null)
+    setQrModal(batch)
+  }
+
+  function handleQrLogoUpload(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setQrStyle(prev => ({ ...prev, logoFile: ev.target.result }))
+    }
+    reader.readAsDataURL(file)
+  }
+
+  async function handleDownloadZip() {
+    if (!qrModal || !editingProduct) return
+    const gtin = editingProduct.gtin
+    if (!gtin) return
+
+    setDownloadProgress({ current: 0, total: 0, type: 'zip' })
+
+    const serials = await fetchAllSerials(qrModal.id)
+    if (!serials.length) { setDownloadProgress(null); return }
+
+    setDownloadProgress({ current: 0, total: serials.length, type: 'zip' })
+
+    const zip = new JSZip()
+    const imgFolder = zip.folder('qr-codes')
+
+    for (let i = 0; i < serials.length; i++) {
+      const s = serials[i]
+      const url = buildGS1DigitalLink(SCAN_DOMAIN, gtin, { serial: s.serial })
+      const canvas = await renderQRToCanvas(
+        url, qrStyle.fgColor, qrStyle.bgColor,
+        qrStyle.logoFile, qrStyle.logoScale, qrStyle.ctaText
+      )
+      if (canvas) {
+        const dataUrl = canvas.toDataURL('image/png')
+        const base64 = dataUrl.split(',')[1]
+        imgFolder.file(`${s.serial}.png`, base64, { base64: true })
+      }
+      setDownloadProgress({ current: i + 1, total: serials.length, type: 'zip' })
+    }
+
+    // Add CSV to the zip
+    const productName = editingProduct.name || ''
+    const channelName = qrModal.channels?.name || ''
+    const poRef = qrModal.po_reference || ''
+    const csvHeader = 'serial,url,product_name,gtin,batch_id,channel_name,po_reference,created_at'
+    const csvRows = serials.map(s => {
+      const g14 = gtin.replace(/\D/g, '').padStart(14, '0')
+      const url = `${SCAN_DOMAIN}/01/${g14}/21/${encodeURIComponent(s.serial)}`
+      return [csvEscape(s.serial), csvEscape(url), csvEscape(productName), csvEscape(gtin),
+        csvEscape(qrModal.id), csvEscape(channelName), csvEscape(poRef), csvEscape(s.created_at)].join(',')
+    })
+    zip.file('serials.csv', [csvHeader, ...csvRows].join('\n'))
+
+    const blob = await zip.generateAsync({ type: 'blob' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `batch-${qrModal.id.slice(0, 8)}-${serials.length}-qr-codes.zip`
+    link.click()
+    URL.revokeObjectURL(link.href)
+    setDownloadProgress(null)
+  }
+
+  async function handleDownloadPdf() {
+    if (!qrModal || !editingProduct) return
+    const gtin = editingProduct.gtin
+    if (!gtin) return
+
+    setDownloadProgress({ current: 0, total: 0, type: 'pdf' })
+
+    const serials = await fetchAllSerials(qrModal.id)
+    if (!serials.length) { setDownloadProgress(null); return }
+
+    setDownloadProgress({ current: 0, total: serials.length, type: 'pdf' })
+
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'in', format: 'letter' })
+    const pageW = 8.5, pageH = 11
+    const cols = 4, rows = 5
+    const perPage = cols * rows
+    const marginX = 0.5, marginY = 0.5
+    const cellW = (pageW - marginX * 2) / cols
+    const cellH = (pageH - marginY * 2) / rows
+    const qrSize = Math.min(cellW, cellH) * 0.72
+
+    for (let i = 0; i < serials.length; i++) {
+      const pageIndex = Math.floor(i / perPage)
+      const posOnPage = i % perPage
+      if (posOnPage === 0 && pageIndex > 0) pdf.addPage()
+
+      const col = posOnPage % cols
+      const row = Math.floor(posOnPage / cols)
+      const cx = marginX + col * cellW + cellW / 2
+      const cy = marginY + row * cellH
+
+      const s = serials[i]
+      const url = buildGS1DigitalLink(SCAN_DOMAIN, gtin, { serial: s.serial })
+      const canvas = await renderQRToCanvas(
+        url, qrStyle.fgColor, qrStyle.bgColor,
+        qrStyle.logoFile, qrStyle.logoScale, qrStyle.ctaText, 400
+      )
+
+      if (canvas) {
+        const dataUrl = canvas.toDataURL('image/png')
+        const imgX = cx - qrSize / 2
+        const imgY = cy + 0.08
+        const aspectRatio = canvas.height / canvas.width
+        const imgH = qrSize * aspectRatio
+        pdf.addImage(dataUrl, 'PNG', imgX, imgY, qrSize, imgH)
+        pdf.setFontSize(6)
+        pdf.setTextColor(100)
+        pdf.text(s.serial, cx, imgY + imgH + 0.12, { align: 'center' })
+      }
+
+      setDownloadProgress({ current: i + 1, total: serials.length, type: 'pdf' })
+    }
+
+    pdf.save(`batch-${qrModal.id.slice(0, 8)}-${serials.length}-qr-codes.pdf`)
+    setDownloadProgress(null)
+  }
+
   // ========== FORM VIEW ==========
   if (view === 'form') {
     return (
@@ -465,6 +839,359 @@ export default function Products({ brand }) {
             </button>
           </div>
         </form>
+
+          {/* Serialized QR Codes Section - only for existing products with a GTIN */}
+          {editingProduct && editingProduct.gtin && (
+            <div style={{ marginTop: 28 }}>
+              <div className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                  <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Serialized QR Codes</label>
+                  <button type="button" className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+                    onClick={() => { setShowBatchForm(!showBatchForm); if (!channels.length) loadChannels() }}>
+                    {showBatchForm ? 'Cancel' : '+ Generate Batch'}
+                  </button>
+                </div>
+
+                {/* Inline batch generation form */}
+                {showBatchForm && (
+                  <div style={{
+                    padding: 16, borderRadius: 8, background: 'var(--bg)',
+                    border: '1px solid var(--border)', marginBottom: 16,
+                    display: 'flex', flexDirection: 'column', gap: 12,
+                  }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                        Quantity (1 - 10,000)
+                      </label>
+                      <input className="input" type="number" min="1" max="10000"
+                        placeholder="e.g. 500"
+                        value={batchForm.quantity}
+                        onChange={e => setBatchForm({ ...batchForm, quantity: e.target.value })} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                        Channel
+                      </label>
+                      <div style={{
+                        border: '1px solid var(--border)', borderRadius: 8,
+                        maxHeight: 180, overflowY: 'auto', background: 'var(--card-bg)',
+                      }}>
+                        {channels.map(ch => (
+                          <div key={ch.id} style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '8px 12px', cursor: 'pointer',
+                            borderBottom: '1px solid var(--border)',
+                            background: batchForm.channelId === ch.id ? 'var(--bg)' : 'transparent',
+                          }} onClick={() => setBatchForm({ ...batchForm, channelId: ch.id })}>
+                            <span style={{
+                              fontSize: '0.85rem',
+                              fontWeight: batchForm.channelId === ch.id ? 600 : 400,
+                              color: batchForm.channelId === ch.id ? 'var(--success)' : '#FAFAFA',
+                            }}>
+                              {batchForm.channelId === ch.id && '✓ '}{ch.name} ({ch.type})
+                            </span>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); deleteChannel(ch.id, ch.name) }}
+                              style={{
+                                background: 'none', border: 'none', color: '#ef4444',
+                                fontSize: '0.75rem', cursor: 'pointer', padding: '2px 6px',
+                                opacity: 0.7,
+                              }}>
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                        <div style={{
+                          padding: '8px 12px', cursor: 'pointer',
+                          color: 'var(--success)', fontSize: '0.85rem',
+                          background: batchForm.channelId === '__new__' ? 'var(--bg)' : 'transparent',
+                        }} onClick={() => setBatchForm({ ...batchForm, channelId: '__new__' })}>
+                          + Add new channel
+                        </div>
+                      </div>
+                    </div>
+                    {batchForm.channelId === '__new__' && (
+                      <div style={{ display: 'flex', gap: 10 }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                            Channel Name
+                          </label>
+                          <input className="input" placeholder="e.g. Amazon US"
+                            value={batchForm.newChannelName}
+                            onChange={e => setBatchForm({ ...batchForm, newChannelName: e.target.value })} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                            Type
+                          </label>
+                          <select className="input" value={batchForm.newChannelType}
+                            onChange={e => setBatchForm({ ...batchForm, newChannelType: e.target.value })}>
+                            <option value="retail">Retail</option>
+                            <option value="dtc">DTC</option>
+                            <option value="distributor">Distributor</option>
+                            <option value="event">Event</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                        PO Reference (optional)
+                      </label>
+                      <input className="input" placeholder="e.g. PO-2026-1234"
+                        value={batchForm.poReference}
+                        onChange={e => setBatchForm({ ...batchForm, poReference: e.target.value })} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                        Notes (optional)
+                      </label>
+                      <textarea className="input" placeholder="Internal notes about this batch"
+                        value={batchForm.notes}
+                        onChange={e => setBatchForm({ ...batchForm, notes: e.target.value })}
+                        style={{ minHeight: 60, resize: 'vertical' }} />
+                    </div>
+                    <button type="button" className="btn btn-primary" disabled={batchGenerating}
+                      onClick={() => handleGenerateBatch(editingProduct.id)}>
+                      {batchGenerating ? 'Generating...' : 'Generate'}
+                    </button>
+                  </div>
+                )}
+
+                {/* Batches list */}
+                {batchesLoading ? (
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '12px 0', textAlign: 'center' }}>
+                    Loading batches...
+                  </div>
+                ) : batches.length === 0 ? (
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', padding: '12px 0', textAlign: 'center' }}>
+                    No batches generated yet. Click "Generate Batch" to create serialized QR codes.
+                  </div>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                          {['Date', 'Qty', 'Channel', 'PO Ref', 'Claimed', ''].map((h, idx) => (
+                            <th key={idx} style={{
+                              padding: '10px 12px', textAlign: 'left',
+                              fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
+                              textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap',
+                            }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {batches.map(b => {
+                          const counts = claimedCounts[b.id] || { total: b.quantity, claimed: 0 }
+                          return (
+                            <tr key={b.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                              <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                                {new Date(b.created_at).toLocaleDateString()}
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>{b.quantity}</td>
+                              <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>
+                                {b.channels?.name || '-'}
+                              </td>
+                              <td style={{ padding: '10px 12px', color: 'var(--text-muted)' }}>
+                                {b.po_reference || '-'}
+                              </td>
+                              <td style={{ padding: '10px 12px' }}>
+                                <span style={{
+                                  color: counts.claimed > 0 ? 'var(--success)' : 'var(--text-muted)',
+                                }}>
+                                  {counts.claimed} / {counts.total}
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                <button type="button" onClick={() => exportBatchCSV(b.id)}
+                                  style={{
+                                    background: 'none', border: 'none', color: '#FAFAFA',
+                                    fontSize: '0.8rem', cursor: 'pointer',
+                                  }}>
+                                  CSV
+                                </button>
+                                <button type="button" onClick={() => openQrModal(b)}
+                                  style={{
+                                    background: 'none', border: 'none', color: 'var(--success)',
+                                    fontSize: '0.8rem', cursor: 'pointer',
+                                    marginLeft: 6,
+                                  }}>
+                                  Download
+                                </button>
+                                <button type="button" onClick={() => deleteBatch(b.id, editingProduct.id)}
+                                  style={{
+                                    background: 'none', border: 'none', color: '#ef4444',
+                                    fontSize: '0.8rem', cursor: 'pointer',
+                                    marginLeft: 6,
+                                  }}>
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+        {/* QR Style & Download Modal */}
+        {qrModal && (
+          <div style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.7)', zIndex: 1000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20,
+          }} onClick={() => { if (!downloadProgress) setQrModal(null) }}>
+            <div style={{
+              background: 'var(--card-bg)', borderRadius: 12, width: '100%', maxWidth: 640,
+              maxHeight: '90vh', overflowY: 'auto',
+              border: '1px solid var(--border)', padding: 24,
+            }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Download QR Codes</h2>
+                {!downloadProgress && (
+                  <button onClick={() => setQrModal(null)} style={{
+                    background: 'none', border: 'none', color: 'var(--text-muted)',
+                    fontSize: '1.2rem', cursor: 'pointer',
+                  }}>x</button>
+                )}
+              </div>
+
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 20 }}>
+                Batch: {qrModal.quantity} codes, {qrModal.channels?.name || 'Unknown channel'}{qrModal.po_reference ? `, PO: ${qrModal.po_reference}` : ''}
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+                {/* Style controls */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                      QR Color
+                    </label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input type="color" value={qrStyle.fgColor}
+                        onChange={e => setQrStyle({ ...qrStyle, fgColor: e.target.value })}
+                        style={{ width: 36, height: 36, border: 'none', borderRadius: 6, cursor: 'pointer', padding: 0 }} />
+                      <input className="input" value={qrStyle.fgColor} style={{ flex: 1 }}
+                        onChange={e => setQrStyle({ ...qrStyle, fgColor: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                      Background Color
+                    </label>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input type="color" value={qrStyle.bgColor}
+                        onChange={e => setQrStyle({ ...qrStyle, bgColor: e.target.value })}
+                        style={{ width: 36, height: 36, border: 'none', borderRadius: 6, cursor: 'pointer', padding: 0 }} />
+                      <input className="input" value={qrStyle.bgColor} style={{ flex: 1 }}
+                        onChange={e => setQrStyle({ ...qrStyle, bgColor: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                      Center Logo (optional)
+                    </label>
+                    {qrStyle.logoFile ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                        <img src={qrStyle.logoFile} alt="Logo"
+                          style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 4, background: '#fff', padding: 2 }} />
+                        <button type="button" onClick={() => setQrStyle({ ...qrStyle, logoFile: null })}
+                          style={{ fontSize: '0.75rem', color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                          Remove
+                        </button>
+                      </div>
+                    ) : null}
+                    <input type="file" accept="image/*" onChange={handleQrLogoUpload}
+                      style={{ fontSize: '0.8rem', color: 'var(--text-muted)', width: '100%' }} />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
+                      CTA Text (optional)
+                    </label>
+                    <input className="input" placeholder="e.g. Scan Me, Members Only"
+                      value={qrStyle.ctaText}
+                      onChange={e => setQrStyle({ ...qrStyle, ctaText: e.target.value })} />
+                  </div>
+                </div>
+
+                {/* Live preview */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 8 }}>
+                    Preview
+                  </label>
+                  <div style={{
+                    background: '#0A0A10', borderRadius: 12, padding: 20,
+                    display: 'flex', justifyContent: 'center', alignItems: 'center',
+                    border: '1px solid var(--border)', minHeight: 220,
+                  }}>
+                    <BrandedQR
+                      url={buildGS1DigitalLink(SCAN_DOMAIN, editingProduct?.gtin || '0000000000000', { serial: 'PREVIEW' })}
+                      fgColor={qrStyle.fgColor}
+                      bgColor={qrStyle.bgColor}
+                      logoSrc={qrStyle.logoFile}
+                      logoScale={qrStyle.logoScale}
+                      size={180}
+                      ctaText={qrStyle.ctaText}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress indicator */}
+              {downloadProgress && (
+                <div style={{ marginTop: 20 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                    <span>Generating {downloadProgress.type === 'zip' ? 'ZIP' : 'PDF'}...</span>
+                    <span>{downloadProgress.current} / {downloadProgress.total}</span>
+                  </div>
+                  <div style={{
+                    width: '100%', height: 6, borderRadius: 3,
+                    background: 'var(--border)', overflow: 'hidden',
+                  }}>
+                    <div style={{
+                      width: downloadProgress.total > 0
+                        ? `${(downloadProgress.current / downloadProgress.total) * 100}%`
+                        : '0%',
+                      height: '100%', borderRadius: 3,
+                      background: 'var(--success)', transition: 'width 0.15s',
+                    }} />
+                  </div>
+                </div>
+              )}
+
+              {/* Download buttons */}
+              <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+                <button type="button" className="btn btn-secondary" style={{ flex: 1 }}
+                  disabled={!!downloadProgress}
+                  onClick={() => setQrModal(null)}>
+                  Cancel
+                </button>
+                <button type="button" className="btn btn-primary" style={{ flex: 1 }}
+                  disabled={!!downloadProgress}
+                  onClick={handleDownloadZip}>
+                  {downloadProgress?.type === 'zip' ? 'Generating...' : 'Download ZIP'}
+                </button>
+                <button type="button" className="btn btn-primary" style={{ flex: 1 }}
+                  disabled={!!downloadProgress}
+                  onClick={handleDownloadPdf}>
+                  {downloadProgress?.type === 'pdf' ? 'Generating...' : 'Download PDF'}
+                </button>
+              </div>
+
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 12, lineHeight: 1.4 }}>
+                ZIP: Individual PNG files per serial, ideal for packaging. PDF: Sticker sheet layout (4x5 grid), ideal for printing.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     )
   }

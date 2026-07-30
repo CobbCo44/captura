@@ -1366,7 +1366,7 @@ export default function ScanPage({ previewData } = {}) {
                 <p style={{ color: 'var(--ink2, rgba(255,255,255,0.56))', fontSize: '0.85rem', textAlign: 'center', margin: 0 }}>Sign up to start earning points with every scan</p>
                 <input className="input" placeholder="First Name" value={loyaltyForm.firstName} onChange={e => setLoyaltyForm({ ...loyaltyForm, firstName: e.target.value })} required />
                 <input className="input" placeholder="Last Name" value={loyaltyForm.lastName} onChange={e => setLoyaltyForm({ ...loyaltyForm, lastName: e.target.value })} required />
-                <input className="input" type="tel" placeholder="Phone Number" value={loyaltyForm.phone} onChange={e => setLoyaltyForm({ ...loyaltyForm, phone: e.target.value })} />
+                <input className="input" placeholder="Phone Number" inputMode="tel" value={loyaltyForm.phone} onChange={e => setLoyaltyForm({ ...loyaltyForm, phone: e.target.value })} />
                 <input className="input" type="email" placeholder="Email" value={loyaltyForm.email} onChange={e => setLoyaltyForm({ ...loyaltyForm, email: e.target.value })} required />
                 <button type="submit" disabled={loyaltySubmitting} style={{
                   width: '100%', padding: 14, ...btnStyle, border: 'none', borderRadius: 'var(--r, 14px)',

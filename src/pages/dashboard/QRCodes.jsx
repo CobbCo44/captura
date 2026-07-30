@@ -682,7 +682,9 @@ export default function QRCodes({ brand }) {
           <div style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 8 }}>No QR codes yet</div>
           <p style={{ color: 'var(--text-muted)', marginBottom: 20 }}>
             {products.length === 0
-              ? 'Add a product first, then create a QR code for it.'
+              ? (brand?.business_type === 'storefront'
+                ? 'Add a product on the Products page, then create a QR code for it.'
+                : 'Add a product first, then create a QR code for it.')
               : 'Create your first QR code to start tracking scans.'}
           </p>
           <button className="btn btn-primary" onClick={openCreate}>+ Create QR Code</button>

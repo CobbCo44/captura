@@ -36,6 +36,7 @@ const storefrontNavItems = [
   { path: '', label: 'Overview', icon: '◎' },
   { path: 'brand', label: 'Brand', icon: '◆' },
   { path: 'menu', label: 'Menu / Services', icon: '▤' },
+  { path: 'products', label: 'Products', icon: '▦' },
   { path: 'qr-codes', label: 'QR Codes', icon: '⊞' },
   { path: 'promos', label: 'Promos', icon: '🎁' },
   { path: 'events', label: 'Events', icon: '🎪' },

@@ -405,76 +405,7 @@ export default function Menu({ brand }) {
       {tab === 'store' && (
         <div style={{ maxWidth: 520 }}>
           <form onSubmit={handleSaveStore} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {/* Contact & Location */}
-            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 6 }}>Address</label>
-                <input className="input" placeholder="123 Main St, City, State" value={storeForm.store_address}
-                  onChange={e => setStoreForm({ ...storeForm, store_address: e.target.value })} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 6 }}>Phone</label>
-                <input className="input" placeholder="(555) 123-4567" value={storeForm.store_phone}
-                  onChange={e => setStoreForm({ ...storeForm, store_phone: e.target.value })} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 6 }}>Video URL</label>
-                <input className="input" placeholder="YouTube or Vimeo link" value={storeForm.store_video_url}
-                  onChange={e => setStoreForm({ ...storeForm, store_video_url: e.target.value })} />
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 4 }}>
-                  Optional. Shown on your scan page if provided.
-                </p>
-              </div>
-            </div>
-
-            {/* Hours */}
-            <div className="card">
-              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 14 }}>Hours</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {hours.map(h => (
-                  <div key={h.day_of_week} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 90, fontSize: '0.85rem', fontWeight: 500 }}>{dayNames[h.day_of_week]}</div>
-                    <div onClick={() => updateHour(h.day_of_week, 'closed', !h.closed)} style={{
-                      width: 40, height: 22, borderRadius: 11, cursor: 'pointer',
-                      background: !h.closed ? 'var(--success)' : '#3F3F46',
-                      position: 'relative', transition: 'background 0.2s', flexShrink: 0,
-                    }}>
-                      <div style={{
-                        width: 16, height: 16, borderRadius: '50%', background: 'white',
-                        position: 'absolute', top: 3, left: !h.closed ? 21 : 3, transition: 'left 0.2s',
-                      }} />
-                    </div>
-                    {!h.closed ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
-                        <input type="time" value={h.open_time || '09:00'}
-                          onChange={e => updateHour(h.day_of_week, 'open_time', e.target.value)}
-                          style={{
-                            background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
-                            borderRadius: 6, padding: '4px 8px', color: '#FAFAFA', fontSize: '0.8rem',
-                          }} />
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>to</span>
-                        <input type="time" value={h.close_time || '17:00'}
-                          onChange={e => updateHour(h.day_of_week, 'close_time', e.target.value)}
-                          style={{
-                            background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
-                            borderRadius: 6, padding: '4px 8px', color: '#FAFAFA', fontSize: '0.8rem',
-                          }} />
-                      </div>
-                    ) : (
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Closed</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button type="submit" className="btn btn-primary" disabled={storeSaving}>
-              {storeSaving ? 'Saving...' : storeSaved ? 'Saved!' : 'Save Store Info'}
-            </button>
-          </form>
-
-          {/* Locations */}
-          <div style={{ marginTop: 24 }}>
+            {/* Locations */}
             <div className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Locations</label>
@@ -539,9 +470,9 @@ export default function Menu({ brand }) {
                         )}
                       </div>
                       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                        <button className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                        <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '4px 10px' }}
                           onClick={() => openLocationEdit(loc)}>Edit</button>
-                        <button style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.75rem', cursor: 'pointer', padding: '4px 8px' }}
+                        <button type="button" style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.75rem', cursor: 'pointer', padding: '4px 8px' }}
                           onClick={() => handleLocationDelete(loc)}>Delete</button>
                       </div>
                     </div>
@@ -549,7 +480,65 @@ export default function Menu({ brand }) {
                 </div>
               )}
             </div>
-          </div>
+
+            {/* Video */}
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 6 }}>Video URL</label>
+                <input className="input" placeholder="YouTube or Vimeo link" value={storeForm.store_video_url}
+                  onChange={e => setStoreForm({ ...storeForm, store_video_url: e.target.value })} />
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 4 }}>
+                  Optional. Shown on your scan page if provided.
+                </p>
+              </div>
+            </div>
+
+            {/* Hours */}
+            <div className="card">
+              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 14 }}>Hours</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {hours.map(h => (
+                  <div key={h.day_of_week} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 90, fontSize: '0.85rem', fontWeight: 500 }}>{dayNames[h.day_of_week]}</div>
+                    <div onClick={() => updateHour(h.day_of_week, 'closed', !h.closed)} style={{
+                      width: 40, height: 22, borderRadius: 11, cursor: 'pointer',
+                      background: !h.closed ? 'var(--success)' : '#3F3F46',
+                      position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                    }}>
+                      <div style={{
+                        width: 16, height: 16, borderRadius: '50%', background: 'white',
+                        position: 'absolute', top: 3, left: !h.closed ? 21 : 3, transition: 'left 0.2s',
+                      }} />
+                    </div>
+                    {!h.closed ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
+                        <input type="time" value={h.open_time || '09:00'}
+                          onChange={e => updateHour(h.day_of_week, 'open_time', e.target.value)}
+                          style={{
+                            background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
+                            borderRadius: 6, padding: '4px 8px', color: '#FAFAFA', fontSize: '0.8rem',
+                          }} />
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>to</span>
+                        <input type="time" value={h.close_time || '17:00'}
+                          onChange={e => updateHour(h.day_of_week, 'close_time', e.target.value)}
+                          style={{
+                            background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
+                            borderRadius: 6, padding: '4px 8px', color: '#FAFAFA', fontSize: '0.8rem',
+                          }} />
+                      </div>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Closed</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button type="submit" className="btn btn-primary" disabled={storeSaving}>
+              {storeSaving ? 'Saving...' : storeSaved ? 'Saved!' : 'Save Store Info'}
+            </button>
+          </form>
+
         </div>
       )}
 

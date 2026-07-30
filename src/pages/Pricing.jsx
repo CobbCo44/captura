@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-const tiers = [
+const productTiers = [
   {
     name: 'Starter',
     price: '299',
@@ -55,10 +55,59 @@ const tiers = [
   },
 ]
 
+const storefrontTiers = [
+  {
+    name: 'Starter',
+    price: '99',
+    desc: 'Everything you need for a single location.',
+    features: [
+      '1 store QR code',
+      'Menu / services page',
+      'Loyalty program with rewards',
+      'Consumer data capture',
+      'Video content on scan page',
+      'Hours and socials',
+      '1 location',
+      'Unlimited scans',
+    ],
+    highlight: false,
+  },
+  {
+    name: 'Growth',
+    price: '249',
+    desc: 'For growing businesses ready to engage and promote.',
+    features: [
+      'Everything in Starter',
+      'Unlimited QR codes',
+      'Promos and giveaways',
+      'Winner announcements',
+      'Up to 5 locations',
+      'Consumer data export',
+      'Scan analytics',
+    ],
+    highlight: true,
+  },
+  {
+    name: 'Pro',
+    price: '499',
+    desc: 'For multi-location businesses and chains.',
+    features: [
+      'Everything in Growth',
+      'Unlimited locations',
+      'Insights and analytics dashboard',
+      'Shopify integration',
+      'Priority setup and support',
+      'Custom branding consultation',
+    ],
+    highlight: false,
+  },
+]
+
 export default function Pricing() {
   const navigate = useNavigate()
   const [authenticated, setAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [tab, setTab] = useState('storefront')
 
   useEffect(() => {
     async function check() {
@@ -79,20 +128,45 @@ export default function Pricing() {
     )
   }
 
+  const tiers = tab === 'storefront' ? storefrontTiers : productTiers
+  const isStorefront = tab === 'storefront'
+
   return (
     <div style={{ minHeight: '100vh', padding: '40px', maxWidth: 1200, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 60 }}>
-        <div style={{ fontSize: '2rem', fontWeight: 800, color: '#FAFAFA', letterSpacing: '-1px' }}>Captura</div>
+        <div style={{ fontSize: '2rem', fontWeight: 800, color: '#FAFAFA', letterSpacing: '-1px' }}>MeetCaptura</div>
         <Link to="/dashboard" style={{ color: '#A1A1AA', fontSize: '0.9rem' }}>Back to Dashboard</Link>
       </div>
 
-      <div style={{ textAlign: 'center', marginBottom: 60 }}>
+      <div style={{ textAlign: 'center', marginBottom: 40 }}>
         <h1 style={{ fontSize: '2.8rem', fontWeight: 800, letterSpacing: '-1.5px', color: '#FAFAFA', marginBottom: 16 }}>
           Choose your plan
         </h1>
         <p style={{ color: '#52525B', fontSize: '1.1rem', maxWidth: 520, margin: '0 auto' }}>
-          A platform fee plus $1 per consumer captured. You only pay for real contacts you own.
+          {isStorefront
+            ? 'Simple, flat monthly pricing. No per-contact fees, no surprises.'
+            : 'A platform fee plus $1 per consumer captured. You only pay for real contacts you own.'}
         </p>
+      </div>
+
+      {/* Toggle */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 48 }}>
+        <div style={{
+          display: 'inline-flex', background: '#131316', borderRadius: 10, padding: 3,
+          border: '1px solid #1C1C21',
+        }}>
+          {[
+            { key: 'storefront', label: 'Storefront' },
+            { key: 'product', label: 'Product Brand' },
+          ].map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)} style={{
+              padding: '10px 28px', borderRadius: 8, fontSize: '0.9rem', fontWeight: 600,
+              cursor: 'pointer', border: 'none', transition: 'all 0.2s',
+              background: tab === t.key ? '#FAFAFA' : 'transparent',
+              color: tab === t.key ? '#09090B' : '#52525B',
+            }}>{t.label}</button>
+          ))}
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2, marginBottom: 60 }}>
@@ -123,7 +197,9 @@ export default function Pricing() {
                   </>
                 )}
               </div>
-              <div style={{ color: '#A1A1AA', fontSize: '0.85rem', fontWeight: 600, marginTop: 4 }}>+ {tier.perContact} per captured contact</div>
+              {tier.perContact && (
+                <div style={{ color: '#A1A1AA', fontSize: '0.85rem', fontWeight: 600, marginTop: 4 }}>+ {tier.perContact} per captured contact</div>
+              )}
               <p style={{ color: '#52525B', fontSize: '0.85rem', lineHeight: 1.5, marginTop: 12 }}>{tier.desc}</p>
             </div>
 
@@ -147,19 +223,29 @@ export default function Pricing() {
               color: tier.highlight ? '#09090B' : '#A1A1AA',
               border: tier.highlight ? 'none' : '1px solid #27272A',
             }}>
-              {tier.name === 'Enterprise' ? 'Contact Sales' : 'Select Plan'}
+              {tier.price === 'Custom' ? 'Contact Sales' : 'Select Plan'}
             </button>
           </div>
         ))}
       </div>
 
       <div style={{ textAlign: 'center', color: '#52525B', fontSize: '0.9rem', marginBottom: 40, maxWidth: 560, margin: '0 auto 40px', lineHeight: 1.6 }}>
-        You pay for results. $1 per opted-in consumer you actually capture. The platform fee covers your dashboard, analytics, and unlimited scans.
+        {isStorefront
+          ? 'Flat monthly pricing with no per-contact fees. Upgrade or cancel anytime.'
+          : 'You pay for results. $1 per opted-in consumer you actually capture. The platform fee covers your dashboard, analytics, and unlimited scans.'}
       </div>
 
       <div style={{ textAlign: 'center', color: '#3F3F46', fontSize: '0.85rem', paddingBottom: 40 }}>
         Questions? Contact us at hello@meetcaptura.com
       </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          div[style*="grid-template-columns: repeat(3"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

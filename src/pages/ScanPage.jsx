@@ -612,6 +612,21 @@ export default function ScanPage({ previewData } = {}) {
           localStorage.setItem(`loyalty_email_${brandId}`, loyaltyForm.email)
           localStorage.setItem(`loyalty_contact_${brandId}`, contactId)
         }
+        if (locationPromise.current) await locationPromise.current
+        const loc = locationRef.current
+        syncToShopify({
+          firstName: loyaltyForm.firstName,
+          lastName: loyaltyForm.lastName,
+          email: loyaltyForm.email,
+          phone: null,
+          tags: `captura, loyalty${serialData?.channel_name ? `, ${serialData.channel_name}` : ''}`,
+          note: `Loyalty signup via Captura${serialData?.channel_name ? `\nChannel: ${serialData.channel_name}` : ''}`,
+          product: product?.name || null,
+          serial: lookupSerial || null,
+          gtin: product?.gtin || lookupGtin || null,
+          source: 'Loyalty Signup',
+          city: loc?.city ? `${loc.city}, ${loc.region}` : null,
+        })
       }
     } catch (err) {
       console.error('Loyalty error:', err)

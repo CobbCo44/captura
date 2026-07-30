@@ -22,6 +22,7 @@ export default function StorefrontScanPage() {
   // Menu expanded
   const [showMenu, setShowMenu] = useState(false)
   const [menuCategory, setMenuCategory] = useState('all')
+  const [showHours, setShowHours] = useState(false)
 
   // Promo form
   const [showPromo, setShowPromo] = useState(false)
@@ -55,7 +56,7 @@ export default function StorefrontScanPage() {
     const [menuRes, hoursRes, promosRes, rewardsRes] = await Promise.all([
       supabase.from('menu_items').select('*').eq('brand_id', brandId).eq('active', true).order('category').order('sort_order').order('name'),
       supabase.from('store_hours').select('*').eq('brand_id', brandId).order('day_of_week'),
-      supabase.from('promos').select('*').eq('brand_id', brandId).eq('active', true).order('created_at', { ascending: false }),
+      supabase.from('promos').select('*').eq('brand_id', brandId).or('active.eq.true,winner_announced_at.not.is.null').order('active', { ascending: false }).order('winner_announced_at', { ascending: false, nullsFirst: false }),
       supabase.from('loyalty_rewards').select('*').eq('brand_id', brandId).eq('active', true).order('points_required'),
     ])
 
@@ -164,8 +165,8 @@ export default function StorefrontScanPage() {
     e.preventDefault()
     if (!promoForm.ageConsent) return
     setPromoSubmitting(true)
-    const activePromo = promos[0]
-    if (!activePromo) return
+    const promo = promos.find(p => p.active)
+    if (!promo) return
 
     try {
       // Get geo for consent logging
@@ -174,7 +175,7 @@ export default function StorefrontScanPage() {
 
       await supabase.from('promo_entries').insert({
         brand_id: brandId,
-        promo_id: activePromo.id,
+        promo_id: promo.id,
         first_name: promoForm.firstName,
         last_name: promoForm.lastName,
         email: promoForm.email,
@@ -234,7 +235,8 @@ export default function StorefrontScanPage() {
   const storeHeaderLogo = brand?.store_header_logo
   const useLogoHeader = brand?.store_header_type === 'logo' && storeHeaderLogo
   const hasLogo = useLogoHeader || brand?.logo_dark_url || brand?.logo_url
-  const activePromo = promos[0]
+  const activePromo = promos.find(p => p.active)
+  const winnerPromo = promos.find(p => p.winner_name)
   const menuCategories = [...new Set(menuItems.map(i => i.category))].sort()
 
   const today = new Date().getDay()
@@ -312,22 +314,23 @@ export default function StorefrontScanPage() {
 
       {/* 2. HOURS BAR */}
       {todayHours && (
-        <div style={{
+        <div onClick={() => setShowHours(true)} style={{
           padding: '8px 14px', background: 'rgba(255,255,255,0.03)',
           borderBottom: '1px solid rgba(255,255,255,0.08)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          fontSize: '0.8rem',
+          fontSize: '0.8rem', cursor: 'pointer',
         }}>
           <span style={{ color: 'rgba(255,255,255,0.5)' }}>Today</span>
-          {todayHours.closed ? (
-            <span style={{ color: '#ef4444', fontWeight: 600 }}>Closed</span>
-          ) : (
-            <span style={{ fontWeight: 600 }}>
-              {todayHours.open_time && todayHours.close_time
+          <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+            {todayHours.closed ? (
+              <span style={{ color: '#ef4444' }}>Closed</span>
+            ) : (
+              <span>{todayHours.open_time && todayHours.close_time
                 ? `${formatTime(todayHours.open_time)} - ${formatTime(todayHours.close_time)}`
-                : 'Open'}
-            </span>
-          )}
+                : 'Open'}</span>
+            )}
+            <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)' }}>▶</span>
+          </span>
         </div>
       )}
 
@@ -409,6 +412,16 @@ export default function StorefrontScanPage() {
         {(() => {
           const tiles = []
 
+          // Winner tile
+          if (winnerPromo?.winner_name) {
+            tiles.push({
+              key: 'winner',
+              type: 'winner',
+              label: `${winnerPromo.winner_name}${winnerPromo.winner_city ? ' \u00B7 ' + winnerPromo.winner_city : ''}`,
+              sub: 'Won the last drop',
+            })
+          }
+
           // Loyalty tile
           if (loyaltyRewards.length > 0) {
             tiles.push({
@@ -429,69 +442,62 @@ export default function StorefrontScanPage() {
             tiles.push({
               key: 'hours',
               label: 'Hours',
-              sub: todayHours?.closed ? 'Closed today' : todayHours ? `Until ${formatTime(todayHours.close_time)}` : '',
+              sub: todayHours?.closed ? 'Closed today' : 'View hours',
               icon: (
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
                   <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
                 </svg>
               ),
-              action: null,
-            })
-          }
-
-          // Location tile
-          if (brand?.store_address) {
-            tiles.push({
-              key: 'location',
-              label: 'Location',
-              sub: brand.store_address.length > 25 ? brand.store_address.slice(0, 25) + '...' : brand.store_address,
-              icon: (
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
-                </svg>
-              ),
-              action: () => window.open(`https://maps.google.com/?q=${encodeURIComponent(brand.store_address)}`, '_blank'),
-            })
-          }
-
-          // Phone tile
-          if (brand?.store_phone) {
-            tiles.push({
-              key: 'phone',
-              label: 'Call',
-              sub: brand.store_phone,
-              icon: (
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
-                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/>
-                </svg>
-              ),
-              action: () => window.open(`tel:${brand.store_phone}`),
+              action: () => setShowHours(true),
             })
           }
 
           const span = tiles.length === 1 ? 4 : 2
 
-          return tiles.map(tile => (
-            <div key={tile.key} onClick={tile.action} style={{
-              gridColumn: `span ${span}`, gridRow: 'span 1',
-              background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
-              display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px',
-              cursor: tile.action ? 'pointer' : 'default',
-            }}>
-              {tile.icon}
-              <div>
-                <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{tile.label}</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--ink2)' }}>{tile.sub}</div>
+          return tiles.map(tile => {
+            if (tile.type === 'winner') {
+              return (
+                <div key={tile.key} style={{
+                  gridColumn: `span ${span}`, gridRow: 'span 1',
+                  background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
+                  display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 14px',
+                }}>
+                  <span style={{
+                    background: 'var(--line)', color: 'var(--ink2)',
+                    fontFamily: "'IBM Plex Mono', monospace", fontSize: 8,
+                    letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 500,
+                    padding: '2px 6px', borderRadius: 3, marginBottom: 'auto', marginTop: 12,
+                    alignSelf: 'flex-start',
+                  }}>Last winner</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.2, color: 'var(--ink)', marginBottom: 12 }}>
+                    {tile.label}
+                    <small style={{ display: 'block', fontWeight: 400, fontSize: '9.5px', color: 'var(--ink2)', marginTop: 1 }}>{tile.sub}</small>
+                  </span>
+                </div>
+              )
+            }
+            return (
+              <div key={tile.key} onClick={tile.action} style={{
+                gridColumn: `span ${span}`, gridRow: 'span 1',
+                background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
+                display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px',
+                cursor: tile.action ? 'pointer' : 'default',
+              }}>
+                {tile.icon}
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{tile.label}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--ink2)' }}>{tile.sub}</div>
+                </div>
               </div>
-            </div>
-          ))
+            )
+          })
         })()}
       </div>
 
       {/* 4. SOCIALS BAR */}
       {socials.length > 0 && (
         <div style={{
-          display: 'flex', justifyContent: 'center', gap: 16, padding: '8px 14px 20px',
+          display: 'flex', justifyContent: 'center', gap: 16, padding: '8px 14px 12px',
         }}>
           {socials.map(s => (
             <a key={s.key} href={brand[s.key]} target="_blank" rel="noopener noreferrer"
@@ -501,12 +507,73 @@ export default function StorefrontScanPage() {
         </div>
       )}
 
-      {/* 5. POWERED BY */}
-      <div style={{ textAlign: 'center', padding: '8px 0 20px', fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)' }}>
-        Powered by Captura
+      {/* 5. FOOTER LINKS */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 20, padding: '8px 14px 12px', flexWrap: 'wrap' }}>
+        {hours.length > 0 && (
+          <span onClick={() => setShowHours(true)} style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', cursor: 'pointer' }}>Hours</span>
+        )}
+        {brand?.store_address && (
+          <span onClick={() => window.open(`https://maps.google.com/?q=${encodeURIComponent(brand.store_address)}`, '_blank')}
+            style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', cursor: 'pointer' }}>Location</span>
+        )}
+        {brand?.store_phone && (
+          <a href={`tel:${brand.store_phone}`} style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', textDecoration: 'none' }}>Call Us</a>
+        )}
+      </div>
+
+      {/* 6. POWERED BY */}
+      <div style={{ textAlign: 'center', padding: '4px 0 20px', fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)' }}>
+        Powered by MeetCaptura
       </div>
 
       {/* ===== MODALS ===== */}
+
+      {/* HOURS MODAL */}
+      {showHours && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 40, display: 'flex', flexDirection: 'column' }}>
+          <div onClick={() => setShowHours(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }} />
+          <div style={{
+            position: 'relative', marginTop: 'auto', maxHeight: '85vh', overflowY: 'auto',
+            background: kit.bg, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
+            animation: 'captura-slide-up 0.25s ease-out',
+          }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '0 auto 16px' }} />
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 16px', textAlign: 'center' }}>Hours</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {dayNames.map((day, i) => {
+                const h = hours.find(hr => hr.day_of_week === i)
+                const isToday = i === today
+                return (
+                  <div key={i} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                    fontWeight: isToday ? 700 : 400,
+                  }}>
+                    <span style={{ fontSize: '0.9rem', color: isToday ? '#fff' : 'rgba(255,255,255,0.6)' }}>{day}</span>
+                    {h?.closed ? (
+                      <span style={{ fontSize: '0.85rem', color: '#ef4444' }}>Closed</span>
+                    ) : h?.open_time && h?.close_time ? (
+                      <span style={{ fontSize: '0.85rem', color: isToday ? '#fff' : 'rgba(255,255,255,0.6)' }}>
+                        {formatTime(h.open_time)} - {formatTime(h.close_time)}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.3)' }}>--</span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            {brand?.store_address && (
+              <div style={{ marginTop: 20, textAlign: 'center' }}>
+                <a href={`https://maps.google.com/?q=${encodeURIComponent(brand.store_address)}`} target="_blank" rel="noopener noreferrer"
+                  style={{ color: accentBg, fontSize: '0.85rem', fontWeight: 600, textDecoration: 'none' }}>
+                  Get Directions
+                </a>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* MENU MODAL */}
       {showMenu && (

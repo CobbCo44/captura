@@ -38,10 +38,10 @@ export default function Loyalty({ brand }) {
       return
     }
 
-    // Get all loyalty points with contact info and product names
+    // Get all loyalty points (no joins - they can fail silently)
     const { data: points, error: pointsErr } = await supabase
       .from('loyalty_points')
-      .select('contact_id, points, type, created_at, product_id, reward_id, products(name)')
+      .select('contact_id, points, type, created_at, product_id, reward_id')
       .eq('brand_id', brand.id)
 
     if (pointsErr) console.error('Loyalty points load error:', pointsErr)
@@ -51,16 +51,31 @@ export default function Loyalty({ brand }) {
       return
     }
 
-    // Get unique contact IDs
-    const contactIds = [...new Set(points.map(p => p.contact_id))]
+    // Get unique contact IDs and product IDs
+    const contactIds = [...new Set(points.map(p => p.contact_id).filter(Boolean))]
+    const productIds = [...new Set(points.map(p => p.product_id).filter(Boolean))]
 
-    // Fetch contact details
-    const { data: contacts } = await supabase
-      .from('contacts')
-      .select('id, first_name, last_name, email, phone, created_at')
-      .in('id', contactIds)
+    if (contactIds.length === 0) {
+      setMembers([])
+      setMembersLoading(false)
+      return
+    }
 
-    if (!contacts) {
+    // Fetch contacts and products in parallel
+    const [contactsRes, productsRes] = await Promise.all([
+      supabase.from('contacts').select('id, first_name, last_name, email, phone, created_at').in('id', contactIds),
+      productIds.length > 0
+        ? supabase.from('products').select('id, name').in('id', productIds)
+        : { data: [] },
+    ])
+
+    if (contactsRes.error) console.error('Contacts load error:', contactsRes.error)
+    const contacts = contactsRes.data || []
+    const productMap = {}
+    ;(productsRes.data || []).forEach(p => { productMap[p.id] = p.name })
+
+    if (contacts.length === 0) {
+      console.error('No contacts found for IDs:', contactIds)
       setMembers([])
       setMembersLoading(false)
       return
@@ -75,7 +90,7 @@ export default function Loyalty({ brand }) {
         const d = new Date(p.created_at)
         return d > latest ? d : latest
       }, new Date(0))
-      const productsScanned = [...new Set(contactPoints.filter(p => p.type === 'earned' && p.products?.name).map(p => p.products.name))]
+      const productsScanned = [...new Set(contactPoints.filter(p => p.type === 'earned' && p.product_id).map(p => productMap[p.product_id]).filter(Boolean))]
 
       return {
         ...contact,
@@ -84,7 +99,7 @@ export default function Loyalty({ brand }) {
         balance: earned - redeemed,
         lastActivity,
         productsScanned,
-        history: contactPoints,
+        history: contactPoints.map(p => ({ ...p, products: p.product_id ? { name: productMap[p.product_id] } : null })),
       }
     })
 

@@ -407,7 +407,7 @@ export default function Loyalty({ brand }) {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['First', 'Last', 'Email', 'Balance', 'Earned', 'Redeemed', 'Products', 'Last Activity'].map(h => (
+                    {['First', 'Last', 'Phone', 'Email', 'Balance', 'Earned', 'Redeemed', 'Products', 'Last Activity'].map(h => (
                       <th key={h} style={{
                         padding: '12px 16px', textAlign: 'left',
                         fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
@@ -428,6 +428,7 @@ export default function Loyalty({ brand }) {
                           {member.first_name || '—'}
                         </td>
                         <td style={{ padding: '12px 16px', fontWeight: 500 }}>{member.last_name || '—'}</td>
+                        <td style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>{member.phone || '—'}</td>
                         <td style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>{member.email}</td>
                         <td style={{ padding: '12px 16px' }}>
                           <span style={{

@@ -556,7 +556,7 @@ export default function QRCodes({ brand }) {
                 url={`${scanUrl}/store/${brand.id}`}
                 fgColor={storeQR.fgColor}
                 bgColor={storeQR.bgColor}
-                logo={storeQR.logoFile || storeQR.logoUrl || brand.logo_url || null}
+                logoSrc={storeQR.logoFile || storeQR.logoUrl || brand.logo_url || null}
                 logoScale={storeQR.logoScale}
                 size={160}
                 ctaText={storeQR.ctaText}

@@ -38,6 +38,57 @@ export default function QRCodes({ brand }) {
     fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoUrl: null, logoScale: 0.25, ctaText: '',
   })
   const [editingStoreQR, setEditingStoreQR] = useState(false)
+  const [savingStoreQR, setSavingStoreQR] = useState(false)
+
+  // Load saved store QR settings from brand row
+  useEffect(() => {
+    if (brand) {
+      setStoreQR(prev => ({
+        ...prev,
+        fgColor: brand.store_qr_fg_color || '#18181B',
+        bgColor: brand.store_qr_bg_color || '#FFFFFF',
+        logoUrl: brand.store_qr_logo_url || null,
+        logoScale: brand.store_qr_logo_scale || 0.25,
+        ctaText: brand.store_qr_cta_text || '',
+      }))
+    }
+  }, [brand])
+
+  async function saveStoreQR() {
+    if (!supabase || !brand?.id || brand.id === 'demo') return
+    setSavingStoreQR(true)
+
+    // Upload logo if a new file was selected (logoFile is a data URL from FileReader)
+    let logoUrl = storeQR.logoUrl
+    if (storeQR.logoFile && storeQR.logoFile.startsWith('data:')) {
+      // Convert data URL to blob for upload
+      const res = await fetch(storeQR.logoFile)
+      const blob = await res.blob()
+      const ext = blob.type.split('/')[1] || 'png'
+      const fileName = `${brand.id}/store-qr-logo-${Date.now()}.${ext}`
+      const { error } = await supabase.storage.from('product-images').upload(fileName, blob)
+      if (!error) {
+        const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(fileName)
+        logoUrl = urlData.publicUrl
+      }
+    }
+
+    const { error } = await supabase.from('brands').update({
+      store_qr_fg_color: storeQR.fgColor,
+      store_qr_bg_color: storeQR.bgColor,
+      store_qr_logo_url: logoUrl,
+      store_qr_logo_scale: storeQR.logoScale,
+      store_qr_cta_text: storeQR.ctaText || null,
+    }).eq('id', brand.id)
+
+    if (error) {
+      alert('Error saving store QR settings: ' + error.message)
+    } else {
+      // Update local state with the persisted logo URL
+      setStoreQR(prev => ({ ...prev, logoUrl: logoUrl, logoFile: null }))
+    }
+    setSavingStoreQR(false)
+  }
 
   const scanUrl = 'https://meetcaptura.com'
 
@@ -652,7 +703,9 @@ export default function QRCodes({ brand }) {
 
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
-                      onClick={() => {
+                      disabled={savingStoreQR}
+                      onClick={async () => {
+                        await saveStoreQR()
                         setEditingStoreQR(false)
                         downloadPNG(`store-${brand.id}`, brand.name, {
                           fg_color: storeQR.fgColor, bg_color: storeQR.bgColor,
@@ -661,11 +714,15 @@ export default function QRCodes({ brand }) {
                           products: null,
                         }, `${scanUrl}/store/${brand.id}`)
                       }}>
-                      Download PNG
+                      {savingStoreQR ? 'Saving...' : 'Download PNG'}
                     </button>
                     <button className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
-                      onClick={() => setEditingStoreQR(false)}>
-                      Done
+                      disabled={savingStoreQR}
+                      onClick={async () => {
+                        await saveStoreQR()
+                        setEditingStoreQR(false)
+                      }}>
+                      {savingStoreQR ? 'Saving...' : 'Done'}
                     </button>
                   </div>
                 </div>

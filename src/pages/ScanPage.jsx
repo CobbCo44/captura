@@ -590,8 +590,9 @@ export default function ScanPage({ previewData } = {}) {
     e.preventDefault()
     setLoyaltySubmitting(true)
     const brandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
+    if (!brandId) { console.error('No brandId for loyalty'); setLoyaltySubmitting(false); return }
     try {
-      const { data: contactId } = await supabase.rpc('get_or_create_contact', {
+      const { data: contactId, error: contactErr } = await supabase.rpc('get_or_create_contact', {
         p_brand_id: brandId,
         p_first_name: loyaltyForm.firstName,
         p_last_name: loyaltyForm.lastName,
@@ -600,6 +601,7 @@ export default function ScanPage({ previewData } = {}) {
         p_source: 'loyalty',
         p_sms_consent: false,
       })
+      if (contactErr) console.error('Loyalty contact error:', contactErr)
       if (contactId) {
         const { data: result } = await supabase.rpc('award_loyalty_point', {
           p_brand_id: brandId,

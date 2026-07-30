@@ -919,10 +919,7 @@ export default function QRCodes({ brand }) {
             Branded QR codes with your logo in the center
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn btn-secondary" onClick={() => setShowBatchForm(true)}>+ Generate Batch</button>
-          <button className="btn btn-primary" onClick={openCreate}>+ Create QR Code</button>
-        </div>
+        <button className="btn btn-primary" onClick={openCreate}>+ Create QR Code</button>
       </div>
 
       {/* Storefront Primary QR */}
@@ -1134,6 +1131,16 @@ export default function QRCodes({ brand }) {
                   Delete
                 </button>
               </div>
+              {qr.products?.gtin && (
+                <button className="btn btn-secondary" style={{ width: '100%', fontSize: '0.8rem', padding: '8px', marginTop: 6 }}
+                  onClick={() => {
+                    setBatchForm({ productId: qr.product_id, quantity: '', channelId: qr.channel_id || '', newChannelName: '', newChannelType: 'retail', poReference: '', notes: '' })
+                    setBatchQrStyle({ fgColor: qr.fg_color || '#18181B', bgColor: qr.bg_color || '#FFFFFF', logoFile: qr.logo_url || null, logoScale: qr.logo_scale || 0.25, ctaText: qr.cta_text || '' })
+                    setShowBatchForm(qr)
+                  }}>
+                  Generate Batch
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -1157,26 +1164,10 @@ export default function QRCodes({ brand }) {
               }}>x</button>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 20 }}>
-              Generate unique QR codes for each unit. Every code is trackable back to the product, channel, and consumer who scanned it.
+              Generate unique QR codes for <strong>{showBatchForm?.products?.name || 'this product'}</strong>. Each code uses this QR's design and is trackable back to the unit, channel, and consumer who scanned it.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>Product</label>
-                <select className="input" value={batchForm.productId}
-                  onChange={e => setBatchForm({ ...batchForm, productId: e.target.value })}>
-                  <option value="">Select a product</option>
-                  {products.filter(p => p.gtin).map(p => (
-                    <option key={p.id} value={p.id}>{p.name} {p.sku ? `(${p.sku})` : ''}</option>
-                  ))}
-                </select>
-                {products.filter(p => p.gtin).length === 0 && (
-                  <p style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: 4 }}>
-                    No products with a GTIN/UPC. Add a barcode to a product first.
-                  </p>
-                )}
-              </div>
-
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>
                   Quantity (1 - 10,000)
@@ -1260,7 +1251,7 @@ export default function QRCodes({ brand }) {
                   onClick={() => setShowBatchForm(false)}>Cancel</button>
                 <button type="button" className="btn btn-primary" style={{ flex: 1 }}
                   disabled={batchGenerating || !batchForm.productId}
-                  onClick={handleGenerateBatch}>
+                  onClick={() => handleGenerateBatch()}>
                   {batchGenerating ? 'Generating...' : 'Generate'}
                 </button>
               </div>

@@ -4,7 +4,7 @@ import Dashboard from './pages/Dashboard'
 import ScanPage from './pages/ScanPage'
 import Login from './pages/Login'
 import Admin from './pages/Admin'
-import Pricing from './pages/Pricing'
+// import Pricing from './pages/Pricing'
 import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import StorefrontScanPage from './pages/StorefrontScanPage'
@@ -17,7 +17,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard/*" element={<Dashboard />} />
       <Route path="/admin" element={<Admin />} />
-      <Route path="/pricing" element={<Pricing />} />
+      {/* <Route path="/pricing" element={<Pricing />} /> */}
       <Route path="/01/:gtin/21/:serial" element={<ScanPage />} />
       <Route path="/01/:gtin" element={<ScanPage />} />
       <Route path="/s/:qrId" element={<ScanPage />} />

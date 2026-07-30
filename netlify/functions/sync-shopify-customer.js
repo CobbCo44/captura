@@ -104,17 +104,24 @@ export default async (req) => {
       }
     }
 
-    // Build tags with product name included
+    // Build tags with product name, serial, and GTIN included
     let tags = customer.tags || 'captura'
     if (customer.product) {
       const productTag = customer.product.replace(/[,]/g, '').trim()
       tags += `, ${productTag}`
+    }
+    if (customer.serial) {
+      tags += `, serial:${customer.serial}`
+    }
+    if (customer.gtin) {
+      tags += `, gtin:${customer.gtin}`
     }
 
     // Build note with full details
     const noteLines = [customer.note || 'Added via Captura QR scan']
     if (customer.product) noteLines.push(`Product: ${customer.product}`)
     if (customer.serial) noteLines.push(`Serial: ${customer.serial}`)
+    if (customer.gtin) noteLines.push(`GTIN: ${customer.gtin}`)
     if (customer.city) noteLines.push(`City: ${customer.city}`)
     noteLines.push(`Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`)
 

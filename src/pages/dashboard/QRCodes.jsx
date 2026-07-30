@@ -142,6 +142,7 @@ export default function QRCodes({ brand }) {
   const [batchQrModal, setBatchQrModal] = useState(null)
   const [batchQrStyle, setBatchQrStyle] = useState({ fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoScale: 0.25, ctaText: '' })
   const [batchDownloadProgress, setBatchDownloadProgress] = useState(null)
+  const [batchSheetSize, setBatchSheetSize] = useState('1.5')
 
   // Storefront QR customization
   const [storeQR, setStoreQR] = useState({
@@ -791,48 +792,57 @@ export default function QRCodes({ brand }) {
     if (!serials.length) { setBatchDownloadProgress(null); return }
 
     setBatchDownloadProgress({ current: 0, total: serials.length, type: 'pdf' })
+    const sizeInches = parseFloat(batchSheetSize)
+    const ctaText = batchQrStyle.ctaText || ''
+    const aspectRatio = ctaText ? 1 + 0.12 : 1
+    const cellH = sizeInches * aspectRatio
+
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'in', format: 'letter' })
     const pageW = 8.5, pageH = 11
-    const cols = 4, rows = 5
+    const margin = 0.25, gap = 0.15
+    const usableW = pageW - margin * 2
+    const usableH = pageH - margin * 2
+    const cols = Math.floor((usableW + gap) / (sizeInches + gap))
+    const rows = Math.floor((usableH + gap) / (cellH + gap))
     const perPage = cols * rows
-    const marginX = 0.5, marginY = 0.5
-    const cellW = (pageW - marginX * 2) / cols
-    const cellH = (pageH - marginY * 2) / rows
-    const qrSize = Math.min(cellW, cellH) * 0.72
 
     for (let i = 0; i < serials.length; i++) {
       const pageIndex = Math.floor(i / perPage)
       const posOnPage = i % perPage
       if (posOnPage === 0 && pageIndex > 0) pdf.addPage()
 
+      const gridW = cols * sizeInches + (cols - 1) * gap
+      const gridH = rows * cellH + (rows - 1) * gap
+      const offsetX = (pageW - gridW) / 2
+      const offsetY = (pageH - gridH) / 2
+
       const col = posOnPage % cols
       const row = Math.floor(posOnPage / cols)
-      const cx = marginX + col * cellW + cellW / 2
-      const cy = marginY + row * cellH
+      const x = offsetX + col * (sizeInches + gap)
+      const y = offsetY + row * (cellH + gap)
 
       const s = serials[i]
       const url = buildGS1DigitalLink(SCAN_DOMAIN, gtin, { serial: s.serial })
       const canvas = await renderSerialQRToCanvas(
         url, batchQrStyle.fgColor, batchQrStyle.bgColor,
-        batchQrStyle.logoFile, batchQrStyle.logoScale, batchQrStyle.ctaText, 400
+        batchQrStyle.logoFile, batchQrStyle.logoScale, ctaText, 400
       )
 
       if (canvas) {
         const dataUrl = canvas.toDataURL('image/png')
-        const imgX = cx - qrSize / 2
-        const imgY = cy + 0.08
-        const aspectRatio = canvas.height / canvas.width
-        const imgH = qrSize * aspectRatio
-        pdf.addImage(dataUrl, 'PNG', imgX, imgY, qrSize, imgH)
-        pdf.setFontSize(6)
+        pdf.addImage(dataUrl, 'PNG', x, y, sizeInches, cellH)
+        pdf.setDrawColor(200, 200, 200)
+        pdf.setLineWidth(0.003)
+        pdf.rect(x, y, sizeInches, cellH)
+        pdf.setFontSize(5)
         pdf.setTextColor(100)
-        pdf.text(s.serial, cx, imgY + imgH + 0.12, { align: 'center' })
+        pdf.text(s.serial, x + sizeInches / 2, y + cellH + 0.1, { align: 'center' })
       }
 
       setBatchDownloadProgress({ current: i + 1, total: serials.length, type: 'pdf' })
     }
 
-    pdf.save(`batch-${batchQrModal.id.slice(0, 8)}-${serials.length}-qr-codes.pdf`)
+    pdf.save(`batch-${batchQrModal.id.slice(0, 8)}-${serials.length}-${sizeInches}in-qr-codes.pdf`)
     setBatchDownloadProgress(null)
   }
 
@@ -1368,6 +1378,36 @@ export default function QRCodes({ brand }) {
               {batchQrModal.products?.name} &middot; {batchQrModal.quantity} codes &middot; {batchQrModal.channels?.name || 'Unknown channel'}{batchQrModal.po_reference ? ` &middot; PO: ${batchQrModal.po_reference}` : ''}
             </p>
 
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                PDF Sticker Size
+              </label>
+              <select className="input" value={batchSheetSize} onChange={e => setBatchSheetSize(e.target.value)}
+                style={{ width: '100%' }}>
+                <option value="0.75">0.75" (small sticker)</option>
+                <option value="1">1" (standard sticker)</option>
+                <option value="1.5">1.5" (medium)</option>
+                <option value="2">2" (large sticker)</option>
+                <option value="3">3" (shelf tag)</option>
+                <option value="4">4" (display)</option>
+              </select>
+              {(() => {
+                const sizeIn = parseFloat(batchSheetSize)
+                const ctaText = batchQrStyle.ctaText || ''
+                const aspect = ctaText ? 1 + 0.12 : 1
+                const cellH = sizeIn * aspect
+                const cols = Math.floor((8 + 0.15) / (sizeIn + 0.15))
+                const rows = Math.floor((10.5 + 0.15) / (cellH + 0.15))
+                const perPage = cols * rows
+                const pages = Math.ceil(batchQrModal.quantity / perPage)
+                return (
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 6 }}>
+                    {perPage} per page &middot; {pages} page{pages !== 1 ? 's' : ''} &middot; {cols} columns x {rows} rows
+                  </p>
+                )
+              })()}
+            </div>
+
             {batchDownloadProgress && (
               <div style={{ marginTop: 20 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6 }}>
@@ -1408,7 +1448,7 @@ export default function QRCodes({ brand }) {
             </div>
 
             <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 12, lineHeight: 1.4 }}>
-              ZIP: Individual PNG files per serial, ideal for packaging. PDF: Sticker sheet layout (4x5 grid), ideal for printing.
+              ZIP: Individual PNG files per serial, ideal for packaging. PDF: Print-ready sticker sheets on 8.5 x 11" paper with cut guides.
             </p>
           </div>
         </div>

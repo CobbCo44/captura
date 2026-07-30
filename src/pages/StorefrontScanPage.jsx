@@ -385,9 +385,9 @@ export default function StorefrontScanPage() {
                 ...btnStyle, marginBottom: 6,
               }}>Enter to Win</div>
               <div style={{ fontWeight: 700, fontSize: '1.1rem', lineHeight: 1.2 }}>{activePromo.title}</div>
-              {activePromo.description && (
-                <div style={{ fontSize: '0.8rem', color: 'var(--ink2)', marginTop: 2 }}>{activePromo.description}</div>
-              )}
+              <div style={{ fontSize: '0.8rem', color: 'var(--ink2)', marginTop: 2 }}>
+                {activePromo.description || (activePromo.prize ? `Prize: ${activePromo.prize}` : '')}
+              </div>
             </div>
           </div>
         )}

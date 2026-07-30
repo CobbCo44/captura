@@ -55,9 +55,7 @@ export default function Loyalty({ brand }) {
         .eq('brand_id', brand.id)
         .order('created_at', { ascending: false })
 
-      console.log('Points:', points.length, 'Contacts:', allContacts?.length, 'Contact err:', contactsErr)
-
-      if (contactsErr || !allContacts) { console.error('Contacts error:', contactsErr); setMembers([]); setMembersLoading(false); return }
+      if (contactsErr || !allContacts) { setMembers([]); setMembersLoading(false); return }
 
       // Step 3: Get products for name lookup
       const { data: allProducts } = await supabase
@@ -71,10 +69,6 @@ export default function Loyalty({ brand }) {
       // Step 4: Match contacts to loyalty points
       const contactIdsWithPoints = new Set(points.map(p => p.contact_id).filter(Boolean))
       const contacts = allContacts.filter(c => contactIdsWithPoints.has(c.id))
-
-      console.log('Contact IDs with points:', [...contactIdsWithPoints])
-      console.log('All contact IDs:', allContacts.map(c => c.id))
-      console.log('Matched:', contacts.length)
 
       // Build member objects
       const memberMap = contacts.map(contact => {

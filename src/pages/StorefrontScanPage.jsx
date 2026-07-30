@@ -344,29 +344,12 @@ export default function StorefrontScanPage() {
         {/* a) MENU / SERVICES TILE */}
         {menuItems.length > 0 && (
           <div onClick={() => setShowMenu(true)} style={{
-            gridColumn: 'span 4', gridRow: 'span 2',
-            background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
-            cursor: 'pointer', overflow: 'hidden', padding: 16,
-            display: 'flex', flexDirection: 'column', justifyContent: 'center',
+            gridColumn: 'span 4', gridRow: 'span 1',
+            background: accentBg, color: accentInk, borderRadius: 'var(--r)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.02em',
           }}>
-            <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--ink2)', marginBottom: 8 }}>
-              Menu / Services
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {menuItems.slice(0, 3).map(item => (
-                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{item.name}</span>
-                  {item.price != null && (
-                    <span style={{ fontSize: '0.85rem', color: 'var(--ink2)' }}>${parseFloat(item.price).toFixed(2)}</span>
-                  )}
-                </div>
-              ))}
-              {menuItems.length > 3 && (
-                <div style={{ fontSize: '0.75rem', color: accentBg, fontWeight: 600, marginTop: 2 }}>
-                  View all {menuItems.length} items
-                </div>
-              )}
-            </div>
+            View Menu
           </div>
         )}
 

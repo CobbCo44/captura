@@ -71,6 +71,10 @@ export default function Loyalty({ brand }) {
     const contactIdsWithPoints = new Set(points.map(p => p.contact_id).filter(Boolean))
     const contacts = allContacts.filter(c => contactIdsWithPoints.has(c.id))
 
+    console.log('DEBUG loyalty_points contact_ids:', [...contactIdsWithPoints])
+    console.log('DEBUG all contacts ids:', allContacts.map(c => c.id))
+    console.log('DEBUG matched contacts:', contacts.length)
+
     if (contacts.length === 0) {
       setMembers([])
       setMembersLoading(false)

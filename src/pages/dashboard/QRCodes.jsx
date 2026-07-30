@@ -712,19 +712,24 @@ export default function QRCodes({ brand }) {
   }
 
   function openBatchQrModal(batch) {
-    setBatchQrStyle({ fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoScale: 0.25, ctaText: '' })
+    // Find the QR card that matches this batch's product and channel to inherit its style
+    const matchingQr = qrCodes.find(qr =>
+      qr.product_id === batch.product_id &&
+      ((!qr.channel_id && !batch.channel_id) || qr.channel_id === batch.channel_id)
+    ) || qrCodes.find(qr => qr.product_id === batch.product_id)
+    if (matchingQr) {
+      setBatchQrStyle({
+        fgColor: matchingQr.fg_color || '#18181B',
+        bgColor: matchingQr.bg_color || '#FFFFFF',
+        logoFile: matchingQr.logo_url || null,
+        logoScale: matchingQr.logo_scale || 0.25,
+        ctaText: matchingQr.cta_text || '',
+      })
+    } else {
+      setBatchQrStyle({ fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoScale: 0.25, ctaText: '' })
+    }
     setBatchDownloadProgress(null)
     setBatchQrModal(batch)
-  }
-
-  function handleBatchQrLogoUpload(e) {
-    const file = e.target.files[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      setBatchQrStyle(prev => ({ ...prev, logoFile: ev.target.result }))
-    }
-    reader.readAsDataURL(file)
   }
 
   async function handleBatchDownloadZip() {
@@ -1362,74 +1367,6 @@ export default function QRCodes({ brand }) {
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 20 }}>
               {batchQrModal.products?.name} &middot; {batchQrModal.quantity} codes &middot; {batchQrModal.channels?.name || 'Unknown channel'}{batchQrModal.po_reference ? ` &middot; PO: ${batchQrModal.po_reference}` : ''}
             </p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>QR Color</label>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input type="color" value={batchQrStyle.fgColor}
-                      onChange={e => setBatchQrStyle({ ...batchQrStyle, fgColor: e.target.value })}
-                      style={{ width: 36, height: 36, border: 'none', borderRadius: 6, cursor: 'pointer', padding: 0 }} />
-                    <input className="input" value={batchQrStyle.fgColor} style={{ flex: 1 }}
-                      onChange={e => setBatchQrStyle({ ...batchQrStyle, fgColor: e.target.value })} />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>Background Color</label>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input type="color" value={batchQrStyle.bgColor}
-                      onChange={e => setBatchQrStyle({ ...batchQrStyle, bgColor: e.target.value })}
-                      style={{ width: 36, height: 36, border: 'none', borderRadius: 6, cursor: 'pointer', padding: 0 }} />
-                    <input className="input" value={batchQrStyle.bgColor} style={{ flex: 1 }}
-                      onChange={e => setBatchQrStyle({ ...batchQrStyle, bgColor: e.target.value })} />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>Center Logo (optional)</label>
-                  {batchQrStyle.logoFile ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      <img src={batchQrStyle.logoFile} alt="Logo"
-                        style={{ width: 36, height: 36, objectFit: 'contain', borderRadius: 4, background: '#fff', padding: 2 }} />
-                      <button type="button" onClick={() => setBatchQrStyle({ ...batchQrStyle, logoFile: null })}
-                        style={{ fontSize: '0.75rem', color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer' }}>
-                        Remove
-                      </button>
-                    </div>
-                  ) : null}
-                  <input type="file" accept="image/*" onChange={handleBatchQrLogoUpload}
-                    style={{ fontSize: '0.8rem', color: 'var(--text-muted)', width: '100%' }} />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>CTA Text (optional)</label>
-                  <input className="input" placeholder="e.g. Scan Me, Members Only"
-                    value={batchQrStyle.ctaText}
-                    onChange={e => setBatchQrStyle({ ...batchQrStyle, ctaText: e.target.value })} />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 8 }}>Preview</label>
-                <div style={{
-                  background: '#0A0A10', borderRadius: 12, padding: 20,
-                  display: 'flex', justifyContent: 'center', alignItems: 'center',
-                  border: '1px solid var(--border)', minHeight: 220,
-                }}>
-                  <BrandedQR
-                    url={buildGS1DigitalLink(SCAN_DOMAIN, batchQrModal.products?.gtin || '0000000000000', { serial: 'PREVIEW' })}
-                    fgColor={batchQrStyle.fgColor}
-                    bgColor={batchQrStyle.bgColor}
-                    logoSrc={batchQrStyle.logoFile}
-                    logoScale={batchQrStyle.logoScale}
-                    size={180}
-                    ctaText={batchQrStyle.ctaText}
-                  />
-                </div>
-              </div>
-            </div>
 
             {batchDownloadProgress && (
               <div style={{ marginTop: 20 }}>

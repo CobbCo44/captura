@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 
 export default function Loyalty({ brand }) {
+  const [tab, setTab] = useState('rewards')
   const [rewards, setRewards] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -16,10 +17,89 @@ export default function Loyalty({ brand }) {
     active: true,
   })
 
+  // Members state
+  const [members, setMembers] = useState([])
+  const [membersLoading, setMembersLoading] = useState(true)
+  const [memberSearch, setMemberSearch] = useState('')
+  const [memberSort, setMemberSort] = useState('balance')
+  const [expandedMember, setExpandedMember] = useState(null)
+  const [memberHistory, setMemberHistory] = useState([])
+
   useEffect(() => {
     loadRewards()
     loadStats()
+    loadMembers()
   }, [brand])
+
+  async function loadMembers() {
+    if (!supabase || !brand?.id || brand.id === 'demo') {
+      setMembers([])
+      setMembersLoading(false)
+      return
+    }
+
+    // Get all loyalty points with contact info and product names
+    const { data: points } = await supabase
+      .from('loyalty_points')
+      .select('contact_id, points, type, created_at, product_id, products(name), loyalty_rewards(name)')
+      .eq('brand_id', brand.id)
+
+    if (!points || points.length === 0) {
+      setMembers([])
+      setMembersLoading(false)
+      return
+    }
+
+    // Get unique contact IDs
+    const contactIds = [...new Set(points.map(p => p.contact_id))]
+
+    // Fetch contact details
+    const { data: contacts } = await supabase
+      .from('contacts')
+      .select('id, first_name, email, phone, created_at')
+      .in('id', contactIds)
+
+    if (!contacts) {
+      setMembers([])
+      setMembersLoading(false)
+      return
+    }
+
+    // Build member objects
+    const memberMap = contacts.map(contact => {
+      const contactPoints = points.filter(p => p.contact_id === contact.id)
+      const earned = contactPoints.filter(p => p.type === 'earned').reduce((sum, p) => sum + (p.points || 0), 0)
+      const redeemed = contactPoints.filter(p => p.type === 'redeemed').reduce((sum, p) => sum + Math.abs(p.points || 0), 0)
+      const lastActivity = contactPoints.reduce((latest, p) => {
+        const d = new Date(p.created_at)
+        return d > latest ? d : latest
+      }, new Date(0))
+      const productsScanned = [...new Set(contactPoints.filter(p => p.type === 'earned' && p.products?.name).map(p => p.products.name))]
+
+      return {
+        ...contact,
+        totalEarned: earned,
+        totalRedeemed: redeemed,
+        balance: earned - redeemed,
+        lastActivity,
+        productsScanned,
+        history: contactPoints,
+      }
+    })
+
+    setMembers(memberMap)
+    setMembersLoading(false)
+  }
+
+  async function toggleMemberHistory(member) {
+    if (expandedMember === member.id) {
+      setExpandedMember(null)
+      setMemberHistory([])
+      return
+    }
+    setExpandedMember(member.id)
+    setMemberHistory(member.history.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
+  }
 
   async function loadRewards() {
     if (!supabase || !brand?.id || brand.id === 'demo') {
@@ -129,18 +209,50 @@ export default function Loyalty({ brand }) {
     custom: 'Custom',
   }
 
+  const filteredMembers = members
+    .filter(m => {
+      if (!memberSearch) return true
+      const q = memberSearch.toLowerCase()
+      return (m.first_name || '').toLowerCase().includes(q) || (m.email || '').toLowerCase().includes(q)
+    })
+    .sort((a, b) => {
+      if (memberSort === 'balance') return b.balance - a.balance
+      if (memberSort === 'earned') return b.totalEarned - a.totalEarned
+      if (memberSort === 'recent') return b.lastActivity - a.lastActivity
+      if (memberSort === 'name') return (a.first_name || '').localeCompare(b.first_name || '')
+      return 0
+    })
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Loyalty Rewards</h1>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Loyalty</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: 4 }}>
-            Configure rewards consumers can redeem with points
+            Manage your rewards program and members
           </p>
         </div>
-        <button className="btn btn-primary" onClick={openCreate}>+ Add Reward</button>
+        {tab === 'rewards' && (
+          <button className="btn btn-primary" onClick={openCreate}>+ Add Reward</button>
+        )}
       </div>
 
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 0, marginBottom: 28, borderBottom: '1px solid var(--border)' }}>
+        {[
+          { key: 'rewards', label: 'Rewards' },
+          { key: 'members', label: `Members${members.length ? ` (${members.length})` : ''}` },
+        ].map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)} style={{
+            padding: '10px 20px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer',
+            background: 'none', border: 'none', borderBottom: tab === t.key ? '2px solid white' : '2px solid transparent',
+            color: tab === t.key ? 'var(--text)' : 'var(--text-muted)',
+            transition: 'all 0.2s',
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {tab === 'rewards' && <>
       {/* Stats Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
         <div className="card" style={{ textAlign: 'center' }}>
@@ -234,6 +346,152 @@ export default function Loyalty({ brand }) {
           </div>
         </div>
       )}
+
+      </>}
+
+      {/* Members Tab */}
+      {tab === 'members' && <>
+        {/* Members Stats */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 28 }}>
+          {[
+            { label: 'Total Members', value: members.length },
+            { label: 'Total Points Earned', value: stats.totalEarned.toLocaleString() },
+            { label: 'Total Redemptions', value: stats.totalRedemptions.toLocaleString() },
+            { label: 'Avg Balance', value: members.length ? Math.round(members.reduce((s, m) => s + m.balance, 0) / members.length) : 0 },
+          ].map(s => (
+            <div key={s.label} className="card" style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 6 }}>
+                {s.label}
+              </div>
+              <div style={{ fontSize: '1.6rem', fontWeight: 700 }}>{s.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Search and Sort */}
+        <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+          <input className="input" placeholder="Search by name or email..." value={memberSearch}
+            onChange={e => setMemberSearch(e.target.value)}
+            style={{ flex: 1 }} />
+          <select className="input" value={memberSort} onChange={e => setMemberSort(e.target.value)} style={{ width: 180 }}>
+            <option value="balance">Sort by Balance</option>
+            <option value="earned">Sort by Total Earned</option>
+            <option value="recent">Sort by Recent Activity</option>
+            <option value="name">Sort by Name</option>
+          </select>
+        </div>
+
+        {/* Members Table */}
+        {membersLoading ? (
+          <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>Loading...</div>
+        ) : filteredMembers.length === 0 ? (
+          <div className="card" style={{ textAlign: 'center', padding: 60 }}>
+            <div style={{ fontSize: '1.2rem', fontWeight: 600, marginBottom: 8 }}>
+              {memberSearch ? 'No members match your search' : 'No loyalty members yet'}
+            </div>
+            <p style={{ color: 'var(--text-muted)' }}>
+              {memberSearch ? 'Try a different search term.' : 'Members will appear here once consumers earn their first loyalty point.'}
+            </p>
+          </div>
+        ) : (
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                    {['Name', 'Email', 'Balance', 'Earned', 'Redeemed', 'Products', 'Last Activity'].map(h => (
+                      <th key={h} style={{
+                        padding: '12px 16px', textAlign: 'left',
+                        fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
+                        textTransform: 'uppercase', letterSpacing: '0.5px',
+                      }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredMembers.map(member => (
+                    <>
+                      <tr key={member.id} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
+                        onClick={() => toggleMemberHistory(member)}>
+                        <td style={{ padding: '12px 16px', fontWeight: 500 }}>
+                          <span style={{ marginRight: 8, fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            {expandedMember === member.id ? '▼' : '▶'}
+                          </span>
+                          {member.first_name || '—'}
+                        </td>
+                        <td style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>{member.email}</td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <span style={{
+                            padding: '3px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700,
+                            background: member.balance > 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(161, 161, 170, 0.1)',
+                            color: member.balance > 0 ? 'var(--success)' : 'var(--text-muted)',
+                          }}>
+                            {member.balance} pts
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>{member.totalEarned}</td>
+                        <td style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>{member.totalRedeemed}</td>
+                        <td style={{ padding: '12px 16px', color: 'var(--text-muted)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {member.productsScanned.length > 0 ? member.productsScanned.join(', ') : '—'}
+                        </td>
+                        <td style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>
+                          {member.lastActivity.getFullYear() > 1970 ? member.lastActivity.toLocaleDateString() : '—'}
+                        </td>
+                      </tr>
+                      {expandedMember === member.id && (
+                        <tr key={`${member.id}-history`} style={{ background: 'rgba(255,255,255,0.02)' }}>
+                          <td colSpan={7} style={{ padding: '0 16px 16px 44px' }}>
+                            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8, marginTop: 8 }}>
+                              Point History
+                            </div>
+                            {memberHistory.length === 0 ? (
+                              <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>No history</div>
+                            ) : (
+                              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                                <thead>
+                                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                    {['Date', 'Type', 'Points', 'Product / Reward'].map(h => (
+                                      <th key={h} style={{ padding: '6px 12px', textAlign: 'left', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{h}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {memberHistory.map((h, i) => (
+                                    <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
+                                      <td style={{ padding: '6px 12px', color: 'var(--text-muted)' }}>
+                                        {new Date(h.created_at).toLocaleDateString()}
+                                      </td>
+                                      <td style={{ padding: '6px 12px' }}>
+                                        <span style={{
+                                          padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 600,
+                                          background: h.type === 'earned' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                          color: h.type === 'earned' ? 'var(--success)' : 'var(--danger)',
+                                        }}>
+                                          {h.type === 'earned' ? 'Earned' : 'Redeemed'}
+                                        </span>
+                                      </td>
+                                      <td style={{ padding: '6px 12px', fontWeight: 600 }}>
+                                        {h.type === 'earned' ? '+' : ''}{h.points}
+                                      </td>
+                                      <td style={{ padding: '6px 12px', color: 'var(--text-muted)' }}>
+                                        {h.type === 'earned' ? (h.products?.name || '—') : (h.loyalty_rewards?.name || '—')}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </>}
 
       {/* Create/Edit Modal */}
       {showModal && (

@@ -23,6 +23,8 @@ export default function StorefrontScanPage() {
   const [showMenu, setShowMenu] = useState(false)
   const [menuCategory, setMenuCategory] = useState('all')
   const [showHours, setShowHours] = useState(false)
+  const [showLocations, setShowLocations] = useState(false)
+  const [locations, setLocations] = useState([])
 
   // Promo form
   const [showPromo, setShowPromo] = useState(false)
@@ -53,17 +55,19 @@ export default function StorefrontScanPage() {
     setBrand(brandData)
 
     // Load menu, hours, promos, loyalty rewards in parallel
-    const [menuRes, hoursRes, promosRes, rewardsRes] = await Promise.all([
+    const [menuRes, hoursRes, promosRes, rewardsRes, locationsRes] = await Promise.all([
       supabase.from('menu_items').select('*').eq('brand_id', brandId).eq('active', true).order('category').order('sort_order').order('name'),
       supabase.from('store_hours').select('*').eq('brand_id', brandId).order('day_of_week'),
       supabase.from('promos').select('*').eq('brand_id', brandId).or('active.eq.true,winner_announced_at.not.is.null').order('active', { ascending: false }).order('winner_announced_at', { ascending: false, nullsFirst: false }),
       supabase.from('loyalty_rewards').select('*').eq('brand_id', brandId).eq('active', true).order('points_required'),
+      supabase.from('store_locations').select('*').eq('brand_id', brandId).order('sort_order').order('name'),
     ])
 
     setMenuItems(menuRes.data || [])
     setHours(hoursRes.data || [])
     setPromos(promosRes.data || [])
     setLoyaltyRewards(rewardsRes.data || [])
+    setLocations(locationsRes.data || [])
 
     // Check for returning loyalty member
     const savedEmail = localStorage.getItem(`loyalty_email_${brandId}`)
@@ -512,13 +516,16 @@ export default function StorefrontScanPage() {
         {hours.length > 0 && (
           <span onClick={() => setShowHours(true)} style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', cursor: 'pointer' }}>Hours</span>
         )}
-        {brand?.store_address && (
-          <span onClick={() => window.open(`https://maps.google.com/?q=${encodeURIComponent(brand.store_address)}`, '_blank')}
-            style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', cursor: 'pointer' }}>Location</span>
+        {(locations.length > 0 || brand?.store_address) && (
+          <span onClick={() => locations.length > 0 ? setShowLocations(true) : window.open(`https://maps.google.com/?q=${encodeURIComponent(brand.store_address)}`, '_blank')}
+            style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', cursor: 'pointer' }}>
+            {locations.length > 1 ? 'Locations' : 'Location'}
+          </span>
         )}
-        {brand?.store_phone && (
-          <a href={`tel:${brand.store_phone}`} style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', textDecoration: 'none' }}>Call Us</a>
-        )}
+        {(locations.length === 1 && locations[0].phone) || (!locations.length && brand?.store_phone) ? (
+          <a href={`tel:${locations.length === 1 ? locations[0].phone : brand.store_phone}`}
+            style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', textDecoration: 'none' }}>Call Us</a>
+        ) : null}
       </div>
 
       {/* 6. POWERED BY */}
@@ -571,6 +578,51 @@ export default function StorefrontScanPage() {
                 </a>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* LOCATIONS MODAL */}
+      {showLocations && locations.length > 0 && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 40, display: 'flex', flexDirection: 'column' }}>
+          <div onClick={() => setShowLocations(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }} />
+          <div style={{
+            position: 'relative', marginTop: 'auto', maxHeight: '85vh', overflowY: 'auto',
+            background: kit.bg, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
+            animation: 'captura-slide-up 0.25s ease-out',
+          }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '0 auto 16px' }} />
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 16px', textAlign: 'center' }}>Locations</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {locations.map(loc => (
+                <div key={loc.id} style={{
+                  padding: '14px 16px', borderRadius: 12,
+                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)',
+                }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 6 }}>{loc.name}</div>
+                  {loc.address && (
+                    <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>{loc.address}</div>
+                  )}
+                  {loc.phone && (
+                    <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>{loc.phone}</div>
+                  )}
+                  <div style={{ display: 'flex', gap: 12 }}>
+                    {loc.address && (
+                      <a href={`https://maps.google.com/?q=${encodeURIComponent(loc.address)}`} target="_blank" rel="noopener noreferrer"
+                        style={{ color: accentBg, fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none' }}>
+                        Get Directions
+                      </a>
+                    )}
+                    {loc.phone && (
+                      <a href={`tel:${loc.phone}`}
+                        style={{ color: accentBg, fontSize: '0.8rem', fontWeight: 600, textDecoration: 'none' }}>
+                        Call
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}

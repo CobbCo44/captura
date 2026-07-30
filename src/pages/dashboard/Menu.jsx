@@ -22,12 +22,20 @@ export default function Menu({ brand }) {
   const [storeSaving, setStoreSaving] = useState(false)
   const [storeSaved, setStoreSaved] = useState(false)
 
+  // Locations state
+  const [locations, setLocations] = useState([])
+  const [showLocationForm, setShowLocationForm] = useState(false)
+  const [editingLocation, setEditingLocation] = useState(null)
+  const [locationForm, setLocationForm] = useState({ name: '', address: '', phone: '' })
+  const [locationSaving, setLocationSaving] = useState(false)
+
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
   useEffect(() => {
     loadItems()
     loadStoreInfo()
     loadHours()
+    loadLocations()
   }, [brand])
 
   async function loadItems() {
@@ -74,6 +82,64 @@ export default function Menu({ brand }) {
         closed: i === 0, // Sunday closed by default
       })))
     }
+  }
+
+  async function loadLocations() {
+    if (!supabase || !brand?.id || brand.id === 'demo') return
+    const { data } = await supabase
+      .from('store_locations')
+      .select('*')
+      .eq('brand_id', brand.id)
+      .order('sort_order')
+      .order('name')
+    setLocations(data || [])
+  }
+
+  const openLocationCreate = () => {
+    setEditingLocation(null)
+    setLocationForm({ name: '', address: '', phone: '' })
+    setShowLocationForm(true)
+  }
+
+  const openLocationEdit = (loc) => {
+    setEditingLocation(loc)
+    setLocationForm({ name: loc.name, address: loc.address || '', phone: loc.phone || '' })
+    setShowLocationForm(true)
+  }
+
+  const handleLocationSubmit = async (e) => {
+    e.preventDefault()
+    if (!supabase || !brand?.id || !locationForm.name.trim()) return
+    setLocationSaving(true)
+
+    const payload = {
+      name: locationForm.name.trim(),
+      address: locationForm.address || null,
+      phone: locationForm.phone || null,
+    }
+
+    if (editingLocation) {
+      const { data, error } = await supabase
+        .from('store_locations').update(payload).eq('id', editingLocation.id).select().single()
+      if (error) alert(`Error: ${error.message}`)
+      else setLocations(locations.map(l => l.id === data.id ? data : l))
+    } else {
+      const { data, error } = await supabase
+        .from('store_locations').insert({ ...payload, brand_id: brand.id }).select().single()
+      if (error) alert(`Error: ${error.message}`)
+      else setLocations([...locations, data])
+    }
+
+    setLocationSaving(false)
+    setShowLocationForm(false)
+    setEditingLocation(null)
+  }
+
+  const handleLocationDelete = async (loc) => {
+    if (!confirm(`Delete "${loc.name}"?`)) return
+    const { error } = await supabase.from('store_locations').delete().eq('id', loc.id)
+    if (error) alert(`Error: ${error.message}`)
+    else setLocations(locations.filter(l => l.id !== loc.id))
   }
 
   const categories = [...new Set(items.map(i => i.category))].sort()
@@ -406,6 +472,84 @@ export default function Menu({ brand }) {
               {storeSaving ? 'Saving...' : storeSaved ? 'Saved!' : 'Save Store Info'}
             </button>
           </form>
+
+          {/* Locations */}
+          <div style={{ marginTop: 24 }}>
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Locations</label>
+                <button type="button" className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+                  onClick={openLocationCreate}>
+                  + Add Location
+                </button>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 16, marginTop: -8 }}>
+                Add your store locations. Customers will see these when they tap Locations on the scan page.
+              </p>
+
+              {showLocationForm && (
+                <form onSubmit={handleLocationSubmit} style={{
+                  padding: 16, borderRadius: 8, background: 'var(--bg)',
+                  border: '1px solid var(--border)', marginBottom: 16,
+                  display: 'flex', flexDirection: 'column', gap: 10,
+                }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>Location Name</label>
+                    <input className="input" placeholder="e.g. Downtown, Encinitas, Main Street" value={locationForm.name}
+                      onChange={e => setLocationForm({ ...locationForm, name: e.target.value })} required />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>Address</label>
+                    <input className="input" placeholder="123 Main St, City, State" value={locationForm.address}
+                      onChange={e => setLocationForm({ ...locationForm, address: e.target.value })} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>Phone</label>
+                    <input className="input" placeholder="(555) 123-4567" value={locationForm.phone}
+                      onChange={e => setLocationForm({ ...locationForm, phone: e.target.value })} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="submit" className="btn btn-primary" style={{ padding: '8px 20px' }} disabled={locationSaving}>
+                      {locationSaving ? 'Saving...' : editingLocation ? 'Save' : 'Add'}
+                    </button>
+                    <button type="button" className="btn btn-secondary" style={{ padding: '8px 16px' }}
+                      onClick={() => { setShowLocationForm(false); setEditingLocation(null) }}>Cancel</button>
+                  </div>
+                </form>
+              )}
+
+              {locations.length === 0 && !showLocationForm ? (
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '12px 0' }}>
+                  No locations yet. Add your first location.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {locations.map((loc, idx) => (
+                    <div key={loc.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0',
+                      borderBottom: idx < locations.length - 1 ? '1px solid var(--border)' : 'none',
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{loc.name}</div>
+                        {loc.address && (
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2 }}>{loc.address}</div>
+                        )}
+                        {loc.phone && (
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 1 }}>{loc.phone}</div>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                        <button className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                          onClick={() => openLocationEdit(loc)}>Edit</button>
+                        <button style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.75rem', cursor: 'pointer', padding: '4px 8px' }}
+                          onClick={() => handleLocationDelete(loc)}>Delete</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

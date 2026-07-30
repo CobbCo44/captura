@@ -27,12 +27,29 @@ export default function Brand({ brand, onBrandUpdate }) {
     social_twitter: '',
     social_facebook: '',
     social_website: '',
+    store_header_type: 'text',
+    store_header_font: 'Inter',
+    store_header_logo: '',
   })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [logoUploading, setLogoUploading] = useState(false)
   const [logoDarkUploading, setLogoDarkUploading] = useState(false)
+  const [headerLogoUploading, setHeaderLogoUploading] = useState(false)
+
+  const isStorefront = brand?.business_type === 'storefront'
+
+  const fontOptions = [
+    { value: 'Inter', label: 'Inter (Clean)' },
+    { value: 'Oswald', label: 'Oswald (Bold)' },
+    { value: 'Playfair Display', label: 'Playfair Display (Classic)' },
+    { value: 'Caveat', label: 'Caveat (Handwritten)' },
+    { value: 'Bebas Neue', label: 'Bebas Neue (Block)' },
+    { value: 'Lora', label: 'Lora (Serif)' },
+    { value: 'Righteous', label: 'Righteous (Retro)' },
+    { value: 'Permanent Marker', label: 'Permanent Marker (Marker)' },
+  ]
   const [products, setProducts] = useState([])
   const [previewProductId, setPreviewProductId] = useState('')
   const [promos, setPromos] = useState([])
@@ -53,6 +70,9 @@ export default function Brand({ brand, onBrandUpdate }) {
       social_twitter: brand.social_twitter || '',
       social_facebook: brand.social_facebook || '',
       social_website: brand.social_website || '',
+      store_header_type: brand.store_header_type || 'text',
+      store_header_font: brand.store_header_font || 'Inter',
+      store_header_logo: brand.store_header_logo || '',
     })
   }, [brand])
 
@@ -83,6 +103,18 @@ export default function Brand({ brand, onBrandUpdate }) {
     const key = variant === 'dark' ? 'logo_dark_url' : 'logo_url'
     setForm(f => ({ ...f, [key]: publicUrl }))
     setter(false)
+  }
+
+  const uploadHeaderLogo = async (file) => {
+    if (!supabase || !brand?.id) return
+    setHeaderLogoUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `logos/${brand.id}/store_header_${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('product-images').upload(path, file, { upsert: true })
+    if (error) { alert(error.message); setHeaderLogoUploading(false); return }
+    const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(path)
+    setForm(f => ({ ...f, store_header_logo: publicUrl }))
+    setHeaderLogoUploading(false)
   }
 
   const handleSave = async (e) => {
@@ -250,6 +282,102 @@ export default function Brand({ brand, onBrandUpdate }) {
                 style={{ width: '100%', accentColor: '#FAFAFA' }} />
             </div>
           </div>
+
+          {/* Storefront Header */}
+          {isStorefront && (
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Scan Page Header</label>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: -8 }}>
+                Choose how your brand appears at the top of the scan page.
+              </p>
+
+              {/* Toggle: Logo vs Text */}
+              <div style={{ display: 'flex', gap: 8 }}>
+                {[
+                  { value: 'logo', label: 'Logo' },
+                  { value: 'text', label: 'Styled Text' },
+                ].map(opt => (
+                  <button key={opt.value} type="button"
+                    onClick={() => setForm({ ...form, store_header_type: opt.value })}
+                    style={{
+                      flex: 1, padding: '10px 16px', borderRadius: 8, fontSize: '0.85rem', fontWeight: 600,
+                      cursor: 'pointer', border: 'none', transition: 'all 0.2s',
+                      background: form.store_header_type === opt.value ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.04)',
+                      color: form.store_header_type === opt.value ? '#fff' : 'var(--text-muted)',
+                    }}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Logo upload */}
+              {form.store_header_type === 'logo' && (
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    {form.store_header_logo ? (
+                      <img src={form.store_header_logo} alt="Header logo" style={{
+                        height: 48, maxWidth: 180, objectFit: 'contain',
+                        background: '#fff', padding: 4, borderRadius: 8, border: '1px solid var(--border)',
+                      }} />
+                    ) : (
+                      <div style={{
+                        height: 48, width: 120, borderRadius: 8, background: 'var(--bg)',
+                        border: '1px solid var(--border)', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.7rem',
+                      }}>No logo</div>
+                    )}
+                    <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '0.8rem', padding: '8px 14px' }}>
+                      {headerLogoUploading ? 'Uploading...' : 'Upload'}
+                      <input type="file" accept="image/*" style={{ display: 'none' }}
+                        onChange={e => e.target.files[0] && uploadHeaderLogo(e.target.files[0])} />
+                    </label>
+                    {form.store_header_logo && (
+                      <button type="button" onClick={() => setForm({ ...form, store_header_logo: '' })}
+                        style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '0.8rem' }}>
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginTop: 8, lineHeight: 1.4 }}>
+                    Use a horizontal/wide format for best results on the scan page header bar.
+                  </p>
+                </div>
+              )}
+
+              {/* Font picker */}
+              {form.store_header_type === 'text' && (
+                <div>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>Font</label>
+                  <select className="input" value={form.store_header_font}
+                    onChange={e => setForm({ ...form, store_header_font: e.target.value })}>
+                    {fontOptions.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {/* Preview bar */}
+              <div style={{
+                padding: '12px 16px', borderRadius: 8,
+                background: form.accent_hex || '#FFFFFF', color: form.accent_ink_hex || '#000',
+                display: 'flex', alignItems: 'center',
+                justifyContent: form.logo_align === 'center' ? 'center' : 'flex-start',
+              }}>
+                {form.store_header_type === 'logo' && form.store_header_logo ? (
+                  <img src={form.store_header_logo} alt="" style={{ height: 32, objectFit: 'contain' }} />
+                ) : (
+                  <>
+                    <link href={`https://fonts.googleapis.com/css2?family=${encodeURIComponent(form.store_header_font)}:wght@700&display=swap`} rel="stylesheet" />
+                    <div style={{ fontFamily: `"${form.store_header_font}", sans-serif`, fontSize: '1.2rem', fontWeight: 700 }}>
+                      {form.name || 'Your Store Name'}
+                    </div>
+                  </>
+                )}
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginTop: -8 }}>
+                Preview of your scan page header bar
+              </p>
+            </div>
+          )}
 
           {/* Buttons */}
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

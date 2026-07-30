@@ -231,7 +231,9 @@ export default function StorefrontScanPage() {
   const accentInk = brand?.accent_ink_hex || '#000000'
   const kit = { bg: '#0A0A0A', card: '#18181B' }
   const headerFont = brand?.store_header_font || 'Inter'
-  const hasLogo = brand?.logo_dark_url || brand?.logo_url
+  const storeHeaderLogo = brand?.store_header_logo
+  const useLogoHeader = brand?.store_header_type === 'logo' && storeHeaderLogo
+  const hasLogo = useLogoHeader || brand?.logo_dark_url || brand?.logo_url
   const activePromo = promos[0]
   const menuCategories = [...new Set(menuItems.map(i => i.category))].sort()
 
@@ -289,7 +291,11 @@ export default function StorefrontScanPage() {
         minHeight: 46,
         justifyContent: brand?.logo_align === 'center' ? 'center' : brand?.logo_align === 'right' ? 'flex-end' : 'flex-start',
       }}>
-        {hasLogo ? (
+        {useLogoHeader ? (
+          <img src={storeHeaderLogo} alt={brand.name} style={{
+            height: Math.round(46 * (brand?.logo_size || 70) / 100), objectFit: 'contain',
+          }} />
+        ) : hasLogo ? (
           <img src={brand.logo_dark_url || brand.logo_url} alt={brand.name} style={{
             height: Math.round(46 * (brand?.logo_size || 70) / 100), objectFit: 'contain',
           }} />

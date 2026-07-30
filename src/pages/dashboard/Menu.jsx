@@ -16,24 +16,13 @@ export default function Menu({ brand }) {
 
   // Store info state
   const [storeForm, setStoreForm] = useState({
-    store_address: '', store_phone: '', store_video_url: '', store_header_font: 'Inter',
+    store_address: '', store_phone: '', store_video_url: '',
   })
   const [hours, setHours] = useState([])
   const [storeSaving, setStoreSaving] = useState(false)
   const [storeSaved, setStoreSaved] = useState(false)
 
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-
-  const fontOptions = [
-    { value: 'Inter', label: 'Inter (Clean)' },
-    { value: 'Oswald', label: 'Oswald (Bold)' },
-    { value: 'Playfair Display', label: 'Playfair Display (Classic)' },
-    { value: 'Caveat', label: 'Caveat (Handwritten)' },
-    { value: 'Bebas Neue', label: 'Bebas Neue (Block)' },
-    { value: 'Lora', label: 'Lora (Serif)' },
-    { value: 'Righteous', label: 'Righteous (Retro)' },
-    { value: 'Permanent Marker', label: 'Permanent Marker (Marker)' },
-  ]
 
   useEffect(() => {
     loadItems()
@@ -64,7 +53,6 @@ export default function Menu({ brand }) {
       store_address: brand.store_address || '',
       store_phone: brand.store_phone || '',
       store_video_url: brand.store_video_url || '',
-      store_header_font: brand.store_header_font || 'Inter',
     })
   }
 
@@ -196,7 +184,6 @@ export default function Menu({ brand }) {
         store_address: storeForm.store_address || null,
         store_phone: storeForm.store_phone || null,
         store_video_url: storeForm.store_video_url || null,
-        store_header_font: storeForm.store_header_font || 'Inter',
       })
       .eq('id', brand.id)
 
@@ -352,29 +339,6 @@ export default function Menu({ brand }) {
       {tab === 'store' && (
         <div style={{ maxWidth: 520 }}>
           <form onSubmit={handleSaveStore} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {/* Header Font */}
-            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 6 }}>Header Font</label>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: 8, lineHeight: 1.4 }}>
-                  If you don't have a logo, your store name will display as the header using this font.
-                </p>
-                <select className="input" value={storeForm.store_header_font}
-                  onChange={e => setStoreForm({ ...storeForm, store_header_font: e.target.value })}>
-                  {fontOptions.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                </select>
-                <div style={{
-                  marginTop: 12, padding: '16px 20px', borderRadius: 8, background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid var(--border)', textAlign: 'center',
-                }}>
-                  <link href={`https://fonts.googleapis.com/css2?family=${encodeURIComponent(storeForm.store_header_font)}:wght@700&display=swap`} rel="stylesheet" />
-                  <div style={{ fontFamily: `"${storeForm.store_header_font}", sans-serif`, fontSize: '1.6rem', fontWeight: 700 }}>
-                    {brand?.name || 'Your Store Name'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Contact & Location */}
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>

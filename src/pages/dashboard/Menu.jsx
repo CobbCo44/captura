@@ -403,84 +403,84 @@ export default function Menu({ brand }) {
 
       {/* Store Info Tab */}
       {tab === 'store' && (
-        <div style={{ maxWidth: 520 }}>
-          <form onSubmit={handleSaveStore} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {/* Locations */}
-            <div className="card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Locations</label>
-                <button type="button" className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
-                  onClick={openLocationCreate}>
-                  + Add Location
-                </button>
-              </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 16, marginTop: -8 }}>
-                Add your store locations. Customers will see these when they tap Locations on the scan page.
-              </p>
-
-              {showLocationForm && (
-                <form onSubmit={handleLocationSubmit} style={{
-                  padding: 16, borderRadius: 8, background: 'var(--bg)',
-                  border: '1px solid var(--border)', marginBottom: 16,
-                  display: 'flex', flexDirection: 'column', gap: 10,
-                }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>Location Name</label>
-                    <input className="input" placeholder="e.g. Downtown, Encinitas, Main Street" value={locationForm.name}
-                      onChange={e => setLocationForm({ ...locationForm, name: e.target.value })} required />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>Address</label>
-                    <input className="input" placeholder="123 Main St, City, State" value={locationForm.address}
-                      onChange={e => setLocationForm({ ...locationForm, address: e.target.value })} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>Phone</label>
-                    <input className="input" placeholder="(555) 123-4567" value={locationForm.phone}
-                      onChange={e => setLocationForm({ ...locationForm, phone: e.target.value })} />
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button type="submit" className="btn btn-primary" style={{ padding: '8px 20px' }} disabled={locationSaving}>
-                      {locationSaving ? 'Saving...' : editingLocation ? 'Save' : 'Add'}
-                    </button>
-                    <button type="button" className="btn btn-secondary" style={{ padding: '8px 16px' }}
-                      onClick={() => { setShowLocationForm(false); setEditingLocation(null) }}>Cancel</button>
-                  </div>
-                </form>
-              )}
-
-              {locations.length === 0 && !showLocationForm ? (
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '12px 0' }}>
-                  No locations yet. Add your first location.
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                  {locations.map((loc, idx) => (
-                    <div key={loc.id} style={{
-                      display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0',
-                      borderBottom: idx < locations.length - 1 ? '1px solid var(--border)' : 'none',
-                    }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{loc.name}</div>
-                        {loc.address && (
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2 }}>{loc.address}</div>
-                        )}
-                        {loc.phone && (
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 1 }}>{loc.phone}</div>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                        <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '4px 10px' }}
-                          onClick={() => openLocationEdit(loc)}>Edit</button>
-                        <button type="button" style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.75rem', cursor: 'pointer', padding: '4px 8px' }}
-                          onClick={() => handleLocationDelete(loc)}>Delete</button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+        <div style={{ maxWidth: 520, display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Locations (standalone, not inside the store form) */}
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Locations</label>
+              <button type="button" className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+                onClick={openLocationCreate}>
+                + Add Location
+              </button>
             </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 16, marginTop: -8 }}>
+              Add your store locations. Customers will see these when they tap Locations on the scan page.
+            </p>
 
+            {showLocationForm && (
+              <form onSubmit={handleLocationSubmit} style={{
+                padding: 16, borderRadius: 8, background: 'var(--bg)',
+                border: '1px solid var(--border)', marginBottom: 16,
+                display: 'flex', flexDirection: 'column', gap: 10,
+              }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>Location Name</label>
+                  <input className="input" placeholder="e.g. Downtown, Encinitas, Main Street" value={locationForm.name}
+                    onChange={e => setLocationForm({ ...locationForm, name: e.target.value })} required />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>Address</label>
+                  <input className="input" placeholder="123 Main St, City, State" value={locationForm.address}
+                    onChange={e => setLocationForm({ ...locationForm, address: e.target.value })} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 4 }}>Phone</label>
+                  <input className="input" placeholder="(555) 123-4567" value={locationForm.phone}
+                    onChange={e => setLocationForm({ ...locationForm, phone: e.target.value })} />
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="submit" className="btn btn-primary" style={{ padding: '8px 20px' }} disabled={locationSaving}>
+                    {locationSaving ? 'Saving...' : editingLocation ? 'Save' : 'Add'}
+                  </button>
+                  <button type="button" className="btn btn-secondary" style={{ padding: '8px 16px' }}
+                    onClick={() => { setShowLocationForm(false); setEditingLocation(null) }}>Cancel</button>
+                </div>
+              </form>
+            )}
+
+            {locations.length === 0 && !showLocationForm ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', textAlign: 'center', padding: '12px 0' }}>
+                No locations yet. Add your first location.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {locations.map((loc, idx) => (
+                  <div key={loc.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0',
+                    borderBottom: idx < locations.length - 1 ? '1px solid var(--border)' : 'none',
+                  }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{loc.name}</div>
+                      {loc.address && (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2 }}>{loc.address}</div>
+                      )}
+                      {loc.phone && (
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 1 }}>{loc.phone}</div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                      <button type="button" className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                        onClick={() => openLocationEdit(loc)}>Edit</button>
+                      <button type="button" style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.75rem', cursor: 'pointer', padding: '4px 8px' }}
+                        onClick={() => handleLocationDelete(loc)}>Delete</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <form onSubmit={handleSaveStore} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {/* Video */}
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>

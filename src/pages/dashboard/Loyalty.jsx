@@ -39,11 +39,12 @@ export default function Loyalty({ brand }) {
     }
 
     // Get all loyalty points with contact info and product names
-    const { data: points } = await supabase
+    const { data: points, error: pointsErr } = await supabase
       .from('loyalty_points')
-      .select('contact_id, points, type, created_at, product_id, products(name), loyalty_rewards(name)')
+      .select('contact_id, points, type, created_at, product_id, reward_id, products(name)')
       .eq('brand_id', brand.id)
 
+    if (pointsErr) console.error('Loyalty points load error:', pointsErr)
     if (!points || points.length === 0) {
       setMembers([])
       setMembersLoading(false)
@@ -475,7 +476,7 @@ export default function Loyalty({ brand }) {
                                         {h.type === 'earned' ? '+' : ''}{h.points}
                                       </td>
                                       <td style={{ padding: '6px 12px', color: 'var(--text-muted)' }}>
-                                        {h.type === 'earned' ? (h.products?.name || '—') : (h.loyalty_rewards?.name || '—')}
+                                        {h.type === 'earned' ? (h.products?.name || '—') : (rewards.find(r => r.id === h.reward_id)?.name || '—')}
                                       </td>
                                     </tr>
                                   ))}

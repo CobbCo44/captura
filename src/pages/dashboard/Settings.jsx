@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { INDUSTRIES } from '../../lib/industries'
 
 export default function Settings({ brand, onBrandUpdate }) {
-  const [form, setForm] = useState({ name: '', industry: '', logoFile: null, logoPreview: null, existingLogo: null })
+  const [form, setForm] = useState({ name: '', industry: '', businessType: 'product', logoFile: null, logoPreview: null, existingLogo: null })
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [shopifyStore, setShopifyStore] = useState('')
@@ -25,6 +25,7 @@ export default function Settings({ brand, onBrandUpdate }) {
       setForm({
         name: brand.name || '',
         industry: brand.industry || '',
+        businessType: brand.business_type || 'product',
         logoFile: null,
         logoPreview: null,
         existingLogo: brand.logo_url || null,
@@ -151,7 +152,7 @@ export default function Settings({ brand, onBrandUpdate }) {
     }
 
     const { data, error } = await supabase.from('brands')
-      .update({ name: form.name, industry: form.industry, logo_url: logoUrl })
+      .update({ name: form.name, industry: form.industry, business_type: form.businessType, logo_url: logoUrl })
       .eq('id', brand.id)
       .select().single()
 
@@ -247,6 +248,16 @@ export default function Settings({ brand, onBrandUpdate }) {
                 {INDUSTRIES.map(ind => <option key={ind} value={ind}>{ind}</option>)}
               </select>
             </div>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 6 }}>Business Type</label>
+              <select className="input" value={form.businessType} onChange={e => setForm({ ...form, businessType: e.target.value })}>
+                <option value="product">Product Brand</option>
+                <option value="storefront">Storefront</option>
+              </select>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 6, lineHeight: 1.4 }}>
+                Product Brand: for companies selling physical products. Storefront: for restaurants, shops, salons, and other local businesses.
+              </p>
+            </div>
           </div>
 
           {/* Shopify Integration */}
@@ -328,8 +339,8 @@ export default function Settings({ brand, onBrandUpdate }) {
           </button>
         </form>
 
-        {/* Channels Section */}
-        <div style={{ marginTop: 32 }}>
+        {/* Channels Section - Product brands only */}
+        {(brand?.business_type || 'product') === 'product' && <div style={{ marginTop: 32 }}>
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Channels</label>
@@ -427,7 +438,7 @@ export default function Settings({ brand, onBrandUpdate }) {
               </div>
             )}
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   )

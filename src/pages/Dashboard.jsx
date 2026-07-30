@@ -15,11 +15,27 @@ import Consumers from './dashboard/Consumers'
 import Events from './dashboard/Events'
 import Settings from './dashboard/Settings'
 import Loyalty from './dashboard/Loyalty'
+import Menu from './dashboard/Menu'
 
-const navItems = [
+const productNavItems = [
   { path: '', label: 'Overview', icon: '◎' },
   { path: 'brand', label: 'Brand', icon: '◆' },
   { path: 'products', label: 'Products', icon: '▦' },
+  { path: 'qr-codes', label: 'QR Codes', icon: '⊞' },
+  { path: 'promos', label: 'Promos', icon: '🎁' },
+  { path: 'events', label: 'Events', icon: '🎪' },
+  { path: 'socials', label: 'Socials', icon: '🔗' },
+  { path: 'scans', label: 'Scans', icon: '📍' },
+  { path: 'consumers', label: 'Consumers', icon: '👥' },
+  { path: 'loyalty', label: 'Loyalty', icon: '⭐' },
+  { path: 'insights', label: 'Insights', icon: '📊' },
+  { path: 'settings', label: 'Settings', icon: '⚙' },
+]
+
+const storefrontNavItems = [
+  { path: '', label: 'Overview', icon: '◎' },
+  { path: 'brand', label: 'Brand', icon: '◆' },
+  { path: 'menu', label: 'Menu / Services', icon: '▤' },
   { path: 'qr-codes', label: 'QR Codes', icon: '⊞' },
   { path: 'promos', label: 'Promos', icon: '🎁' },
   { path: 'events', label: 'Events', icon: '🎪' },
@@ -41,6 +57,7 @@ export default function Dashboard() {
   const [showNewBrand, setShowNewBrand] = useState(false)
   const [newBrandName, setNewBrandName] = useState('')
   const [newBrandIndustry, setNewBrandIndustry] = useState('')
+  const [newBrandType, setNewBrandType] = useState('product')
   const [creatingBrand, setCreatingBrand] = useState(false)
   const switcherRef = useRef(null)
 
@@ -117,6 +134,7 @@ export default function Dashboard() {
       name: newBrandName.trim(),
       email: user.email,
       industry: newBrandIndustry || null,
+      business_type: newBrandType,
     }).select().single()
     if (newBrand) {
       setBrands(prev => [...prev, newBrand])
@@ -124,6 +142,7 @@ export default function Dashboard() {
     }
     setNewBrandName('')
     setNewBrandIndustry('')
+    setNewBrandType('product')
     setShowNewBrand(false)
     setSwitcherOpen(false)
     setCreatingBrand(false)
@@ -268,6 +287,18 @@ export default function Dashboard() {
                         }}
                       />
                       <select
+                        value={newBrandType}
+                        onChange={e => setNewBrandType(e.target.value)}
+                        style={{
+                          width: '100%', padding: '6px 8px', fontSize: '0.8rem',
+                          background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
+                          borderRadius: 6, color: '#FAFAFA', outline: 'none',
+                        }}
+                      >
+                        <option value="product">Product Brand</option>
+                        <option value="storefront">Storefront</option>
+                      </select>
+                      <select
                         value={newBrandIndustry}
                         onChange={e => setNewBrandIndustry(e.target.value)}
                         style={{
@@ -313,7 +344,7 @@ export default function Dashboard() {
         </div>
 
         <nav style={{ flex: 1, overflow: 'auto' }}>
-          {navItems.map(item => (
+          {(brand?.business_type === 'storefront' ? storefrontNavItems : productNavItems).map(item => (
             <NavLink
               key={item.path}
               to={`/dashboard/${item.path}`}
@@ -351,6 +382,7 @@ export default function Dashboard() {
         <Routes>
           <Route index element={<Overview brand={brand} />} />
           <Route path="products" element={<Products brand={brand} />} />
+          <Route path="menu" element={<Menu brand={brand} />} />
           <Route path="qr-codes" element={<QRCodes brand={brand} />} />
           <Route path="brand" element={<Brand brand={brand} onBrandUpdate={setBrand} />} />
           <Route path="promos" element={<Promos brand={brand} />} />

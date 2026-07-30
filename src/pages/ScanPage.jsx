@@ -860,7 +860,7 @@ export default function ScanPage({ previewData } = {}) {
               )}
 
               <div style={{ textAlign: 'center', marginTop: 20, fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)' }}>
-                Powered by <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>Captura</span>
+                Powered by <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>MeetCaptura</span>
                 {' '}&middot;{' '}
                 <a href="/privacy" target="_blank" style={{ color: 'rgba(255,255,255,0.35)', textDecoration: 'underline' }}>Privacy</a>
               </div>
@@ -1264,7 +1264,7 @@ export default function ScanPage({ previewData } = {}) {
 
       {/* 6. FOOTER */}
       <div style={{ padding: '14px 14px 22px', borderTop: '1px solid var(--line)', textAlign: 'center' }}>
-        <p style={{ fontSize: 11, color: 'var(--ink2)', margin: '0 0 4px' }}>Powered by <b style={{ color: 'var(--ink)' }}>Captura</b></p>
+        <p style={{ fontSize: 11, color: 'var(--ink2)', margin: '0 0 4px' }}>Powered by <b style={{ color: 'var(--ink)' }}>MeetCaptura</b></p>
         <p style={{ fontSize: 9, color: 'var(--ink2)', opacity: 0.7, margin: 0 }}>
           Approximate location may be collected to improve this experience.{' '}
           <a href="/privacy" target="_blank" style={{ color: 'var(--ink2)', textDecoration: 'underline' }}>Privacy Policy</a>

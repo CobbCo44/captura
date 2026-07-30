@@ -341,19 +341,7 @@ export default function StorefrontScanPage() {
       {/* 3. BENTO GRID */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridAutoRows: 84, gap: 9, padding: '14px 14px 16px' }}>
 
-        {/* a) MENU / SERVICES TILE */}
-        {menuItems.length > 0 && (
-          <div onClick={() => setShowMenu(true)} style={{
-            gridColumn: 'span 4', gridRow: 'span 1',
-            background: accentBg, color: accentInk, borderRadius: 'var(--r)',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.02em',
-          }}>
-            View Menu
-          </div>
-        )}
-
-        {/* b) PROMO TILE */}
+        {/* a) PROMO TILE */}
         {activePromo && (
           <div onClick={() => { setShowPromo(true); setPromoSubmitted(false) }} style={{
             gridColumn: 'span 4', gridRow: 'span 2',
@@ -424,18 +412,18 @@ export default function StorefrontScanPage() {
             })
           }
 
-          // Hours tile
-          if (hours.length > 0) {
+          // Menu tile
+          if (menuItems.length > 0) {
             tiles.push({
-              key: 'hours',
-              label: 'Hours',
-              sub: todayHours?.closed ? 'Closed today' : 'View hours',
+              key: 'menu',
+              label: 'Menu',
+              sub: 'View menu',
               icon: (
                 <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
-                  <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                  <path d="M4 6h16M4 12h16M4 18h12"/>
                 </svg>
               ),
-              action: () => setShowHours(true),
+              action: () => setShowMenu(true),
             })
           }
 

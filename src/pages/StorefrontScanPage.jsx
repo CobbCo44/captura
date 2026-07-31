@@ -14,7 +14,7 @@ export default function StorefrontScanPage() {
   // Loyalty state
   const [loyaltyRewards, setLoyaltyRewards] = useState([])
   const [loyaltyState, setLoyaltyState] = useState(null)
-  const [loyaltyForm, setLoyaltyForm] = useState({ firstName: '', lastName: '', email: '' })
+  const [loyaltyForm, setLoyaltyForm] = useState({ firstName: '', lastName: '', email: '', phone: '' })
   const [loyaltySubmitting, setLoyaltySubmitting] = useState(false)
   const [showLoyalty, setShowLoyalty] = useState(false)
   const [loyaltyRedeemed, setLoyaltyRedeemed] = useState(null)
@@ -101,8 +101,8 @@ export default function StorefrontScanPage() {
         const geo = await fetch('/.netlify/functions/geo').then(r => r.json()).catch(() => ({}))
         await supabase.from('scans').insert({
           brand_id: brandId,
-          latitude: geo.latitude || null,
-          longitude: geo.longitude || null,
+          latitude: geo.lat || null,
+          longitude: geo.lng || null,
           city: geo.city || null,
           region: geo.region || null,
           country: geo.country || null,
@@ -124,6 +124,7 @@ export default function StorefrontScanPage() {
         p_first_name: loyaltyForm.firstName,
         p_last_name: loyaltyForm.lastName,
         p_email: loyaltyForm.email,
+        p_phone: loyaltyForm.phone || null,
         p_source: 'loyalty',
       })
       if (contactId) {
@@ -697,6 +698,9 @@ export default function StorefrontScanPage() {
                   style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: '0.9rem' }} />
                 <input className="input" type="email" placeholder="Email" value={loyaltyForm.email}
                   onChange={e => setLoyaltyForm({ ...loyaltyForm, email: e.target.value })} required
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: '0.9rem' }} />
+                <input className="input" type="tel" placeholder="Phone (optional)" value={loyaltyForm.phone}
+                  onChange={e => setLoyaltyForm({ ...loyaltyForm, phone: e.target.value })}
                   style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: '0.9rem' }} />
                 <button type="submit" disabled={loyaltySubmitting} style={{
                   width: '100%', padding: 14, ...btnStyle, border: 'none', borderRadius: 12,

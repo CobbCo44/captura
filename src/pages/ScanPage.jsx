@@ -1074,12 +1074,12 @@ export default function ScanPage({ previewData } = {}) {
           <div style={{
             gridColumn: 'span 4', gridRow: 'span 2',
             background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
-            position: 'relative', overflow: 'hidden',
+            overflow: 'hidden',
           }}>
-            <div style={{ position: 'absolute', inset: 0 }}>
+            <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%' }}>
               <iframe
                 src={`https://www.youtube.com/embed/${getYouTubeId(product.content_url)}?playsinline=1`}
-                style={{ width: '100%', height: '100%', border: 'none' }}
+                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
               />

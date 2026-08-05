@@ -37,6 +37,7 @@ export default function ScanPage({ previewData } = {}) {
   const [eventSubmitted, setEventSubmitted] = useState(false)
   const scanLogged = useRef(false)
   const [descExpanded, setDescExpanded] = useState(false)
+  const [videoPlaying, setVideoPlaying] = useState(false)
   const [countdown, setCountdown] = useState('')
   const isPreview = !!previewData
   // V2 serialization: data from lookup_serial RPC when /21/ segment is present
@@ -1077,12 +1078,35 @@ export default function ScanPage({ previewData } = {}) {
             overflow: 'hidden',
           }}>
             <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%' }}>
-              <iframe
-                src={`https://www.youtube.com/embed/${getYouTubeId(product.content_url)}?playsinline=1`}
-                style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
+              {videoPlaying ? (
+                <iframe
+                  src={`https://www.youtube.com/embed/${getYouTubeId(product.content_url)}?playsinline=1&autoplay=1`}
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', border: 'none' }}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <button
+                  onClick={() => setVideoPlaying(true)}
+                  style={{
+                    position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+                    border: 'none', padding: 0, cursor: 'pointer', background: '#000',
+                  }}
+                >
+                  <img
+                    src={`https://img.youtube.com/vi/${getYouTubeId(product.content_url)}/hqdefault.jpg`}
+                    alt="Video thumbnail"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                  <div style={{
+                    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                    width: 56, height: 56, borderRadius: '50%', background: 'rgba(0,0,0,0.65)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+                  </div>
+                </button>
+              )}
             </div>
           </div>
         )}

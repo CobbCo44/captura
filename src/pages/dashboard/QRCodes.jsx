@@ -735,8 +735,7 @@ export default function QRCodes({ brand }) {
 
   async function handleBatchDownloadZip() {
     if (!batchQrModal) return
-    const gtin = batchQrModal.products?.gtin
-    if (!gtin) return
+    const gtin = batchQrModal.products?.gtin || ''
 
     setBatchDownloadProgress({ current: 0, total: 0, type: 'zip' })
     const serials = await fetchAllSerials(batchQrModal.id)
@@ -748,7 +747,7 @@ export default function QRCodes({ brand }) {
 
     for (let i = 0; i < serials.length; i++) {
       const s = serials[i]
-      const url = buildGS1DigitalLink(SCAN_DOMAIN, gtin, { serial: s.serial })
+      const url = buildScanUrl(s.serial, gtin || null)
       const canvas = await renderSerialQRToCanvas(
         url, batchQrStyle.fgColor, batchQrStyle.bgColor,
         batchQrStyle.logoFile, batchQrStyle.logoScale, batchQrStyle.ctaText
@@ -766,8 +765,7 @@ export default function QRCodes({ brand }) {
     const poRef = batchQrModal.po_reference || ''
     const csvHeader = 'serial,url,product_name,gtin,batch_id,channel_name,po_reference,created_at'
     const csvRows = serials.map(s => {
-      const g14 = gtin.replace(/\D/g, '').padStart(14, '0')
-      const url = `${SCAN_DOMAIN}/01/${g14}/21/${encodeURIComponent(s.serial)}`
+      const url = buildScanUrl(s.serial, gtin || null)
       return [csvEscape(s.serial), csvEscape(url), csvEscape(productName), csvEscape(gtin),
         csvEscape(batchQrModal.id), csvEscape(channelName), csvEscape(poRef), csvEscape(s.created_at)].join(',')
     })
@@ -784,8 +782,7 @@ export default function QRCodes({ brand }) {
 
   async function handleBatchDownloadPdf() {
     if (!batchQrModal) return
-    const gtin = batchQrModal.products?.gtin
-    if (!gtin) return
+    const gtin = batchQrModal.products?.gtin || ''
 
     setBatchDownloadProgress({ current: 0, total: 0, type: 'pdf' })
     const serials = await fetchAllSerials(batchQrModal.id)
@@ -822,7 +819,7 @@ export default function QRCodes({ brand }) {
       const y = offsetY + row * (cellH + gap)
 
       const s = serials[i]
-      const url = buildGS1DigitalLink(SCAN_DOMAIN, gtin, { serial: s.serial })
+      const url = buildScanUrl(s.serial, gtin || null)
       const canvas = await renderSerialQRToCanvas(
         url, batchQrStyle.fgColor, batchQrStyle.bgColor,
         batchQrStyle.logoFile, batchQrStyle.logoScale, ctaText, 400
@@ -1146,16 +1143,14 @@ export default function QRCodes({ brand }) {
                   Delete
                 </button>
               </div>
-              {qr.products?.gtin && (
-                <button className="btn btn-secondary" style={{ width: '100%', fontSize: '0.8rem', padding: '8px', marginTop: 6 }}
-                  onClick={() => {
-                    setBatchForm({ productId: qr.product_id, quantity: '', channelId: qr.channel_id || '', newChannelName: '', newChannelType: 'retail', poReference: '', notes: '' })
-                    setBatchQrStyle({ fgColor: qr.fg_color || '#18181B', bgColor: qr.bg_color || '#FFFFFF', logoFile: qr.logo_url || null, logoScale: qr.logo_scale || 0.25, ctaText: qr.cta_text || '' })
-                    setShowBatchForm(qr)
-                  }}>
-                  Generate Batch
-                </button>
-              )}
+              <button className="btn btn-secondary" style={{ width: '100%', fontSize: '0.8rem', padding: '8px', marginTop: 6 }}
+                onClick={() => {
+                  setBatchForm({ productId: qr.product_id, quantity: '', channelId: qr.channel_id || '', newChannelName: '', newChannelType: 'retail', poReference: '', notes: '' })
+                  setBatchQrStyle({ fgColor: qr.fg_color || '#18181B', bgColor: qr.bg_color || '#FFFFFF', logoFile: qr.logo_url || null, logoScale: qr.logo_scale || 0.25, ctaText: qr.cta_text || '' })
+                  setShowBatchForm(qr)
+                }}>
+                Generate Batch
+              </button>
             </div>
           ))}
         </div>

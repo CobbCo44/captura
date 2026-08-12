@@ -12,7 +12,7 @@
 
 [[redirects]]
   from = "/01/*"
-  to = "/.netlify/functions/og-redirect"
+  to = "/.netlify/functions/gs1-resolver"
   status = 200
 
 [[redirects]]

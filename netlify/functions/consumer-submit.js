@@ -87,7 +87,7 @@ export default async (req) => {
     }
 
     // --- Loyalty: rate check only (RPC handles the actual insert) ---
-    if (type === 'loyalty') {
+    if (type === 'loyalty' || type === 'loyalty_lookup') {
       return new Response(JSON.stringify({ success: true, rateCheckOnly: true }), { status: 200, headers })
     }
 

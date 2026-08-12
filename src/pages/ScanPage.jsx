@@ -684,6 +684,8 @@ export default function ScanPage({ previewData } = {}) {
     const rlCheck = await serverSubmit('loyalty', { brand_id: brandId, email: loyaltyForm.email, _rateCheckOnly: true })
     if (!rlCheck) { setLoyaltySubmitting(false); return }
     try {
+      if (locationPromise.current) await locationPromise.current
+      const loc = locationRef.current
       const { data: contactId, error: contactErr } = await supabase.rpc('get_or_create_contact', {
         p_brand_id: brandId,
         p_first_name: loyaltyForm.firstName,
@@ -692,6 +694,8 @@ export default function ScanPage({ previewData } = {}) {
         p_phone: loyaltyForm.phone || null,
         p_source: 'loyalty',
         p_sms_consent: loyaltyForm.marketingConsent,
+        p_sms_consent_at: loyaltyForm.marketingConsent ? new Date().toISOString() : null,
+        p_sms_consent_text: loyaltyForm.marketingConsent ? marketingConsentText : null,
       })
       if (contactErr) {
         console.error('Loyalty contact error:', contactErr)
@@ -710,8 +714,6 @@ export default function ScanPage({ previewData } = {}) {
           localStorage.setItem(`loyalty_email_${brandId}`, loyaltyForm.email)
           localStorage.setItem(`loyalty_contact_${brandId}`, contactId)
         }
-        if (locationPromise.current) await locationPromise.current
-        const loc = locationRef.current
         syncToShopify({
           firstName: loyaltyForm.firstName,
           lastName: loyaltyForm.lastName,
@@ -756,6 +758,8 @@ export default function ScanPage({ previewData } = {}) {
     setLoyaltySubmitting(true)
     const brandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
     if (!brandId) { setLoyaltySubmitting(false); return }
+    const rlCheck = await serverSubmit('loyalty_lookup', { brand_id: brandId, email: loyaltyLookupEmail, _rateCheckOnly: true })
+    if (!rlCheck) { setLoyaltySubmitting(false); return }
     try {
       const { data: member } = await supabase.rpc('lookup_loyalty_member', {
         p_brand_id: brandId,

@@ -123,6 +123,7 @@ export default function StorefrontScanPage() {
     e.preventDefault()
     setLoyaltySubmitting(true)
     try {
+      const consentTextForLoyalty = `I agree to receive recurring marketing texts, emails, and calls from ${brand?.name || 'this business'}, including by automated technology, at the contact info I provided. My information was collected by Captura on behalf of ${brand?.name || 'this business'}. Consent is not a condition of purchase. Msg frequency varies. Msg & data rates may apply. Reply STOP to cancel, HELP for help.`
       const { data: contactId } = await supabase.rpc('get_or_create_contact', {
         p_brand_id: brandId,
         p_first_name: loyaltyForm.firstName,
@@ -131,6 +132,8 @@ export default function StorefrontScanPage() {
         p_phone: loyaltyForm.phone || null,
         p_source: 'loyalty',
         p_sms_consent: loyaltyForm.marketingConsent,
+        p_sms_consent_at: loyaltyForm.marketingConsent ? new Date().toISOString() : null,
+        p_sms_consent_text: loyaltyForm.marketingConsent ? consentTextForLoyalty : null,
       })
       if (contactId) {
         const { data: result } = await supabase.rpc('award_loyalty_point', {
@@ -175,6 +178,19 @@ export default function StorefrontScanPage() {
     e.preventDefault()
     setLoyaltyLookupError('')
     setLoyaltySubmitting(true)
+    // Rate limit through server-side gate
+    try {
+      const rlRes = await fetch('/.netlify/functions/consumer-submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'loyalty', data: { brand_id: brandId, email: loyaltyLookupEmail, _rateCheckOnly: true } }),
+      })
+      if (rlRes.status === 429) {
+        setLoyaltyLookupError('Too many attempts. Please try again in a few minutes.')
+        setLoyaltySubmitting(false)
+        return
+      }
+    } catch { /* fail open */ }
     try {
       const { data: member } = await supabase.rpc('lookup_loyalty_member', {
         p_brand_id: brandId,

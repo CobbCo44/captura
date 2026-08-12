@@ -15,7 +15,10 @@ export default function StorefrontScanPage() {
   // Loyalty state
   const [loyaltyRewards, setLoyaltyRewards] = useState([])
   const [loyaltyState, setLoyaltyState] = useState(null)
-  const [loyaltyForm, setLoyaltyForm] = useState({ firstName: '', lastName: '', email: '', phone: '' })
+  const [loyaltyForm, setLoyaltyForm] = useState({ firstName: '', lastName: '', email: '', phone: '', marketingConsent: false })
+  const [loyaltyLookupMode, setLoyaltyLookupMode] = useState(false)
+  const [loyaltyLookupEmail, setLoyaltyLookupEmail] = useState('')
+  const [loyaltyLookupError, setLoyaltyLookupError] = useState('')
   const [loyaltySubmitting, setLoyaltySubmitting] = useState(false)
   const [showLoyalty, setShowLoyalty] = useState(false)
   const [loyaltyRedeemed, setLoyaltyRedeemed] = useState(null)
@@ -127,6 +130,7 @@ export default function StorefrontScanPage() {
         p_email: loyaltyForm.email,
         p_phone: loyaltyForm.phone || null,
         p_source: 'loyalty',
+        p_sms_consent: loyaltyForm.marketingConsent,
       })
       if (contactId) {
         const { data: result } = await supabase.rpc('award_loyalty_point', {
@@ -165,6 +169,40 @@ export default function StorefrontScanPage() {
     } catch (err) {
       console.error('Redeem error:', err)
     }
+  }
+
+  const handleLoyaltyLookup = async (e) => {
+    e.preventDefault()
+    setLoyaltyLookupError('')
+    setLoyaltySubmitting(true)
+    try {
+      const { data: member } = await supabase.rpc('lookup_loyalty_member', {
+        p_brand_id: brandId,
+        p_email: loyaltyLookupEmail,
+      })
+      if (member?.contact_id) {
+        localStorage.setItem(`loyalty_email_${brandId}`, loyaltyLookupEmail)
+        localStorage.setItem(`loyalty_contact_${brandId}`, member.contact_id)
+        setLoyaltyState({ balance: member.balance, total_earned: member.total_earned, total_redeemed: member.total_redeemed, returning: true })
+        setLoyaltyForm(prev => ({ ...prev, email: loyaltyLookupEmail }))
+        setLoyaltyLookupMode(false)
+        // Auto-award point for this visit (no cooldown for storefronts)
+        const { data: awardResult } = await supabase.rpc('award_loyalty_point', {
+          p_brand_id: brandId,
+          p_contact_id: member.contact_id,
+          p_product_id: null,
+          p_cooldown_hours: 0,
+        })
+        if (awardResult) setLoyaltyState({ ...awardResult, returning: true })
+      } else {
+        setLoyaltyLookupError('No membership found for that email. Sign up below to get started.')
+        setLoyaltyLookupMode(false)
+        setLoyaltyForm(prev => ({ ...prev, email: loyaltyLookupEmail }))
+      }
+    } catch (err) {
+      setLoyaltyLookupError('Something went wrong. Please try again.')
+    }
+    setLoyaltySubmitting(false)
   }
 
   const handlePromoSubmit = async (e) => {
@@ -685,12 +723,17 @@ export default function StorefrontScanPage() {
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '0 auto 20px' }} />
 
             {/* Not identified */}
-            {!loyaltyState && (
+            {!loyaltyState && !loyaltyLookupMode && (
               <form onSubmit={handleLoyaltySubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, textAlign: 'center' }}>Earn Loyalty Points</h3>
                 <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem', textAlign: 'center', margin: 0 }}>
                   Sign up to start earning points with every visit
                 </p>
+                {loyaltyLookupError && (
+                  <div style={{ padding: '10px 14px', background: 'rgba(251, 191, 36, 0.1)', border: '1px solid rgba(251, 191, 36, 0.3)', borderRadius: 10, fontSize: '0.82rem', color: '#fbbf24', textAlign: 'center' }}>
+                    {loyaltyLookupError}
+                  </div>
+                )}
                 <input className="input" placeholder="First Name" value={loyaltyForm.firstName}
                   onChange={e => setLoyaltyForm({ ...loyaltyForm, firstName: e.target.value })} required
                   style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: '0.9rem' }} />
@@ -703,12 +746,45 @@ export default function StorefrontScanPage() {
                 <input className="input" type="tel" placeholder="Phone (optional)" value={loyaltyForm.phone}
                   onChange={e => setLoyaltyForm({ ...loyaltyForm, phone: e.target.value })}
                   style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: '0.9rem' }} />
+                <label style={{ display: 'flex', gap: 10, fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={loyaltyForm.marketingConsent} onChange={e => setLoyaltyForm({ ...loyaltyForm, marketingConsent: e.target.checked })} style={{ marginTop: 3, accentColor: accentBg }} />
+                  I agree to receive recurring marketing texts, emails, and calls from {brand?.name || 'this business'}, including by automated technology, at the contact info I provided. My information was collected by Captura on behalf of {brand?.name || 'this business'}. Consent is not a condition of purchase. Msg frequency varies. Msg & data rates may apply. Reply STOP to cancel, HELP for help.
+                </label>
                 <button type="submit" disabled={loyaltySubmitting} style={{
                   width: '100%', padding: 14, ...btnStyle, border: 'none', borderRadius: 12,
                   fontWeight: 700, cursor: loyaltySubmitting ? 'wait' : 'pointer', fontSize: 14,
                   opacity: loyaltySubmitting ? 0.6 : 1,
                 }}>
                   {loyaltySubmitting ? 'Joining...' : 'Join & Earn Your First Point'}
+                </button>
+                <button type="button" onClick={() => { setLoyaltyLookupMode(true); setLoyaltyLookupError('') }} style={{
+                  background: 'none', border: 'none', color: accentBg, cursor: 'pointer',
+                  fontSize: '0.85rem', textDecoration: 'underline', padding: 0, textAlign: 'center',
+                }}>
+                  Already a member? Look up your points
+                </button>
+              </form>
+            )}
+
+            {/* Email lookup */}
+            {!loyaltyState && loyaltyLookupMode && (
+              <form onSubmit={handleLoyaltyLookup} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, textAlign: 'center' }}>Welcome Back</h3>
+                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem', textAlign: 'center', margin: 0 }}>Enter the email you signed up with to find your points</p>
+                <input className="input" type="email" placeholder="Email" value={loyaltyLookupEmail} onChange={e => setLoyaltyLookupEmail(e.target.value)} required autoFocus
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: '0.9rem' }} />
+                <button type="submit" disabled={loyaltySubmitting} style={{
+                  width: '100%', padding: 14, ...btnStyle, border: 'none', borderRadius: 12,
+                  fontWeight: 700, cursor: loyaltySubmitting ? 'wait' : 'pointer', fontSize: 14,
+                  opacity: loyaltySubmitting ? 0.6 : 1,
+                }}>
+                  {loyaltySubmitting ? 'Looking up...' : 'Find My Points'}
+                </button>
+                <button type="button" onClick={() => { setLoyaltyLookupMode(false); setLoyaltyLookupError('') }} style={{
+                  background: 'none', border: 'none', color: accentBg, cursor: 'pointer',
+                  fontSize: '0.85rem', textDecoration: 'underline', padding: 0, textAlign: 'center',
+                }}>
+                  New here? Sign up instead
                 </button>
               </form>
             )}

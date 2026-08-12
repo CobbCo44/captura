@@ -58,11 +58,14 @@ export default function ScanPage({ previewData } = {}) {
   const [serialData, setSerialData] = useState(null)
   const [showEventForm, setShowEventForm] = useState(false)
   const [showLoyalty, setShowLoyalty] = useState(false)
-  const [loyaltyForm, setLoyaltyForm] = useState({ firstName: '', lastName: '', email: '', phone: '' })
+  const [loyaltyForm, setLoyaltyForm] = useState({ firstName: '', lastName: '', email: '', phone: '', marketingConsent: false })
   const [loyaltyState, setLoyaltyState] = useState(null)
   const [loyaltyRewards, setLoyaltyRewards] = useState([])
   const [loyaltySubmitting, setLoyaltySubmitting] = useState(false)
   const [loyaltyRedeemed, setLoyaltyRedeemed] = useState(null)
+  const [loyaltyLookupMode, setLoyaltyLookupMode] = useState(false)
+  const [loyaltyLookupEmail, setLoyaltyLookupEmail] = useState('')
+  const [loyaltyLookupError, setLoyaltyLookupError] = useState('')
 
   // Keep preview data in sync
   useEffect(() => {
@@ -688,7 +691,7 @@ export default function ScanPage({ previewData } = {}) {
         p_email: loyaltyForm.email,
         p_phone: loyaltyForm.phone || null,
         p_source: 'loyalty',
-        p_sms_consent: false,
+        p_sms_consent: loyaltyForm.marketingConsent,
       })
       if (contactErr) {
         console.error('Loyalty contact error:', contactErr)
@@ -721,7 +724,7 @@ export default function ScanPage({ previewData } = {}) {
           gtin: product?.gtin || lookupGtin || null,
           source: 'Loyalty Signup',
           city: loc?.city ? `${loc.city}, ${loc.region}` : null,
-          marketingConsent: false,
+          marketingConsent: loyaltyForm.marketingConsent,
         })
       }
     } catch (err) {
@@ -745,6 +748,45 @@ export default function ScanPage({ previewData } = {}) {
     } else if (result?.error) {
       alert(result.error)
     }
+  }
+
+  const handleLoyaltyLookup = async (e) => {
+    e.preventDefault()
+    setLoyaltyLookupError('')
+    setLoyaltySubmitting(true)
+    const brandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
+    if (!brandId) { setLoyaltySubmitting(false); return }
+    try {
+      const { data: member } = await supabase.rpc('lookup_loyalty_member', {
+        p_brand_id: brandId,
+        p_email: loyaltyLookupEmail,
+      })
+      if (member?.contact_id) {
+        localStorage.setItem(`loyalty_email_${brandId}`, loyaltyLookupEmail)
+        localStorage.setItem(`loyalty_contact_${brandId}`, member.contact_id)
+        setLoyaltyState({ balance: member.balance, total_earned: member.total_earned, total_redeemed: member.total_redeemed, returning: true })
+        setLoyaltyForm(prev => ({ ...prev, email: loyaltyLookupEmail }))
+        setLoyaltyLookupMode(false)
+        // Auto-award point for this scan if product has loyalty
+        const loyaltyProduct = product || qrCode?.products
+        if (loyaltyProduct?.loyalty_enabled) {
+          const { data: awardResult } = await supabase.rpc('award_loyalty_point', {
+            p_brand_id: brandId,
+            p_contact_id: member.contact_id,
+            p_product_id: loyaltyProduct.id,
+            p_cooldown_hours: loyaltyProduct.loyalty_cooldown_hours || 24,
+          })
+          if (awardResult) setLoyaltyState({ ...awardResult, returning: true })
+        }
+      } else {
+        setLoyaltyLookupError('No membership found for that email. Sign up below to get started.')
+        setLoyaltyLookupMode(false)
+        setLoyaltyForm(prev => ({ ...prev, email: loyaltyLookupEmail }))
+      }
+    } catch (err) {
+      setLoyaltyLookupError('Something went wrong. Please try again.')
+    }
+    setLoyaltySubmitting(false)
   }
 
   if (loading) {
@@ -1472,20 +1514,57 @@ export default function ScanPage({ previewData } = {}) {
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '0 auto 20px' }} />
 
             {/* State A: Not identified */}
-            {!loyaltyState && (
+            {!loyaltyState && !loyaltyLookupMode && (
               <form onSubmit={handleLoyaltySubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--ink, #fff)', margin: 0, textAlign: 'center' }}>Earn Loyalty Points</h3>
                 <p style={{ color: 'var(--ink2, rgba(255,255,255,0.56))', fontSize: '0.85rem', textAlign: 'center', margin: 0 }}>Sign up to start earning points with every scan</p>
+                {loyaltyLookupError && (
+                  <div style={{ padding: '10px 14px', background: 'rgba(251, 191, 36, 0.1)', border: '1px solid rgba(251, 191, 36, 0.3)', borderRadius: 'var(--r, 14px)', fontSize: '0.82rem', color: '#fbbf24', textAlign: 'center' }}>
+                    {loyaltyLookupError}
+                  </div>
+                )}
                 <input className="input" placeholder="First Name" value={loyaltyForm.firstName} onChange={e => setLoyaltyForm({ ...loyaltyForm, firstName: e.target.value })} required />
                 <input className="input" placeholder="Last Name" value={loyaltyForm.lastName} onChange={e => setLoyaltyForm({ ...loyaltyForm, lastName: e.target.value })} required />
                 <input className="input" placeholder="Phone Number" inputMode="tel" value={loyaltyForm.phone} onChange={e => setLoyaltyForm({ ...loyaltyForm, phone: e.target.value })} />
                 <input className="input" type="email" placeholder="Email" value={loyaltyForm.email} onChange={e => setLoyaltyForm({ ...loyaltyForm, email: e.target.value })} required />
+                <label style={{ display: 'flex', gap: 10, fontSize: '0.75rem', color: 'var(--ink2, rgba(255,255,255,0.56))', lineHeight: 1.4, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={loyaltyForm.marketingConsent} onChange={e => setLoyaltyForm({ ...loyaltyForm, marketingConsent: e.target.checked })} style={{ marginTop: 3, accentColor: 'var(--accent)' }} />
+                  {marketingConsentText}
+                </label>
                 <button type="submit" disabled={loyaltySubmitting} style={{
                   width: '100%', padding: 14, ...btnStyle, border: 'none', borderRadius: 'var(--r, 14px)',
                   fontWeight: 700, cursor: loyaltySubmitting ? 'wait' : 'pointer', fontSize: 14,
                   opacity: loyaltySubmitting ? 0.6 : 1,
                 }}>
                   {loyaltySubmitting ? 'Joining...' : 'Join & Earn Your First Point'}
+                </button>
+                <button type="button" onClick={() => { setLoyaltyLookupMode(true); setLoyaltyLookupError('') }} style={{
+                  background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer',
+                  fontSize: '0.85rem', textDecoration: 'underline', padding: 0, textAlign: 'center',
+                }}>
+                  Already a member? Look up your points
+                </button>
+              </form>
+            )}
+
+            {/* State A2: Email lookup */}
+            {!loyaltyState && loyaltyLookupMode && (
+              <form onSubmit={handleLoyaltyLookup} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--ink, #fff)', margin: 0, textAlign: 'center' }}>Welcome Back</h3>
+                <p style={{ color: 'var(--ink2, rgba(255,255,255,0.56))', fontSize: '0.85rem', textAlign: 'center', margin: 0 }}>Enter the email you signed up with to find your points</p>
+                <input className="input" type="email" placeholder="Email" value={loyaltyLookupEmail} onChange={e => setLoyaltyLookupEmail(e.target.value)} required autoFocus />
+                <button type="submit" disabled={loyaltySubmitting} style={{
+                  width: '100%', padding: 14, ...btnStyle, border: 'none', borderRadius: 'var(--r, 14px)',
+                  fontWeight: 700, cursor: loyaltySubmitting ? 'wait' : 'pointer', fontSize: 14,
+                  opacity: loyaltySubmitting ? 0.6 : 1,
+                }}>
+                  {loyaltySubmitting ? 'Looking up...' : 'Find My Points'}
+                </button>
+                <button type="button" onClick={() => { setLoyaltyLookupMode(false); setLoyaltyLookupError('') }} style={{
+                  background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer',
+                  fontSize: '0.85rem', textDecoration: 'underline', padding: 0, textAlign: 'center',
+                }}>
+                  New here? Sign up instead
                 </button>
               </form>
             )}

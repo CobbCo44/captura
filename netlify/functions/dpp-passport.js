@@ -83,7 +83,7 @@ async function getPassportData(gtin) {
   // Get the DPP product record with brand info
   const { data: product } = await supabase
     .from('dpp_products')
-    .select('*, brands:brand_id(name, logo_url, website)')
+    .select('*, brands:brand_id(name, logo_url)')
     .eq('gtin', gtin)
     .single()
 
@@ -121,10 +121,6 @@ function buildJsonLd(product, attributes, origin) {
     },
     'url': `${origin}/passport/${product.gtin}`,
     'dateModified': product.updated_at,
-  }
-
-  if (product.brands?.website) {
-    jsonLd.brand.url = product.brands.website
   }
 
   // Map attributes to schema.org / GS1 terms where possible

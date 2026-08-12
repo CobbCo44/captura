@@ -69,7 +69,7 @@ async function lookupProduct(supabase, gtin, serial) {
   if (serial) {
     const { data } = await supabase
       .from('qr_codes')
-      .select('*, products(name, description, gtin), brands:brand_id(id, name, logo_url, website)')
+      .select('*, products(name, description, gtin), brands:brand_id(id, name, logo_url)')
       .eq('short_id', serial)
       .single()
     if (data) {
@@ -87,7 +87,7 @@ async function lookupProduct(supabase, gtin, serial) {
 
   const { data: br } = await supabase
     .from('brands')
-    .select('id, name, logo_url, website')
+    .select('id, name, logo_url')
     .eq('id', prod.brand_id)
     .single()
 
@@ -175,17 +175,6 @@ function serveLinkset(url, gtin, brand) {
         ],
       },
     ],
-  }
-
-  // Add brand homepage link if the brand has a website
-  if (brand?.website) {
-    linkset.linkset[0]['https://gs1.org/voc/brandHomePage'] = [
-      {
-        href: brand.website,
-        title: `${brand.name} Homepage`,
-        type: 'text/html',
-      },
-    ]
   }
 
   return new Response(JSON.stringify(linkset, null, 2), {

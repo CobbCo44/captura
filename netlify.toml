@@ -16,6 +16,11 @@
   status = 200
 
 [[redirects]]
+  from = "/passport/*"
+  to = "/.netlify/functions/dpp-passport"
+  status = 200
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

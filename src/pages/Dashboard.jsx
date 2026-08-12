@@ -16,6 +16,7 @@ import Events from './dashboard/Events'
 import Settings from './dashboard/Settings'
 import Loyalty from './dashboard/Loyalty'
 import Menu from './dashboard/Menu'
+import Passport from './dashboard/Passport'
 
 const productNavItems = [
   { path: '', label: 'Overview', icon: '◎' },
@@ -28,6 +29,7 @@ const productNavItems = [
   { path: 'scans', label: 'Scans', icon: '📍' },
   { path: 'consumers', label: 'Consumers', icon: '👥' },
   { path: 'loyalty', label: 'Loyalty', icon: '⭐' },
+  { path: 'passport', label: 'Passport', icon: '🛂' },
   { path: 'insights', label: 'Insights', icon: '📊' },
   { path: 'settings', label: 'Settings', icon: '⚙' },
 ]
@@ -44,6 +46,7 @@ const storefrontNavItems = [
   { path: 'scans', label: 'Scans', icon: '📍' },
   { path: 'consumers', label: 'Consumers', icon: '👥' },
   { path: 'loyalty', label: 'Loyalty', icon: '⭐' },
+  { path: 'passport', label: 'Passport', icon: '🛂' },
   { path: 'insights', label: 'Insights', icon: '📊' },
   { path: 'settings', label: 'Settings', icon: '⚙' },
 ]
@@ -393,6 +396,7 @@ export default function Dashboard() {
           <Route path="vip" element={<VIPMembers brand={brand} />} />
           <Route path="consumers" element={<Consumers brand={brand} />} />
           <Route path="loyalty" element={<Loyalty brand={brand} />} />
+          <Route path="passport" element={<Passport brand={brand} />} />
           <Route path="insights" element={<Insights brand={brand} />} />
           <Route path="settings" element={<Settings brand={brand} onBrandUpdate={setBrand} />} />
         </Routes>

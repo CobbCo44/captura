@@ -27,19 +27,23 @@ export default async (req) => {
     })
   }
 
-  // Verify HMAC from Shopify
-  if (hmac && clientSecret) {
-    const params = new URLSearchParams(url.search)
-    params.delete('hmac')
-    params.sort()
-    const message = params.toString()
-    const expectedHmac = crypto.createHmac('sha256', clientSecret).update(message).digest('hex')
-    if (hmac !== expectedHmac) {
-      return new Response('<h1>Invalid request signature. Please try again.</h1>', {
-        status: 403,
-        headers: { 'Content-Type': 'text/html' },
-      })
-    }
+  // Verify HMAC from Shopify — mandatory, reject if missing
+  if (!hmac) {
+    return new Response('<h1>Invalid request. Missing signature.</h1>', {
+      status: 403,
+      headers: { 'Content-Type': 'text/html' },
+    })
+  }
+  const params = new URLSearchParams(url.search)
+  params.delete('hmac')
+  params.sort()
+  const message = params.toString()
+  const expectedHmac = crypto.createHmac('sha256', clientSecret).update(message).digest('hex')
+  if (hmac !== expectedHmac) {
+    return new Response('<h1>Invalid request signature. Please try again.</h1>', {
+      status: 403,
+      headers: { 'Content-Type': 'text/html' },
+    })
   }
 
   // Parse state to get brand_id and nonce
@@ -84,7 +88,8 @@ export default async (req) => {
     }
 
     // Save token directly to Supabase and clear the nonce
-    const dashboardUrl = 'https://captura44.netlify.app/dashboard/settings'
+    const siteUrl = process.env.SITE_URL || process.env.URL || 'https://meetcaptura.com'
+    const dashboardUrl = `${siteUrl}/dashboard/settings`
 
     if (supabaseUrl && supabaseServiceKey && brandId) {
       const supabase = createClient(supabaseUrl, supabaseServiceKey)

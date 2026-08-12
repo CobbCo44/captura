@@ -43,7 +43,8 @@ export default async (req) => {
   const state = brandId ? `${brandId}:${nonce}` : ''
 
   const scopes = 'read_products,write_products,read_customers,write_customers'
-  const redirectUri = 'https://captura44.netlify.app/.netlify/functions/shopify-oauth-callback'
+  const siteUrl = process.env.SITE_URL || process.env.URL || 'https://meetcaptura.com'
+  const redirectUri = `${siteUrl}/.netlify/functions/shopify-oauth-callback`
 
   const authUrl = `https://${store}.myshopify.com/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`
 

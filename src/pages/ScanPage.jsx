@@ -1,7 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
+import DOMPurify from 'dompurify'
 import { supabase } from '../lib/supabase'
 import { getKit } from '../lib/kits'
+
+/**
+ * Basic US phone validation: must have 10 digits after stripping formatting.
+ * Returns cleaned digits or null if invalid.
+ */
+function validatePhone(phone) {
+  if (!phone) return null
+  const digits = phone.replace(/\D/g, '')
+  // Strip leading 1 for US country code
+  const normalized = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits
+  if (normalized.length !== 10) return null
+  return normalized
+}
 
 function getYouTubeId(url) {
   if (!url) return null
@@ -365,6 +379,29 @@ export default function ScanPage({ previewData } = {}) {
     })
   }
 
+  // Server-side rate limit + duplicate check before form submissions
+  async function checkRateLimit(brandId, email, phone, sourceType) {
+    try {
+      const res = await fetch('/.netlify/functions/check-rate-limit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandId, email, phone, sourceType }),
+      })
+      if (res.status === 429) {
+        alert('Too many submissions. Please try again in a few minutes.')
+        return false
+      }
+      const data = await res.json()
+      if (data.duplicate) {
+        // Allow but skip billing — already counted
+        return 'duplicate'
+      }
+      return data.allowed
+    } catch {
+      return true // fail open
+    }
+  }
+
   async function syncToShopify(customerData) {
     const syncBrandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
     if (!syncBrandId) return
@@ -411,6 +448,12 @@ export default function ScanPage({ previewData } = {}) {
   const handleVIPSubmit = async (e) => {
     e.preventDefault()
     if (isPreview) { setVipSubmitted(true); return }
+    if (vipForm.phone && !validatePhone(vipForm.phone)) {
+      alert('Please enter a valid 10-digit phone number.')
+      return
+    }
+    const rlResult = await checkRateLimit(qrCode?.brand_id, vipForm.email, vipForm.phone, 'vip')
+    if (rlResult === false) return
     if (supabase && qrCode) {
       const { data: inserted } = await supabase.from('vip_members').insert({
         brand_id: qrCode.brand_id,
@@ -440,6 +483,7 @@ export default function ScanPage({ previewData } = {}) {
         gtin: product?.gtin || lookupGtin || null,
         source: 'VIP Signup',
         city: location?.city ? `${location.city}, ${location.region}` : null,
+        marketingConsent: vipForm.consent,
       })
     }
     setVipSubmitted(true)
@@ -452,6 +496,13 @@ export default function ScanPage({ previewData } = {}) {
   const handlePromoEntry = async (e) => {
     e.preventDefault()
     if (isPreview) { setPromoEntered(true); return }
+    if (promoForm.phone && !validatePhone(promoForm.phone)) {
+      alert('Please enter a valid 10-digit phone number.')
+      return
+    }
+    const brandIdForRL = qrCode?.brand_id || brand?.id || serialData?.brand_id
+    const rlResult = await checkRateLimit(brandIdForRL, promoForm.email, promoForm.phone, 'promo')
+    if (rlResult === false) return
     // Ensure geo/IP is available
     if (locationPromise.current) await locationPromise.current
     const loc = locationRef.current
@@ -493,6 +544,7 @@ export default function ScanPage({ previewData } = {}) {
         gtin: product?.gtin || lookupGtin || null,
         source: 'Promo Entry',
         city: loc?.city ? `${loc.city}, ${loc.region}` : null,
+        marketingConsent: promoForm.marketingConsent,
       })
     }
     setPromoEntered(true)
@@ -501,6 +553,9 @@ export default function ScanPage({ previewData } = {}) {
   const handleWarrantySubmit = async (e) => {
     e.preventDefault()
     if (isPreview) { setWarrantyRegistered(true); return }
+    const warBrandIdRL = qrCode?.brand_id || brand?.id || serialData?.brand_id
+    const rlResult = await checkRateLimit(warBrandIdRL, warrantyForm.email, warrantyForm.phone, 'warranty')
+    if (rlResult === false) return
     if (locationPromise.current) await locationPromise.current
     const loc = locationRef.current
     const warBrandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
@@ -536,6 +591,7 @@ export default function ScanPage({ previewData } = {}) {
         gtin: product?.gtin || lookupGtin || null,
         source: 'Warranty Registration',
         city: loc?.city ? `${loc.city}, ${loc.region}` : null,
+        marketingConsent: warrantyForm.consent,
       })
     }
     setWarrantyRegistered(true)
@@ -544,9 +600,11 @@ export default function ScanPage({ previewData } = {}) {
   const handleEventSubmit = async (e) => {
     e.preventDefault()
     if (isPreview) { setEventSubmitted(true); return }
+    const evtBrandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
+    const rlResult = await checkRateLimit(evtBrandId, eventForm?.email, eventForm?.phone, 'event')
+    if (rlResult === false) return
     if (locationPromise.current) await locationPromise.current
     const loc = locationRef.current
-    const evtBrandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
     if (supabase && event && evtBrandId) {
       const now = new Date().toISOString()
       const { data: inserted, error: insertErr } = await supabase.from('event_entries').insert({
@@ -582,6 +640,7 @@ export default function ScanPage({ previewData } = {}) {
         serial: null,
         source: 'Event Signup',
         city: loc?.city ? `${loc.city}, ${loc.region}` : null,
+        marketingConsent: eventForm.marketingConsent,
       })
     }
     setEventSubmitted(true)
@@ -633,6 +692,7 @@ export default function ScanPage({ previewData } = {}) {
           gtin: product?.gtin || lookupGtin || null,
           source: 'Loyalty Signup',
           city: loc?.city ? `${loc.city}, ${loc.region}` : null,
+          marketingConsent: false,
         })
       }
     } catch (err) {
@@ -878,7 +938,7 @@ export default function ScanPage({ previewData } = {}) {
                         border: '1px solid rgba(255,255,255,0.15)',
                         color: '#fff', textDecoration: 'none',
                       }}>
-                      <span style={{ width: 18, height: 18 }} dangerouslySetInnerHTML={{ __html: s.svg }} />
+                      <span style={{ width: 18, height: 18 }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(s.svg) }} />
                     </a>
                   ))}
                 </div>
@@ -1145,7 +1205,7 @@ export default function ScanPage({ previewData } = {}) {
               transition: 'border-color 0.14s',
             }}>
               {typeof tile.icon === 'string'
-                ? <span style={{ width: 20, height: 20, marginBottom: 'auto', color: 'var(--accent)' }} dangerouslySetInnerHTML={{ __html: tile.icon }} />
+                ? <span style={{ width: 20, height: 20, marginBottom: 'auto', color: 'var(--accent)' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(tile.icon) }} />
                 : <span style={{ width: 20, height: 20, marginBottom: 'auto', color: 'var(--accent)' }}>{tile.icon}</span>
               }
               <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.15, color: 'var(--ink)' }}>
@@ -1240,7 +1300,7 @@ export default function ScanPage({ previewData } = {}) {
                   color: 'var(--ink2)', fontSize: 13, lineHeight: 1.6,
                   ...(descExpanded ? {} : { maxHeight: 60, overflow: 'hidden' }),
                 }}
-                dangerouslySetInnerHTML={{ __html: product.description }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(product.description) }}
               />
               <style>{`
                 .rich-desc p { margin: 0 0 8px; }
@@ -1302,7 +1362,7 @@ export default function ScanPage({ previewData } = {}) {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: 'var(--tile)', color: 'var(--ink2)', textDecoration: 'none',
                   }}>
-                  <span style={{ width: 18, height: 18 }} dangerouslySetInnerHTML={{ __html: s.svg }} />
+                  <span style={{ width: 18, height: 18 }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(s.svg) }} />
                 </a>
               ))}
             </div>

@@ -184,6 +184,25 @@ export default function Promos({ brand }) {
     await loadEntries(promo.id)
   }
 
+  const pickRandomWinner = async () => {
+    if (entries.length === 0) return
+    const winner = entries[Math.floor(Math.random() * entries.length)]
+    const winnerName = `${winner.first_name} ${winner.last_name}`
+    const winnerCity = winner.city || ''
+    if (!window.confirm(`Random selection: ${winnerName}${winnerCity ? ` from ${winnerCity}` : ''}. Announce this winner?`)) return
+    const { data, error } = await supabase.from('promos').update({
+      winner_name: winnerName,
+      winner_city: winnerCity,
+      winner_announced_at: new Date().toISOString(),
+    }).eq('id', viewingEntries.id).select().single()
+    if (error) {
+      alert('Error saving winner: ' + error.message)
+    } else if (data) {
+      setPromos(promos.map(p => p.id === data.id ? data : p))
+      alert(`Winner announced: ${winnerName}`)
+    }
+  }
+
   const exportEntries = () => {
     if (entries.length === 0) return
     const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Product', 'City', 'Date']
@@ -454,6 +473,10 @@ export default function Promos({ brand }) {
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{entries.length} entries</p>
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
+                {entries.length > 0 && !viewingEntries.winner_name && (
+                  <button className="btn btn-primary" style={{ fontSize: '0.8rem', background: '#8B5CF6' }}
+                    onClick={pickRandomWinner}>Pick a Winner</button>
+                )}
                 {entries.length > 0 && (
                   <button className="btn btn-primary" style={{ fontSize: '0.8rem' }}
                     onClick={exportEntries}>Export CSV</button>

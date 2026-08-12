@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
-const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD
+// Admin emails authorized to access this console
+const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
 
 export default function Admin() {
   const navigate = useNavigate()
   const [unlocked, setUnlocked] = useState(false)
-  const [passwordInput, setPasswordInput] = useState('')
-  const [passwordError, setPasswordError] = useState(false)
+  const [authChecking, setAuthChecking] = useState(true)
   const [loading, setLoading] = useState(false)
   const [tab, setTab] = useState('brands')
   const [brands, setBrands] = useState([])
@@ -43,43 +43,29 @@ export default function Admin() {
     setLoading(false)
   }
 
-  const handlePasswordSubmit = (e) => {
-    e.preventDefault()
-    if (passwordInput === ADMIN_PASSWORD) {
+  // Check if logged-in user is an admin
+  useEffect(() => {
+    async function checkAdmin() {
+      if (!supabase) { navigate('/login'); return }
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { navigate('/login'); return }
+      const email = (user.email || '').toLowerCase()
+      if (ADMIN_EMAILS.length > 0 && !ADMIN_EMAILS.includes(email)) {
+        navigate('/dashboard')
+        return
+      }
       setUnlocked(true)
-      setPasswordError(false)
+      setAuthChecking(false)
       loadAllData()
-    } else {
-      setPasswordError(true)
     }
-  }
+    checkAdmin()
+  }, [navigate])
 
-  // Password gate
-  if (!unlocked) {
+  // Auth gate
+  if (authChecking || !unlocked) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-        <form onSubmit={handlePasswordSubmit} style={{
-          width: 380, padding: 36, background: 'var(--bg-card)',
-          border: '1px solid var(--border)', borderRadius: 12,
-        }}>
-          <img src="/images/meetcaptura-logo.png" alt="meetcaptura" style={{ height: 20, marginBottom: 6 }} />
-          <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 28 }}>Admin Console</h2>
-          <input
-            className="input"
-            type="password"
-            placeholder="Enter admin password"
-            value={passwordInput}
-            onChange={e => { setPasswordInput(e.target.value); setPasswordError(false) }}
-            autoFocus
-            style={{ width: '100%', marginBottom: 16 }}
-          />
-          {passwordError && (
-            <div style={{ color: '#EF4444', fontSize: '0.85rem', marginBottom: 12 }}>Incorrect password.</div>
-          )}
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: 14 }}>
-            Unlock
-          </button>
-        </form>
+        <div style={{ color: 'var(--text-muted)' }}>Checking access...</div>
       </div>
     )
   }

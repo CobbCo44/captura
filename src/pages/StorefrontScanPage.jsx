@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
+import DOMPurify from 'dompurify'
 import { supabase } from '../lib/supabase'
 
 export default function StorefrontScanPage() {
@@ -478,7 +479,7 @@ export default function StorefrontScanPage() {
           {socials.map(s => (
             <a key={s.key} href={brand[s.key]} target="_blank" rel="noopener noreferrer"
               style={{ color: 'rgba(255,255,255,0.4)', width: 24, height: 24 }}
-              dangerouslySetInnerHTML={{ __html: s.svg }} />
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(s.svg) }} />
           ))}
         </div>
       )}

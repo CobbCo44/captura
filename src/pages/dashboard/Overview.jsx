@@ -65,7 +65,7 @@ export default function Overview({ brand }) {
         {[
           { label: 'Total Scans', value: stats.totalScans.toLocaleString(), color: '#FAFAFA' },
           { label: 'Unique Cities', value: stats.uniqueCities, color: '#A1A1AA' },
-          { label: 'Promo Entries', value: stats.vipMembers, color: 'var(--success)' },
+          { label: 'Consumers Captured', value: stats.vipMembers, color: 'var(--success)' },
           { label: 'Active Products', value: stats.products, color: '#D4D4D8' },
         ].map(s => (
           <div key={s.label} className="card">

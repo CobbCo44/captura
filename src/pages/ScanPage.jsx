@@ -386,26 +386,32 @@ export default function ScanPage({ previewData } = {}) {
     })
   }
 
-  // Server-side rate limit + duplicate check before form submissions
-  async function checkRateLimit(brandId, email, phone, sourceType) {
+  /**
+   * Submit consumer form data through the server-side function.
+   * This enforces rate limiting and validation server-side so a bot
+   * can't bypass it by posting directly to Supabase.
+   * Returns { success, id } or throws/returns null on failure.
+   */
+  async function serverSubmit(type, rowData) {
     try {
-      const res = await fetch('/.netlify/functions/check-rate-limit', {
+      const res = await fetch('/.netlify/functions/consumer-submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ brandId, email, phone, sourceType }),
+        body: JSON.stringify({ type, data: rowData }),
       })
       if (res.status === 429) {
         alert('Too many submissions. Please try again in a few minutes.')
-        return false
+        return null
       }
-      const data = await res.json()
-      if (data.duplicate) {
-        // Allow but skip billing — already counted
-        return 'duplicate'
+      const result = await res.json()
+      if (!res.ok) {
+        alert(result.error || 'Something went wrong. Please try again.')
+        return null
       }
-      return data.allowed
+      return result
     } catch {
-      return true // fail open
+      // Fail open: fall back to client-side insert
+      return { success: true, fallback: true }
     }
   }
 
@@ -459,10 +465,8 @@ export default function ScanPage({ previewData } = {}) {
       alert('Please enter a valid 10-digit phone number.')
       return
     }
-    const rlResult = await checkRateLimit(qrCode?.brand_id, vipForm.email, vipForm.phone, 'vip')
-    if (rlResult === false) return
-    if (supabase && qrCode) {
-      const { data: inserted } = await supabase.from('vip_members').insert({
+    if (qrCode) {
+      const result = await serverSubmit('vip', {
         brand_id: qrCode.brand_id,
         qr_code_id: qrCode.id,
         product_id: qrCode.product_id || null,
@@ -475,8 +479,9 @@ export default function ScanPage({ previewData } = {}) {
         city: location?.city ? `${location.city}, ${location.region}` : null,
         region: location?.region || null,
         country: location?.country || null,
-      }).select('id').single()
-      logBillingEvent(qrCode.brand_id, vipForm.email, vipForm.phone, 'vip', inserted?.id)
+      })
+      if (!result) return
+      logBillingEvent(qrCode.brand_id, vipForm.email, vipForm.phone, 'vip', result?.id)
       upsertContactAndClaimSerial(qrCode.brand_id, vipForm.firstName, vipForm.lastName, vipForm.email, vipForm.phone, 'vip', vipForm.consent)
       syncToShopify({
         firstName: vipForm.firstName,
@@ -507,16 +512,13 @@ export default function ScanPage({ previewData } = {}) {
       alert('Please enter a valid 10-digit phone number.')
       return
     }
-    const brandIdForRL = qrCode?.brand_id || brand?.id || serialData?.brand_id
-    const rlResult = await checkRateLimit(brandIdForRL, promoForm.email, promoForm.phone, 'promo')
-    if (rlResult === false) return
     // Ensure geo/IP is available
     if (locationPromise.current) await locationPromise.current
     const loc = locationRef.current
     const brandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
-    if (supabase && activePromo && brandId) {
+    if (activePromo && brandId) {
       const now = new Date().toISOString()
-      const { data: inserted } = await supabase.from('promo_entries').insert({
+      const result = await serverSubmit('promo', {
         promo_id: activePromo.id,
         brand_id: brandId,
         qr_code_id: qrCode?.id || null,
@@ -536,8 +538,9 @@ export default function ScanPage({ previewData } = {}) {
         consent_timestamp: promoForm.marketingConsent ? now : null,
         consent_ip: promoForm.marketingConsent ? (loc?.ip || null) : null,
         consent_text_shown: promoForm.marketingConsent ? marketingConsentText : null,
-      }).select('id').single()
-      logBillingEvent(brandId, promoForm.email, promoForm.phone, 'promo', inserted?.id)
+      })
+      if (!result) return
+      logBillingEvent(brandId, promoForm.email, promoForm.phone, 'promo', result?.id)
       upsertContactAndClaimSerial(brandId, promoForm.firstName, promoForm.lastName, promoForm.email, promoForm.phone, 'promo', promoForm.marketingConsent)
       await syncToShopify({
         firstName: promoForm.firstName,
@@ -579,14 +582,11 @@ export default function ScanPage({ previewData } = {}) {
         }
       }
     }
-    const warBrandIdRL = qrCode?.brand_id || brand?.id || serialData?.brand_id
-    const rlResult = await checkRateLimit(warBrandIdRL, warrantyForm.email, warrantyForm.phone, 'warranty')
-    if (rlResult === false) return
     if (locationPromise.current) await locationPromise.current
     const loc = locationRef.current
     const warBrandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
-    if (supabase && warBrandId) {
-      const { data: inserted } = await supabase.from('warranty_registrations').insert({
+    if (warBrandId) {
+      const result = await serverSubmit('warranty', {
         brand_id: warBrandId,
         product_id: qrCode?.product_id || product?.id || null,
         qr_code_id: qrCode?.id || null,
@@ -602,8 +602,9 @@ export default function ScanPage({ previewData } = {}) {
         region: loc?.region || null,
         country: loc?.country || null,
         consent: warrantyForm.consent,
-      }).select('id').single()
-      logBillingEvent(warBrandId, warrantyForm.email, warrantyForm.phone, 'warranty', inserted?.id)
+      })
+      if (!result) return
+      logBillingEvent(warBrandId, warrantyForm.email, warrantyForm.phone, 'warranty', result?.id)
       upsertContactAndClaimSerial(warBrandId, warrantyForm.firstName, warrantyForm.lastName, warrantyForm.email, warrantyForm.phone, 'warranty', warrantyForm.consent)
       await syncToShopify({
         firstName: warrantyForm.firstName,
@@ -627,13 +628,11 @@ export default function ScanPage({ previewData } = {}) {
     e.preventDefault()
     if (isPreview) { setEventSubmitted(true); return }
     const evtBrandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
-    const rlResult = await checkRateLimit(evtBrandId, eventForm?.email, eventForm?.phone, 'event')
-    if (rlResult === false) return
     if (locationPromise.current) await locationPromise.current
     const loc = locationRef.current
-    if (supabase && event && evtBrandId) {
+    if (event && evtBrandId) {
       const now = new Date().toISOString()
-      const { data: inserted, error: insertErr } = await supabase.from('event_entries').insert({
+      const result = await serverSubmit('event', {
         event_id: event.id,
         brand_id: evtBrandId,
         qr_code_id: qrCode?.id || null,
@@ -652,8 +651,9 @@ export default function ScanPage({ previewData } = {}) {
         consent_timestamp: eventForm.marketingConsent ? now : null,
         consent_ip: eventForm.marketingConsent ? (loc?.ip || null) : null,
         consent_text_shown: eventForm.marketingConsent ? marketingConsentText : null,
-      }).select('id').single()
-      logBillingEvent(evtBrandId, eventForm.email, eventForm.phone, 'event', inserted?.id)
+      })
+      if (!result) return
+      logBillingEvent(evtBrandId, eventForm.email, eventForm.phone, 'event', result?.id)
       upsertContactAndClaimSerial(evtBrandId, eventForm.firstName, eventForm.lastName, eventForm.email, eventForm.phone, 'event', eventForm.marketingConsent)
       await syncToShopify({
         firstName: eventForm.firstName,
@@ -677,6 +677,9 @@ export default function ScanPage({ previewData } = {}) {
     setLoyaltySubmitting(true)
     const brandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
     if (!brandId) { setLoyaltySubmitting(false); return }
+    // Rate limit loyalty submissions through the same server-side gate
+    const rlCheck = await serverSubmit('loyalty', { brand_id: brandId, email: loyaltyForm.email, _rateCheckOnly: true })
+    if (!rlCheck) { setLoyaltySubmitting(false); return }
     try {
       const { data: contactId, error: contactErr } = await supabase.rpc('get_or_create_contact', {
         p_brand_id: brandId,

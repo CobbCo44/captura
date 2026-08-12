@@ -26,20 +26,31 @@ export default function Admin() {
 
   async function loadAllData() {
     setLoading(true)
-    const [brandsRes, scansRes, vipRes, promoRes, eventRes, billingRes] = await Promise.all([
-      supabase.from('brands').select('*').order('created_at', { ascending: false }),
-      supabase.from('scans').select('*, products(name, sku), brands:brand_id(name, industry)').order('scanned_at', { ascending: false }).limit(5000),
-      supabase.from('vip_members').select('*, products(name), brands:brand_id(name, industry)').order('joined_at', { ascending: false }),
-      supabase.from('promo_entries').select('*, products(name), brands:brand_id(name, industry)').order('entered_at', { ascending: false }),
-      supabase.from('event_entries').select('*, events(name), brands:brand_id(name, industry)').order('entered_at', { ascending: false }),
-      supabase.from('billing_events').select('*, brands:brand_id(name, industry)').order('created_at', { ascending: false }),
-    ])
-    setBrands(brandsRes.data || [])
-    setScans(scansRes.data || [])
-    setVipMembers(vipRes.data || [])
-    setPromoEntries(promoRes.data || [])
-    setEventEntries(eventRes.data || [])
-    setBillingEvents(billingRes.data || [])
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/.netlify/functions/admin-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: session?.access_token }),
+      })
+      if (res.status === 403) {
+        navigate('/dashboard')
+        return
+      }
+      if (!res.ok) {
+        navigate('/login')
+        return
+      }
+      const result = await res.json()
+      setBrands(result.brands || [])
+      setScans(result.scans || [])
+      setVipMembers(result.vipMembers || [])
+      setPromoEntries(result.promoEntries || [])
+      setEventEntries(result.eventEntries || [])
+      setBillingEvents(result.billingEvents || [])
+    } catch {
+      navigate('/login')
+    }
     setLoading(false)
   }
 

@@ -334,7 +334,14 @@ export default function ScanPage({ previewData } = {}) {
     }
 
     if (supabase) {
-      await supabase.from('scans').insert(scanData)
+      const { error } = await supabase.from('scans').insert(scanData)
+      if (error) {
+        supabase.from('error_log').insert({
+          source: 'scan_insert',
+          message: error.message,
+          metadata: { brand_id: brandId, gtin: product?.gtin || lookupGtin },
+        })
+      }
     }
   }
 
@@ -553,6 +560,25 @@ export default function ScanPage({ previewData } = {}) {
   const handleWarrantySubmit = async (e) => {
     e.preventDefault()
     if (isPreview) { setWarrantyRegistered(true); return }
+    // Validate purchase date is not in the future
+    if (warrantyForm.purchaseDate) {
+      const purchaseDate = new Date(warrantyForm.purchaseDate)
+      if (purchaseDate > new Date()) {
+        alert('Purchase date cannot be in the future.')
+        return
+      }
+      // If product has warranty_duration, validate purchase is within window
+      const duration = product?.warranty_duration || ''
+      const yearsMatch = duration.match(/(\d+)\s*year/i)
+      if (yearsMatch) {
+        const maxAge = new Date()
+        maxAge.setFullYear(maxAge.getFullYear() - parseInt(yearsMatch[1]))
+        if (purchaseDate < maxAge) {
+          alert(`This product has a ${duration} warranty. The purchase date you entered is outside the warranty period.`)
+          return
+        }
+      }
+    }
     const warBrandIdRL = qrCode?.brand_id || brand?.id || serialData?.brand_id
     const rlResult = await checkRateLimit(warBrandIdRL, warrantyForm.email, warrantyForm.phone, 'warranty')
     if (rlResult === false) return

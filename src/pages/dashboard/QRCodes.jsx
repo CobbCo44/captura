@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { supabase, generateShortId } from '../../lib/supabase'
 import BrandedQR from '../../components/BrandedQR'
 import generateQRCode from 'qr.js'
@@ -143,6 +143,10 @@ export default function QRCodes({ brand }) {
   const [batchQrStyle, setBatchQrStyle] = useState({ fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoScale: 0.25, ctaText: '' })
   const [batchDownloadProgress, setBatchDownloadProgress] = useState(null)
   const [batchSheetSize, setBatchSheetSize] = useState('1.5')
+  const [expandedBatchId, setExpandedBatchId] = useState(null)
+  const [batchSerials, setBatchSerials] = useState([])
+  const [serialsLoading, setSerialsLoading] = useState(false)
+  const [serialSearch, setSerialSearch] = useState('')
 
   // Storefront QR customization
   const [storeQR, setStoreQR] = useState({
@@ -645,6 +649,24 @@ export default function QRCodes({ brand }) {
       }
     }
     setBatchesLoading(false)
+  }
+
+  async function toggleBatchSerials(batchId) {
+    if (expandedBatchId === batchId) {
+      setExpandedBatchId(null)
+      setBatchSerials([])
+      setSerialSearch('')
+      return
+    }
+    setExpandedBatchId(batchId)
+    setSerialsLoading(true)
+    const { data } = await supabase
+      .from('serials')
+      .select('*, contacts:claimed_by_contact_id(first_name, last_name, email)')
+      .eq('batch_id', batchId)
+      .order('created_at', { ascending: true })
+    setBatchSerials(data || [])
+    setSerialsLoading(false)
   }
 
   async function deleteBatch(batchId) {
@@ -1291,7 +1313,8 @@ export default function QRCodes({ brand }) {
                 {batches.map(b => {
                   const counts = claimedCounts[b.id] || { total: b.quantity, claimed: 0 }
                   return (
-                    <tr key={b.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <React.Fragment key={b.id}>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
                         {new Date(b.created_at).toLocaleDateString()}
                       </td>
@@ -1313,10 +1336,18 @@ export default function QRCodes({ brand }) {
                         </span>
                       </td>
                       <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                        <button type="button" onClick={() => toggleBatchSerials(b.id)}
+                          style={{
+                            background: 'none', border: 'none', color: '#60A5FA',
+                            fontSize: '0.8rem', cursor: 'pointer',
+                          }}>
+                          {expandedBatchId === b.id ? 'Hide' : 'View'}
+                        </button>
                         <button type="button" onClick={() => exportBatchCSV(b.id)}
                           style={{
                             background: 'none', border: 'none', color: '#FAFAFA',
                             fontSize: '0.8rem', cursor: 'pointer',
+                            marginLeft: 8,
                           }}>
                           CSV
                         </button>
@@ -1338,6 +1369,76 @@ export default function QRCodes({ brand }) {
                         </button>
                       </td>
                     </tr>
+                    {expandedBatchId === b.id && (
+                      <tr>
+                        <td colSpan={7} style={{ padding: 0, background: 'var(--bg)' }}>
+                          {serialsLoading ? (
+                            <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading serials...</div>
+                          ) : (
+                            <div style={{ padding: '12px 16px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                  {batchSerials.length} serials &middot; {batchSerials.filter(s => s.status === 'claimed').length} claimed
+                                </span>
+                                <input
+                                  className="input"
+                                  placeholder="Search serial or email..."
+                                  value={serialSearch}
+                                  onChange={e => setSerialSearch(e.target.value)}
+                                  style={{ width: 220, fontSize: '0.8rem', padding: '6px 10px' }}
+                                />
+                              </div>
+                              <div style={{ maxHeight: 300, overflowY: 'auto', borderRadius: 8, border: '1px solid var(--border)' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                                  <thead>
+                                    <tr style={{ borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--bg-card)' }}>
+                                      {['Serial', 'Status', 'Claimed By', 'Claimed At'].map(h => (
+                                        <th key={h} style={{
+                                          padding: '8px 12px', textAlign: 'left',
+                                          fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)',
+                                          textTransform: 'uppercase',
+                                        }}>{h}</th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {batchSerials
+                                      .filter(s => {
+                                        if (!serialSearch) return true
+                                        const q = serialSearch.toLowerCase()
+                                        return s.serial.toLowerCase().includes(q)
+                                          || (s.contacts?.email || '').toLowerCase().includes(q)
+                                          || `${s.contacts?.first_name || ''} ${s.contacts?.last_name || ''}`.toLowerCase().includes(q)
+                                      })
+                                      .map(s => (
+                                      <tr key={s.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                        <td style={{ padding: '8px 12px', fontFamily: 'monospace', fontSize: '0.8rem' }}>{s.serial}</td>
+                                        <td style={{ padding: '8px 12px' }}>
+                                          <span style={{
+                                            padding: '2px 8px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 600,
+                                            background: s.status === 'claimed' ? 'rgba(34,197,94,0.1)' : 'rgba(161,161,170,0.1)',
+                                            color: s.status === 'claimed' ? 'var(--success)' : 'var(--text-muted)',
+                                          }}>
+                                            {s.status}
+                                          </span>
+                                        </td>
+                                        <td style={{ padding: '8px 12px', color: 'var(--text-muted)' }}>
+                                          {s.contacts ? `${s.contacts.first_name} ${s.contacts.last_name || ''} (${s.contacts.email})` : '-'}
+                                        </td>
+                                        <td style={{ padding: '8px 12px', color: 'var(--text-muted)' }}>
+                                          {s.claimed_at ? new Date(s.claimed_at).toLocaleDateString() : '-'}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   )
                 })}
               </tbody>

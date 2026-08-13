@@ -285,6 +285,64 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Loyalty */}
+      <section style={{
+        padding: '100px 40px', maxWidth: 1200, margin: '0 auto',
+        borderTop: '1px solid #1C1C21',
+      }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
+          <div>
+            <div style={{ fontSize: '0.75rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 16 }}>
+              Loyalty that lives on the product
+            </div>
+            <h2 style={{ fontSize: '2.2rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-1px', color: '#FAFAFA', marginBottom: 24 }}>
+              Turn one-time buyers into repeat scanners.
+            </h2>
+            <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8, marginBottom: 16 }}>
+              Every scan earns the consumer a point. Points build across products and purchases, and they redeem rewards you define: discount codes, free product, custom offers, right on the scan page. No third-party loyalty app, no punch card, no login.
+            </p>
+            <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8 }}>
+              For repeat-purchase categories, loyalty turns your packaging into a reorder engine: the consumer has a reason to scan every purchase, and you capture the relationship every time.
+            </p>
+          </div>
+
+          <div>
+            <div style={{ display: 'grid', gap: 2 }}>
+              {[
+                { title: 'Earn on every scan', desc: 'Each scan adds points automatically. No codes, no cards, no friction.' },
+                { title: 'Rewards you define', desc: 'Discount codes, free product, custom offers. You set the thresholds and the payoff.' },
+                { title: 'Full member dashboard', desc: 'Consumers see their balances, history, and reward progress right on the scan page.' },
+              ].map((item, i) => (
+                <div key={i} style={{
+                  padding: '24px 28px', background: '#131316',
+                  borderBottom: i < 2 ? '1px solid #1C1C21' : 'none',
+                }}>
+                  <h4 style={{ fontSize: '1rem', fontWeight: 600, color: '#FAFAFA', marginBottom: 6 }}>{item.title}</h4>
+                  <p style={{ color: '#52525B', fontSize: '0.9rem', lineHeight: 1.7 }}>{item.desc}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Points mockup card */}
+            <div style={{
+              marginTop: 16, background: '#131316', border: '1px solid #1C1C21',
+              borderRadius: 12, padding: '24px 28px',
+            }}>
+              <div style={{ fontSize: '0.7rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 16 }}>
+                Your loyalty balance
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
+                <span style={{ fontSize: '2rem', fontWeight: 800, color: '#FAFAFA', letterSpacing: '-1px' }}>340 pts</span>
+                <span style={{ fontSize: '0.75rem', color: '#52525B' }}>Next reward at 500 pts</span>
+              </div>
+              <div style={{ height: 6, background: '#1C1C21', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ width: '68%', height: '100%', background: '#22C55E', borderRadius: 3 }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* What you capture */}
       <section style={{
         padding: '100px 40px', maxWidth: 1200, margin: '0 auto',

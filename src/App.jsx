@@ -9,6 +9,7 @@ import Terms from './pages/Terms'
 import Privacy from './pages/Privacy'
 import StorefrontScanPage from './pages/StorefrontScanPage'
 import GS1 from './pages/GS1'
+import Storefronts from './pages/Storefronts'
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
       <Route path="/s/:qrId" element={<ScanPage />} />
       <Route path="/store/:brandId" element={<StorefrontScanPage />} />
       <Route path="/gs1" element={<GS1 />} />
+      <Route path="/storefronts" element={<Storefronts />} />
       <Route path="/terms" element={<Terms />} />
       <Route path="/privacy" element={<Privacy />} />
     </Routes>

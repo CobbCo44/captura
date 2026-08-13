@@ -9,7 +9,10 @@ export default function Landing() {
         padding: '20px 40px', maxWidth: 1200, margin: '0 auto',
       }}>
         <img src="/images/meetcaptura-logo.png" alt="meetcaptura" style={{ height: 56, filter: 'invert(1)' }} />
-        <div style={{ display: 'flex', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <Link to="/storefronts" style={{
+            padding: '10px 20px', fontSize: '0.9rem', color: '#A1A1AA', fontWeight: 500,
+          }}>For Storefronts</Link>
           <Link to="/login" style={{
             padding: '10px 20px', fontSize: '0.9rem', color: '#A1A1AA', fontWeight: 500,
           }}>Log In</Link>

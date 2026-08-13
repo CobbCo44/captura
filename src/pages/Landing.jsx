@@ -573,6 +573,34 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* DPP / One code, three audiences */}
+      <section style={{
+        padding: '100px 40px', maxWidth: 1200, margin: '0 auto',
+        borderTop: '1px solid #1C1C21',
+      }}>
+        <div style={{ maxWidth: 700, margin: '0 auto', textAlign: 'center' }}>
+          <div style={{ fontSize: '0.75rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 16 }}>
+            Built on the standard
+          </div>
+          <h2 style={{ fontSize: '2.2rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-1px', color: '#FAFAFA', marginBottom: 24 }}>
+            One code. Consumers, regulators, and machines.
+          </h2>
+          <p style={{ color: '#52525B', fontSize: '1.05rem', lineHeight: 1.8, marginBottom: 20 }}>
+            The same QR that captures your consumer also serves a Digital Product Passport: structured product data with full version history, readable by humans as a public page and by machines as structured data. Built on the GS1 Digital Link standard retail is adopting by 2027.
+          </p>
+          <p style={{ color: '#52525B', fontSize: '1.05rem', lineHeight: 1.8 }}>
+            If you sell into the EU, the passport requirement is coming to your category, and your packaging is already ready.
+          </p>
+          <div style={{
+            marginTop: 28, display: 'inline-block', padding: '8px 20px',
+            background: '#131316', border: '1px solid #1C1C21', borderRadius: 6,
+            fontSize: '0.8rem', color: '#A1A1AA', fontWeight: 600, letterSpacing: '0.5px',
+          }}>
+            DPP-ready
+          </div>
+        </div>
+      </section>
+
       {/* Double down section */}
       <section style={{
         padding: '100px 40px', maxWidth: 1200, margin: '0 auto',

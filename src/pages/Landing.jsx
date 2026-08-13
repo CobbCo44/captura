@@ -362,6 +362,7 @@ export default function Landing() {
               { title: 'Location', desc: 'City-level geographic data on every single scan. Know where your products are being used, not just where they shipped.' },
               { title: 'Behavior', desc: 'Which products get scanned most. Which SKUs convert to signups. Where engagement is hot and where it is cold.' },
               { title: 'Reach', desc: 'Text, email, and re-engage captured consumers directly. Run promotions that drive repeat scans. Build a relationship beyond the shelf.' },
+              { title: 'Channel', desc: 'Every serialized unit ties back to the retail channel it shipped through: Amazon, big box, distributor, or DTC. Finally know which shelf is producing engaged owners, not just which one reordered.' },
             ].map((item, i) => (
               <div key={i} style={{
                 padding: '20px 0',

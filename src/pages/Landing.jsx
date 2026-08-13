@@ -154,7 +154,7 @@ export default function Landing() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2 }}>
           {[
             { value: '$0.00', label: 'Cost per scan', sub: 'No hardware. No app. A printed QR code.' },
-            { value: '18%', label: 'Avg VIP conversion', sub: 'Nearly 1 in 5 scanners give you their contact info voluntarily.' },
+            { value: '10–25%', label: 'Opt-in rate', sub: 'Industry range for QR programs with a clear value offer (Uniqode and Bitly, 2026).' },
             { value: '$1', label: 'Your cost per contact', sub: 'One dollar per opted-in consumer you capture. No hardware, no per-scan fee \u2014 you pay only for real, reachable contacts.' },
             { value: '\u221E', label: 'Owned, not rented', sub: "The relationship is yours \u2014 not the retailer\u2019s, not the ad platform\u2019s. Re-engage anytime, with consent." },
           ].map((item, i) => (
@@ -279,7 +279,7 @@ export default function Landing() {
               Nobody hands over their phone number for nothing. They scan because they get something real in return, and you get the relationship as a result.
             </p>
             <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8 }}>
-              The value exchange is what drives an average 18% opt-in. Give people a reason, and they come to you.
+              Consumer packaging QR programs with a clear value offer see roughly 10 to 25 percent of scanners opt in (Uniqode and Bitly, 2026). We prove your number on your own SKUs in a pilot.
             </p>
           </div>
         </div>
@@ -320,15 +320,18 @@ export default function Landing() {
             background: '#131316', border: '1px solid #1C1C21', borderRadius: 16,
             padding: '36px', display: 'flex', flexDirection: 'column', justifyContent: 'center',
           }}>
-            <div style={{ fontSize: '0.7rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 20 }}>
-              Consumer data dashboard
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <div style={{ fontSize: '0.7rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase' }}>
+                Consumer data dashboard
+              </div>
+              <div style={{ fontSize: '0.6rem', color: '#27272A', fontStyle: 'italic' }}>Illustrative dashboard</div>
             </div>
 
             {[
               { label: 'Total Consumers Captured', value: '2,341' },
               { label: 'Geographic Reach', value: '127 cities' },
               { label: 'Avg Scans per SKU', value: '412' },
-              { label: 'VIP Conversion Rate', value: '18.2%' },
+              { label: 'Opt-in Rate', value: '17.4%' },
               { label: 'Promo Entry Rate', value: '24.7%' },
             ].map((m, i) => (
               <div key={i} style={{
@@ -395,13 +398,13 @@ export default function Landing() {
               <div style={{ fontSize: '0.7rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase' }}>
                 Weekly insights report
               </div>
-              <div style={{ fontSize: '0.65rem', color: '#27272A' }}>Auto-generated</div>
+              <div style={{ fontSize: '0.6rem', color: '#27272A', fontStyle: 'italic' }}>Illustrative dashboard</div>
             </div>
 
             {[
               { label: 'Top performing SKU', value: 'Performance Bat 34"', detail: 'Up 32% week over week' },
               { label: 'Fastest growing region', value: 'Southeast US', detail: 'Houston, Miami, Atlanta leading' },
-              { label: 'VIP conversion trend', value: '18.2% → 21.4%', detail: 'Promo campaign driving signups' },
+              { label: 'Opt-in trend', value: '14.8% → 19.2%', detail: 'Value offer driving signups' },
             ].map((item, i) => (
               <div key={i} style={{
                 padding: '16px 0',

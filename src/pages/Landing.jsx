@@ -507,8 +507,8 @@ export default function Landing() {
               background: 'rgba(150, 191, 72, 0.08)', border: '1px solid rgba(150, 191, 72, 0.2)',
               textAlign: 'center',
             }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#96BF48' }}>No Shopify app install required</div>
-              <div style={{ fontSize: '0.7rem', color: '#52525B', marginTop: 4 }}>Connect with a simple API token from your Shopify admin</div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#96BF48' }}>No app install</div>
+              <div style={{ fontSize: '0.7rem', color: '#52525B', marginTop: 4 }}>Connect your store in minutes with a secure OAuth authorization. You approve access, we never see your password.</div>
             </div>
           </div>
         </div>

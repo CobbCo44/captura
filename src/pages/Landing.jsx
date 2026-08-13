@@ -664,6 +664,14 @@ export default function Landing() {
         }}>Get Started Free</Link>
       </section>
 
+      {/* Credibility strip */}
+      <div style={{
+        padding: '16px 40px', maxWidth: 1200, margin: '0 auto',
+        textAlign: 'center', fontSize: '0.72rem', color: '#3F3F46', letterSpacing: '0.3px',
+      }}>
+        GS1 Digital Link ready &nbsp;&middot;&nbsp; DPP-ready &nbsp;&middot;&nbsp; TCPA-grade consent capture, logged and exportable
+      </div>
+
       {/* Footer */}
       <footer style={{
         padding: '32px 40px', borderTop: '1px solid #1C1C21',

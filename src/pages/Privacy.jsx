@@ -4,15 +4,15 @@ export default function Privacy() {
   return (
     <div style={{ minHeight: '100vh', maxWidth: 700, margin: '0 auto', padding: '40px 24px' }}>
       <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 24, display: 'block' }}>
-        ← Back to Captura
+        ← Back to MeetCaptura
       </Link>
       <h1 style={{ fontSize: '2rem', fontWeight: 700, marginBottom: 24 }}>Privacy Policy</h1>
       <div style={{ color: 'var(--text-muted)', lineHeight: 1.8, fontSize: '0.95rem' }}>
         <p style={{ marginBottom: 16 }}>Last updated: July 7, 2026</p>
-        <p style={{ marginBottom: 16 }}>Captura ("we," "us," "our") operates the meetcaptura.com platform. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform, either as a brand customer or as a consumer interacting with QR codes.</p>
+        <p style={{ marginBottom: 16 }}>MeetCaptura ("we," "us," "our") operates the meetcaptura.com platform. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform, either as a brand customer or as a consumer interacting with QR codes.</p>
 
         <h2 style={{ color: '#FAFAFA', fontSize: '1.2rem', fontWeight: 600, marginTop: 32, marginBottom: 12 }}>Information We Collect Automatically</h2>
-        <p style={{ marginBottom: 16 }}>When a consumer scans a QR code powered by Captura, we automatically collect:</p>
+        <p style={{ marginBottom: 16 }}>When a consumer scans a QR code powered by MeetCaptura, we automatically collect:</p>
         <ul style={{ marginBottom: 16, paddingLeft: 20 }}>
           <li style={{ marginBottom: 8 }}>Approximate geographic location derived from your IP address (city, state/region, country)</li>
           <li style={{ marginBottom: 8 }}>Device type (e.g., iPhone, Android)</li>
@@ -76,7 +76,7 @@ export default function Privacy() {
 
         <h2 style={{ color: '#FAFAFA', fontSize: '1.2rem', fontWeight: 600, marginTop: 32, marginBottom: 12 }}>Contact Us</h2>
         <p style={{ marginBottom: 16 }}>
-          Captura<br />
+          MeetCaptura<br />
           Email: privacy@meetcaptura.com
         </p>
       </div>

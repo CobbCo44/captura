@@ -83,7 +83,7 @@ function HeroQR() {
     <div style={{ width: '100%', maxWidth: 400, margin: '0 auto' }}>
       <img
         src="/images/hero-qr-box.png"
-        alt="Product packaging with a branded Captura QR code"
+        alt="Product packaging with a branded MeetCaptura QR code"
         style={{ width: '100%', height: 'auto', borderRadius: 12, display: 'block' }}
       />
     </div>
@@ -190,9 +190,9 @@ function OutcomeVisual() {
         backgroundSize: '20px 20px',
       }}/>
       <div style={{ position: 'relative' }}>
-        {/* Without Captura */}
+        {/* Without MeetCaptura */}
         <div style={{ marginBottom: 24 }}>
-          <div style={{ ...mono, fontSize: '0.62rem', color: C.caption, textTransform: 'uppercase', marginBottom: 10, opacity: 0.7 }}>Without Captura</div>
+          <div style={{ ...mono, fontSize: '0.62rem', color: C.caption, textTransform: 'uppercase', marginBottom: 10, opacity: 0.7 }}>Without MeetCaptura</div>
           <div style={{
             background: C.bg1, border: `1px solid ${C.border}`, borderRadius: 6, padding: '14px 18px',
           }}>
@@ -227,9 +227,9 @@ function OutcomeVisual() {
           <div style={{ flex: 1, height: 1, background: C.border }}/>
         </div>
 
-        {/* With Captura */}
+        {/* With MeetCaptura */}
         <div>
-          <div style={{ ...mono, fontSize: '0.62rem', color: C.accent, textTransform: 'uppercase', marginBottom: 10, opacity: 0.8 }}>With Captura</div>
+          <div style={{ ...mono, fontSize: '0.62rem', color: C.accent, textTransform: 'uppercase', marginBottom: 10, opacity: 0.8 }}>With MeetCaptura</div>
           <div style={{
             background: C.bg1, border: `1px solid ${C.accent}20`, borderRadius: 6, padding: '14px 18px',
           }}>
@@ -330,7 +330,7 @@ function TwoJobsDiagram() {
         <line x1="180" y1="184" x2="310" y2="184" stroke={C.accent} strokeWidth="1" strokeDasharray="3 2"/>
         <circle cx="310" cy="184" r="3" fill={C.accent}/>
         {/* Captura label */}
-        <text x="310" y="172" textAnchor="end" fill={C.accent} fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">Captura experience</text>
+        <text x="310" y="172" textAnchor="end" fill={C.accent} fontSize="11" fontWeight="600" fontFamily="Inter, sans-serif">MeetCaptura experience</text>
         <text x="310" y="200" textAnchor="end" fill={C.caption} fontSize="9.5" {...mono}>OPENS ON SHOPPER'S PHONE</text>
         {/* Phone icon */}
         <rect x="320" y="172" width="18" height="26" rx="4" fill="none" stroke={C.accent} strokeWidth="1" opacity="0.6"/>
@@ -345,8 +345,8 @@ function TwoJobsDiagram() {
 
 export default function GS1() {
   useSEO({
-    title: 'GS1 Digital Link & Sunrise 2027 for Brands | Captura',
-    description: 'Retail is adopting the GS1 Digital Link 2D barcode by 2027. Captura generates branded, GS1 Digital Link\u2013ready QR codes that turn every scan into an owned, consented customer relationship.',
+    title: 'GS1 Digital Link & Sunrise 2027 for Brands | MeetCaptura',
+    description: 'Retail is adopting the GS1 Digital Link 2D barcode by 2027. MeetCaptura generates branded, GS1 Digital Link\u2013ready QR codes that turn every scan into an owned, consented customer relationship.',
     canonical: 'https://meetcaptura.com/gs1',
   })
 
@@ -396,7 +396,7 @@ export default function GS1() {
             fontFamily: BODY, fontSize: '1.08rem', color: C.body, lineHeight: 1.6,
             maxWidth: '52ch', marginBottom: 28,
           }}>
-            Retail is standardizing on one smart barcode by 2027. Captura is built for it, natively.
+            Retail is standardizing on one smart barcode by 2027. MeetCaptura is built for it, natively.
           </p>
           <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
             <Link to="/login?signup=true" className="gs1-cta-btn" style={{
@@ -452,7 +452,7 @@ export default function GS1() {
               Why it matters
             </h2>
             <p style={{ fontFamily: BODY, color: C.body, fontSize: '1.06rem', lineHeight: 1.6 }}>
-              This is a tailwind, not a threat. A smart code is going on your packaging regardless, the standard is arriving with or without you. The only open question is what happens when a customer scans it. For most brands, that scan leads to a dead-end homepage. With Captura, it becomes an owned, consented customer relationship, tied to the exact product that was scanned.
+              This is a tailwind, not a threat. A smart code is going on your packaging regardless, the standard is arriving with or without you. The only open question is what happens when a customer scans it. For most brands, that scan leads to a dead-end homepage. With MeetCaptura, it becomes an owned, consented customer relationship, tied to the exact product that was scanned.
             </p>
           </div>
           {/* Scan outcome visual */}
@@ -467,24 +467,24 @@ export default function GS1() {
           fontFamily: DISPLAY, fontSize: '1.9rem', fontWeight: 700, lineHeight: 1.08,
           letterSpacing: '-0.02em', color: C.heading, marginBottom: 36,
         }}>
-          How Captura fits the standard
+          How MeetCaptura fits the standard
         </h2>
         <div className="gs1-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, alignItems: 'stretch' }}>
           {[
             {
               num: '01',
               title: 'Reads the standard',
-              desc: 'Captura natively parses GS1 Digital Link codes, pulling your product\u2019s GTIN (the number already under every UPC) straight from the scan.',
+              desc: 'MeetCaptura natively parses GS1 Digital Link codes, pulling your product\u2019s GTIN (the number already under every UPC) straight from the scan.',
             },
             {
               num: '02',
               title: 'Generates the standard',
-              desc: 'Captura builds your QR codes in valid GS1 Digital Link format, structured around your product\u2019s GTIN, with your logo or artwork in the center of the code. Branded, on-standard, and ready to plug into your GS1 program instead of being a throwaway marketing link.',
+              desc: 'MeetCaptura builds your QR codes in valid GS1 Digital Link format, structured around your product\u2019s GTIN, with your logo or artwork in the center of the code. Branded, on-standard, and ready to plug into your GS1 program instead of being a throwaway marketing link.',
             },
             {
               num: '03',
               title: 'Slots in behind yours',
-              desc: 'Already migrating to GS1? Captura resolves as the consumer-experience destination behind your existing code. No second code, no packaging fight.',
+              desc: 'Already migrating to GS1? MeetCaptura resolves as the consumer-experience destination behind your existing code. No second code, no packaging fight.',
             },
           ].map((card, i) => (
             <div key={i} style={{
@@ -523,7 +523,7 @@ export default function GS1() {
               One code, two jobs
             </h2>
             <p style={{ fontFamily: BODY, color: C.body, fontSize: '1.06rem', lineHeight: 1.6 }}>
-              The brand's GS1 code, read by a retailer's 2D-enabled scanner, is what rings up the sale at checkout. Captura lives on the consumer half of the same code: the experience a shopper's phone opens. GTINs are licensed to brands by GS1; Captura ingests them from Shopify or manual entry and never generates them. Whether a single code also serves checkout is validated in your own retail environment.
+              The brand's GS1 code, read by a retailer's 2D-enabled scanner, is what rings up the sale at checkout. MeetCaptura lives on the consumer half of the same code: the experience a shopper's phone opens. GTINs are licensed to brands by GS1; MeetCaptura ingests them from Shopify or manual entry and never generates them. Whether a single code also serves checkout is validated in your own retail environment.
             </p>
           </div>
           <TwoJobsDiagram />
@@ -554,7 +554,7 @@ export default function GS1() {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         maxWidth: 1200, margin: '0 auto', flexWrap: 'wrap', gap: 16,
       }}>
-        <span style={{ fontFamily: MONO, color: '#3A3F4A', fontSize: '0.75rem' }}>&copy; 2026 Captura</span>
+        <span style={{ fontFamily: MONO, color: '#3A3F4A', fontSize: '0.75rem' }}>&copy; 2026 MeetCaptura</span>
         <div style={{ display: 'flex', gap: 24 }}>
           <Link to="/terms" className="gs1-foot-link" style={{ fontFamily: MONO, color: '#3A3F4A', fontSize: '0.75rem' }}>Terms</Link>
           <Link to="/privacy" className="gs1-foot-link" style={{ fontFamily: MONO, color: '#3A3F4A', fontSize: '0.75rem' }}>Privacy</Link>

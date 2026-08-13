@@ -42,7 +42,7 @@ export default function Landing() {
             fontSize: '1.15rem', color: '#71717A', lineHeight: 1.7,
             maxWidth: 480, marginBottom: 20,
           }}>
-            You have market research. Retail sell-through reports. Demographic profiles. What you don't have is a direct line to the individual consumer holding your product right now. Captura bridges that gap. One scan turns an anonymous buyer into a relationship you own.
+            You have market research. Retail sell-through reports. Demographic profiles. What you don't have is a direct line to the individual consumer holding your product right now. MeetCaptura bridges that gap. One scan turns an anonymous buyer into a relationship you own.
           </p>
           <p style={{
             fontSize: '1rem', color: '#52525B', lineHeight: 1.7,
@@ -128,7 +128,7 @@ export default function Landing() {
               Go from aggregate data to individual relationships
             </h2>
             <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8, marginBottom: 16 }}>
-              Captura layers on top of what you already know. Your demographic research tells you the market. Captura gives you each person in it. Name, phone, email, location, and which specific product they're holding.
+              MeetCaptura layers on top of what you already know. Your demographic research tells you the market. MeetCaptura gives you each person in it. Name, phone, email, location, and which specific product they're holding.
             </p>
             <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8 }}>
               That is the difference between knowing your audience and owning the relationship with them.
@@ -376,13 +376,13 @@ export default function Landing() {
               Your data works while you don't
             </h2>
             <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8, marginBottom: 16 }}>
-              Captura continuously analyzes your scan data and surfaces what matters. Which products are gaining traction. Which regions are heating up. Where your VIP conversion is strong and where it needs attention. No digging through dashboards or building reports manually.
+              MeetCaptura continuously analyzes your scan data and surfaces what matters. Which products are gaining traction. Which regions are heating up. Where your VIP conversion is strong and where it needs attention. No digging through dashboards or building reports manually.
             </p>
             <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8, marginBottom: 16 }}>
               On-demand intelligence reports break down product performance, geographic trends, and consumer behavior patterns. You get clear recommendations on where to double down and what to adjust.
             </p>
             <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8 }}>
-              The data you collect today informs the decisions you make tomorrow. Captura makes sure you never fall behind on what your consumers are telling you.
+              The data you collect today informs the decisions you make tomorrow. MeetCaptura makes sure you never fall behind on what your consumers are telling you.
             </p>
           </div>
 
@@ -437,7 +437,7 @@ export default function Landing() {
               Works with Shopify
             </div>
             <h2 style={{ fontSize: '2.2rem', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-1px', color: '#FAFAFA', marginBottom: 24 }}>
-              Captura connects directly to your Shopify store
+              MeetCaptura connects directly to your Shopify store
             </h2>
             <p style={{ color: '#52525B', fontSize: '1rem', lineHeight: 1.8, marginBottom: 32 }}>
               The relationships you capture feed the tools you already sell and market from.
@@ -524,7 +524,7 @@ export default function Landing() {
             Demographic data tells you the market. Consumer data lets you own it.
           </h2>
           <p style={{ color: '#52525B', fontSize: '1.05rem', lineHeight: 1.8, marginBottom: 20 }}>
-            You already spend on retail data, market research, and ad platforms to understand your buyer. That gives you insight. What it does not give you is a contact list. Every product you sell with a Captura QR code turns insight into a named, reachable person. That database compounds with every unit shipped.
+            You already spend on retail data, market research, and ad platforms to understand your buyer. That gives you insight. What it does not give you is a contact list. Every product you sell with a MeetCaptura QR code turns insight into a named, reachable person. That database compounds with every unit shipped.
           </p>
           <p style={{ color: '#52525B', fontSize: '1.05rem', lineHeight: 1.8 }}>
             Brands that layer individual consumer data on top of their existing market intelligence will outpace competitors still relying on third-party reports and retailer POS summaries.

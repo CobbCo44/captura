@@ -71,10 +71,10 @@ export default function Landing() {
             Live consumer captures
           </div>
           {[
-            { city: 'Houston, TX', product: 'Performance Bat 34"', time: '2s ago', type: 'VIP Signup' },
+            { city: 'Houston, TX', product: 'Performance Bat 34"', time: '2s ago', type: 'Giveaway Entry' },
             { city: 'Miami, FL', product: 'Training Gloves XL', time: '14s ago', type: 'Scan' },
-            { city: 'Denver, CO', product: 'Performance Bat 32"', time: '31s ago', type: 'Promo Entry' },
-            { city: 'Austin, TX', product: 'Fielding Glove 12.5"', time: '1m ago', type: 'VIP Signup' },
+            { city: 'Denver, CO', product: 'Performance Bat 32"', time: '31s ago', type: 'Warranty Reg' },
+            { city: 'Austin, TX', product: 'Fielding Glove 12.5"', time: '1m ago', type: 'Loyalty Join' },
             { city: 'Chicago, IL', product: 'Training Gloves L', time: '2m ago', type: 'Scan' },
             { city: 'Seattle, WA', product: 'Performance Bat 34"', time: '3m ago', type: 'VIP Signup' },
           ].map((item, i) => (
@@ -91,7 +91,7 @@ export default function Landing() {
               <div style={{ textAlign: 'right' }}>
                 <div style={{
                   fontSize: '0.65rem', fontWeight: 600,
-                  color: item.type === 'VIP Signup' ? '#22C55E' : item.type === 'Promo Entry' ? '#F59E0B' : '#52525B',
+                  color: item.type === 'Scan' ? '#52525B' : item.type === 'Giveaway Entry' ? '#F59E0B' : '#22C55E',
                 }}>{item.type}</div>
                 <div style={{ fontSize: '0.65rem', color: '#27272A' }}>{item.time}</div>
               </div>
@@ -249,7 +249,7 @@ export default function Landing() {
                 { label: 'Register your warranty', sub: 'Covered in 10 seconds. No receipt needed.' },
                 { label: 'Reorder in one tap', sub: 'Running low? Restock instantly.' },
                 { label: 'Enter to win', sub: 'Exclusive giveaways for owners.' },
-                { label: 'Unlock VIP access', sub: 'Early drops, member-only deals.' },
+                { label: 'Earn loyalty points', sub: 'Every scan earns toward rewards.' },
                 { label: 'Watch how-to content', sub: 'Get more from your gear.' },
               ].map((row, i) => (
                 <div key={i} style={{
@@ -300,7 +300,7 @@ export default function Landing() {
             </h2>
 
             {[
-              { title: 'Identity', desc: 'First name, last name, email, phone number. Collected through VIP signup and promotional entry. Voluntary, compliant, and actionable.' },
+              { title: 'Identity', desc: 'First name, last name, email, phone number. Collected through giveaway entry, warranty registration, and loyalty signup. Voluntary, compliant, and actionable.' },
               { title: 'Location', desc: 'City-level geographic data on every single scan. Know where your products are being used, not just where they shipped.' },
               { title: 'Behavior', desc: 'Which products get scanned most. Which SKUs convert to signups. Where engagement is hot and where it is cold.' },
               { title: 'Reach', desc: 'Text, email, and re-engage captured consumers directly. Run promotions that drive repeat scans. Build a relationship beyond the shelf.' },
@@ -481,7 +481,7 @@ export default function Landing() {
 
             {[
               { step: 'Consumer scans QR code', icon: '📱', detail: 'On your product packaging' },
-              { step: 'Opts in as VIP or enters promo', icon: '✓', detail: 'Name, email, phone captured with consent' },
+              { step: 'Opts in via giveaway, warranty, or loyalty', icon: '✓', detail: 'Name, email, phone captured with consent' },
               { step: 'Contact syncs to Shopify', icon: '⟶', detail: 'Tagged by source: vip, promo, warranty' },
               { step: 'Ready for your marketing flows', icon: '✉', detail: 'Email campaigns, SMS, segmentation' },
             ].map((item, i) => (

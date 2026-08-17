@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { supabase } from '../lib/supabase'
 
 export default function StorefrontScanPage() {
   const { brandId } = useParams()
+  const [searchParams] = useSearchParams()
+  const isLabelQR = searchParams.get('label') === '1'
   const [brand, setBrand] = useState(null)
   const [menuItems, setMenuItems] = useState([])
   const [hours, setHours] = useState([])
@@ -73,10 +75,10 @@ export default function StorefrontScanPage() {
     setLoyaltyRewards(rewardsRes.data || [])
     setLocations(locationsRes.data || [])
 
-    // Check for returning loyalty member
+    // Check for returning loyalty member (skip for label QR codes)
     const savedEmail = localStorage.getItem(`loyalty_email_${brandId}`)
     const savedContactId = localStorage.getItem(`loyalty_contact_${brandId}`)
-    if (savedEmail && savedContactId) {
+    if (savedEmail && savedContactId && !isLabelQR) {
       // Award point (no cooldown for storefronts - every visit earns)
       try {
         const { data: result } = await supabase.rpc('award_loyalty_point', {
@@ -453,8 +455,8 @@ export default function StorefrontScanPage() {
             })
           }
 
-          // Loyalty tile
-          if (loyaltyRewards.length > 0) {
+          // Loyalty tile (hidden on label QR codes)
+          if (loyaltyRewards.length > 0 && !isLabelQR) {
             tiles.push({
               key: 'loyalty',
               label: loyaltyState?.returning ? `${loyaltyState.balance} Points` : 'Loyalty',
@@ -727,8 +729,8 @@ export default function StorefrontScanPage() {
         </div>
       )}
 
-      {/* LOYALTY MODAL */}
-      {showLoyalty && (
+      {/* LOYALTY MODAL (hidden on label QR codes) */}
+      {showLoyalty && !isLabelQR && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 40, display: 'flex', flexDirection: 'column' }}>
           <div onClick={() => setShowLoyalty(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }} />
           <div style={{

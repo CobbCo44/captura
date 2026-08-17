@@ -46,7 +46,6 @@ const storefrontNavItems = [
   { path: 'scans', label: 'Scans', icon: '📍' },
   { path: 'consumers', label: 'Consumers', icon: '👥' },
   { path: 'loyalty', label: 'Loyalty', icon: '⭐' },
-  { path: 'passport', label: 'Passport', icon: '🛂' },
   { path: 'insights', label: 'Insights', icon: '📊' },
   { path: 'settings', label: 'Settings', icon: '⚙' },
 ]

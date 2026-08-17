@@ -471,7 +471,7 @@ export default function StorefrontScanPage() {
           }
 
           // Menu tile
-          if (menuItems.length > 0) {
+          if (menuItems.length > 0 || brand.menu_image_url) {
             tiles.push({
               key: 'menu',
               label: 'Menu',
@@ -669,6 +669,26 @@ export default function StorefrontScanPage() {
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 16px', textAlign: 'center' }}>
               Menu / Services
             </h3>
+
+            {/* Uploaded menu image */}
+            {brand.menu_image_url && (
+              <div style={{ marginBottom: 16 }}>
+                {brand.menu_image_url.endsWith('.pdf') ? (
+                  <a href={brand.menu_image_url} target="_blank" rel="noopener noreferrer"
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      padding: '14px', borderRadius: 12, background: 'rgba(255,255,255,0.08)',
+                      color: accentBg, textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem',
+                    }}>
+                    📄 View Full Menu (PDF)
+                  </a>
+                ) : (
+                  <img src={brand.menu_image_url} alt="Menu" style={{
+                    width: '100%', borderRadius: 12, objectFit: 'contain',
+                  }} />
+                )}
+              </div>
+            )}
 
             {/* Category pills */}
             {menuCategories.length > 1 && (

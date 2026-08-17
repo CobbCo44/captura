@@ -1,5 +1,25 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
+
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim())
+  if (lines.length < 2) return []
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''))
+  const nameIdx = headers.findIndex(h => /^name$/i.test(h))
+  const descIdx = headers.findIndex(h => /desc/i.test(h))
+  const priceIdx = headers.findIndex(h => /price/i.test(h))
+  const catIdx = headers.findIndex(h => /cat/i.test(h) || /type/i.test(h) || /group/i.test(h))
+  if (nameIdx === -1) return []
+  return lines.slice(1).map(line => {
+    const cols = line.match(/(".*?"|[^",]+|(?<=,)(?=,))/g)?.map(c => c.replace(/^"|"$/g, '').trim()) || line.split(',').map(c => c.trim())
+    return {
+      name: cols[nameIdx] || '',
+      description: descIdx >= 0 ? cols[descIdx] || '' : '',
+      price: priceIdx >= 0 ? parseFloat((cols[priceIdx] || '').replace(/[^0-9.]/g, '')) || null : null,
+      category: catIdx >= 0 ? cols[catIdx] || 'General' : 'General',
+    }
+  }).filter(r => r.name)
+}
 
 export default function Menu({ brand }) {
   const [items, setItems] = useState([])
@@ -13,6 +33,16 @@ export default function Menu({ brand }) {
   })
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
+
+  // Menu image/PDF upload
+  const [menuImageUrl, setMenuImageUrl] = useState(null)
+  const [uploadingMenuImage, setUploadingMenuImage] = useState(false)
+  const [dragging, setDragging] = useState(false)
+  const dropRef = useRef(null)
+
+  // CSV import
+  const [csvPreview, setCsvPreview] = useState(null)
+  const [importingCSV, setImportingCSV] = useState(false)
 
   // Store info state
   const [storeForm, setStoreForm] = useState({
@@ -62,6 +92,7 @@ export default function Menu({ brand }) {
       store_phone: brand.store_phone || '',
       store_video_url: brand.store_video_url || '',
     })
+    setMenuImageUrl(brand.menu_image_url || null)
   }
 
   async function loadHours() {
@@ -93,6 +124,81 @@ export default function Menu({ brand }) {
       .order('sort_order')
       .order('name')
     setLocations(data || [])
+  }
+
+  // --- Menu image/PDF upload ---
+  async function handleMenuImageUpload(file) {
+    if (!supabase || !brand?.id || brand.id === 'demo') return
+    const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
+    if (!allowed.includes(file.type)) {
+      alert('Please upload a JPG, PNG, WebP image, or a PDF.')
+      return
+    }
+    setUploadingMenuImage(true)
+    const ext = file.name.split('.').pop()
+    const fileName = `${brand.id}/menu-image-${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('product-images').upload(fileName, file)
+    if (error) {
+      alert('Upload failed: ' + error.message)
+      setUploadingMenuImage(false)
+      return
+    }
+    const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(fileName)
+    const url = urlData.publicUrl
+    await supabase.from('brands').update({ menu_image_url: url }).eq('id', brand.id)
+    setMenuImageUrl(url)
+    setUploadingMenuImage(false)
+  }
+
+  async function removeMenuImage() {
+    if (!supabase || !brand?.id) return
+    await supabase.from('brands').update({ menu_image_url: null }).eq('id', brand.id)
+    setMenuImageUrl(null)
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleMenuImageUpload(file)
+  }
+
+  // --- CSV import ---
+  function handleCSVSelect(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const parsed = parseCSV(ev.target.result)
+      if (parsed.length === 0) {
+        alert('Could not parse CSV. Make sure it has a "Name" column header.')
+        return
+      }
+      setCsvPreview(parsed)
+    }
+    reader.readAsText(file)
+  }
+
+  async function importCSVItems() {
+    if (!supabase || !brand?.id || !csvPreview?.length) return
+    setImportingCSV(true)
+    const rows = csvPreview.map((r, i) => ({
+      brand_id: brand.id,
+      name: r.name,
+      description: r.description || null,
+      price: r.price || null,
+      category: r.category || 'General',
+      active: true,
+      sort_order: i,
+    }))
+    const { error } = await supabase.from('menu_items').insert(rows)
+    if (error) {
+      alert('Import error: ' + error.message)
+    } else {
+      setCsvPreview(null)
+      await loadItems()
+    }
+    setImportingCSV(false)
   }
 
   const openLocationCreate = () => {
@@ -314,6 +420,113 @@ export default function Menu({ brand }) {
 
       {/* Items Tab */}
       {tab === 'items' && <>
+        {/* Menu Image Upload + CSV Import */}
+        <div className="card" style={{ marginBottom: 24 }}>
+          {/* Drag-and-drop zone */}
+          <div
+            ref={dropRef}
+            onDragOver={e => { e.preventDefault(); setDragging(true) }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={handleDrop}
+            style={{
+              border: `2px dashed ${dragging ? '#FAFAFA' : 'var(--border)'}`,
+              borderRadius: 12,
+              padding: menuImageUrl ? '12px' : '32px 20px',
+              textAlign: 'center',
+              cursor: 'pointer',
+              transition: 'border-color 0.2s, background 0.2s',
+              background: dragging ? 'rgba(255,255,255,0.04)' : 'transparent',
+              marginBottom: 12,
+            }}
+            onClick={() => {
+              if (!menuImageUrl) document.getElementById('menu-image-input').click()
+            }}
+          >
+            {uploadingMenuImage ? (
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Uploading...</div>
+            ) : menuImageUrl ? (
+              <div>
+                {menuImageUrl.endsWith('.pdf') ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center' }}>
+                    <span style={{ fontSize: '1.5rem' }}>📄</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Menu PDF uploaded</span>
+                  </div>
+                ) : (
+                  <img src={menuImageUrl} alt="Menu" style={{
+                    maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'contain',
+                  }} />
+                )}
+                <div style={{ marginTop: 10, display: 'flex', gap: 8, justifyContent: 'center' }}>
+                  <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '0.8rem', padding: '6px 14px' }}>
+                    Replace
+                    <input type="file" accept="image/*,.pdf" style={{ display: 'none' }}
+                      onChange={e => { if (e.target.files[0]) handleMenuImageUpload(e.target.files[0]) }} />
+                  </label>
+                  <button onClick={removeMenuImage} style={{
+                    background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.8rem', cursor: 'pointer',
+                  }}>Remove</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>📋</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 4 }}>
+                  Drop your menu image or PDF here
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  JPG, PNG, WebP, or PDF. This shows on your scan page as-is.
+                </div>
+              </>
+            )}
+            <input id="menu-image-input" type="file" accept="image/*,.pdf" style={{ display: 'none' }}
+              onChange={e => { if (e.target.files[0]) handleMenuImageUpload(e.target.files[0]) }} />
+          </div>
+
+          {/* CSV Import */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '0.8rem', padding: '8px 14px' }}>
+              Import CSV
+              <input type="file" accept=".csv,text/csv" style={{ display: 'none' }} onChange={handleCSVSelect} />
+            </label>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              CSV with Name, Description, Price, Category columns
+            </span>
+          </div>
+        </div>
+
+        {/* CSV Preview */}
+        {csvPreview && (
+          <div className="card" style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ fontWeight: 700, fontSize: '1rem' }}>
+                Preview ({csvPreview.length} items)
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+                  disabled={importingCSV} onClick={importCSVItems}>
+                  {importingCSV ? 'Importing...' : 'Import All'}
+                </button>
+                <button className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+                  onClick={() => setCsvPreview(null)}>Cancel</button>
+              </div>
+            </div>
+            <div style={{ maxHeight: 300, overflowY: 'auto' }}>
+              {csvPreview.map((r, i) => (
+                <div key={i} style={{
+                  display: 'flex', gap: 12, padding: '8px 0',
+                  borderBottom: i < csvPreview.length - 1 ? '1px solid var(--border)' : 'none',
+                  fontSize: '0.85rem',
+                }}>
+                  <div style={{ flex: 2, fontWeight: 600 }}>{r.name}</div>
+                  <div style={{ flex: 2, color: 'var(--text-muted)' }}>{r.description}</div>
+                  <div style={{ width: 70, textAlign: 'right' }}>{r.price ? `$${r.price.toFixed(2)}` : ''}</div>
+                  <div style={{ width: 90, color: 'var(--text-muted)' }}>{r.category}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Category Filter */}
         {categories.length > 1 && (
           <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>

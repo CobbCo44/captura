@@ -155,6 +155,13 @@ export default function QRCodes({ brand }) {
   const [editingStoreQR, setEditingStoreQR] = useState(false)
   const [savingStoreQR, setSavingStoreQR] = useState(false)
 
+  // Label QR customization
+  const [labelQR, setLabelQR] = useState({
+    fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoUrl: null, logoScale: 0.25, ctaText: '',
+  })
+  const [editingLabelQR, setEditingLabelQR] = useState(false)
+  const [savingLabelQR, setSavingLabelQR] = useState(false)
+
   // Load saved store QR settings from brand row
   useEffect(() => {
     if (brand) {
@@ -165,6 +172,14 @@ export default function QRCodes({ brand }) {
         logoUrl: brand.store_qr_logo_url || null,
         logoScale: brand.store_qr_logo_scale || 0.25,
         ctaText: brand.store_qr_cta_text || '',
+      }))
+      setLabelQR(prev => ({
+        ...prev,
+        fgColor: brand.label_qr_fg_color || '#18181B',
+        bgColor: brand.label_qr_bg_color || '#FFFFFF',
+        logoUrl: brand.label_qr_logo_url || null,
+        logoScale: brand.label_qr_logo_scale || 0.25,
+        ctaText: brand.label_qr_cta_text || '',
       }))
     }
   }, [brand])
@@ -203,6 +218,39 @@ export default function QRCodes({ brand }) {
       setStoreQR(prev => ({ ...prev, logoUrl: logoUrl, logoFile: null }))
     }
     setSavingStoreQR(false)
+  }
+
+  async function saveLabelQR() {
+    if (!supabase || !brand?.id || brand.id === 'demo') return
+    setSavingLabelQR(true)
+
+    let logoUrl = labelQR.logoUrl
+    if (labelQR.logoFile && labelQR.logoFile.startsWith('data:')) {
+      const res = await fetch(labelQR.logoFile)
+      const blob = await res.blob()
+      const ext = blob.type.split('/')[1] || 'png'
+      const fileName = `${brand.id}/label-qr-logo-${Date.now()}.${ext}`
+      const { error } = await supabase.storage.from('product-images').upload(fileName, blob)
+      if (!error) {
+        const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(fileName)
+        logoUrl = urlData.publicUrl
+      }
+    }
+
+    const { error } = await supabase.from('brands').update({
+      label_qr_fg_color: labelQR.fgColor,
+      label_qr_bg_color: labelQR.bgColor,
+      label_qr_logo_url: logoUrl,
+      label_qr_logo_scale: labelQR.logoScale,
+      label_qr_cta_text: labelQR.ctaText || null,
+    }).eq('id', brand.id)
+
+    if (error) {
+      alert('Error saving label QR settings: ' + error.message)
+    } else {
+      setLabelQR(prev => ({ ...prev, logoUrl: logoUrl, logoFile: null }))
+    }
+    setSavingLabelQR(false)
   }
 
   const scanUrl = 'https://meetcaptura.com'
@@ -1005,26 +1053,36 @@ export default function QRCodes({ brand }) {
                   </div>
                 </>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  {/* Colors */}
-                  <div style={{ display: 'flex', gap: 12 }}>
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>QR Color</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {/* QR Color */}
+                  <div>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>QR Color</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <input type="color" value={storeQR.fgColor}
                         onChange={e => setStoreQR({ ...storeQR, fgColor: e.target.value })}
-                        style={{ width: 40, height: 40, border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', background: 'transparent' }} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Background</label>
-                      <input type="color" value={storeQR.bgColor}
-                        onChange={e => setStoreQR({ ...storeQR, bgColor: e.target.value })}
-                        style={{ width: 40, height: 40, border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', background: 'transparent' }} />
+                        style={{ width: 40, height: 40, border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', background: 'transparent', flexShrink: 0 }} />
+                      <input className="input" value={storeQR.fgColor}
+                        onChange={e => setStoreQR({ ...storeQR, fgColor: e.target.value })}
+                        style={{ fontSize: '0.85rem', padding: '8px 12px', flex: 1 }} />
                     </div>
                   </div>
 
-                  {/* Logo */}
+                  {/* Background Color */}
                   <div>
-                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Center Logo</label>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Background Color</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input type="color" value={storeQR.bgColor}
+                        onChange={e => setStoreQR({ ...storeQR, bgColor: e.target.value })}
+                        style={{ width: 40, height: 40, border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', background: 'transparent', flexShrink: 0 }} />
+                      <input className="input" value={storeQR.bgColor}
+                        onChange={e => setStoreQR({ ...storeQR, bgColor: e.target.value })}
+                        style={{ fontSize: '0.85rem', padding: '8px 12px', flex: 1 }} />
+                    </div>
+                  </div>
+
+                  {/* Center Logo */}
+                  <div>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Center Logo</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '0.8rem', padding: '6px 12px' }}>
                         Upload
@@ -1048,7 +1106,7 @@ export default function QRCodes({ brand }) {
 
                   {/* Logo Scale */}
                   <div>
-                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Logo Size</label>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Logo Size</label>
                     <input type="range" min={0.1} max={0.4} step={0.05} value={storeQR.logoScale}
                       onChange={e => setStoreQR({ ...storeQR, logoScale: parseFloat(e.target.value) })}
                       style={{ width: '100%', accentColor: '#FAFAFA' }} />
@@ -1056,7 +1114,7 @@ export default function QRCodes({ brand }) {
 
                   {/* CTA Text */}
                   <div>
-                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>CTA Text (optional)</label>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Call to Action Text</label>
                     <input className="input" placeholder="e.g. Scan for Menu" value={storeQR.ctaText}
                       onChange={e => setStoreQR({ ...storeQR, ctaText: e.target.value })}
                       style={{ fontSize: '0.85rem', padding: '8px 12px' }} />
@@ -1103,12 +1161,12 @@ export default function QRCodes({ brand }) {
             }}>
               <BrandedQR
                 url={`${scanUrl}/store/${brand.id}?label=1`}
-                fgColor={storeQR.fgColor}
-                bgColor={storeQR.bgColor}
-                logoSrc={storeQR.logoFile || storeQR.logoUrl || brand.logo_url || null}
-                logoScale={storeQR.logoScale}
+                fgColor={labelQR.fgColor}
+                bgColor={labelQR.bgColor}
+                logoSrc={labelQR.logoFile || labelQR.logoUrl || brand.logo_url || null}
+                logoScale={labelQR.logoScale}
                 size={160}
-                ctaText={storeQR.ctaText}
+                ctaText={labelQR.ctaText}
               />
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
@@ -1119,20 +1177,122 @@ export default function QRCodes({ brand }) {
               <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 12, wordBreak: 'break-all' }}>
                 {scanUrl}/store/{brand.id}?label=1
               </div>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.5 }}>
-                Put this on cups, bags, packaging, or labels. Same scan page but no loyalty points awarded. Customers earn points only from the Counter QR above.
-              </p>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
-                  onClick={() => downloadPNG(`label-${brand.id}`, `${brand.name} Label`, {
-                    fg_color: storeQR.fgColor, bg_color: storeQR.bgColor,
-                    logo_url: storeQR.logoFile || storeQR.logoUrl || brand.logo_url,
-                    logo_scale: storeQR.logoScale, cta_text: storeQR.ctaText,
-                    products: null,
-                  }, `${scanUrl}/store/${brand.id}?label=1`)}>
-                  Download PNG
-                </button>
-              </div>
+
+              {!editingLabelQR ? (
+                <>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.5 }}>
+                    Put this on cups, bags, packaging, or labels. Same scan page but no loyalty points awarded. Customers earn points only from the Counter QR above.
+                  </p>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+                      onClick={() => downloadPNG(`label-${brand.id}`, `${brand.name} Label`, {
+                        fg_color: labelQR.fgColor, bg_color: labelQR.bgColor,
+                        logo_url: labelQR.logoFile || labelQR.logoUrl || brand.logo_url,
+                        logo_scale: labelQR.logoScale, cta_text: labelQR.ctaText,
+                        products: null,
+                      }, `${scanUrl}/store/${brand.id}?label=1`)}>
+                      Download PNG
+                    </button>
+                    <button className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+                      onClick={() => setEditingLabelQR(true)}>
+                      Customize
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  {/* QR Color */}
+                  <div>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>QR Color</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input type="color" value={labelQR.fgColor}
+                        onChange={e => setLabelQR({ ...labelQR, fgColor: e.target.value })}
+                        style={{ width: 40, height: 40, border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', background: 'transparent', flexShrink: 0 }} />
+                      <input className="input" value={labelQR.fgColor}
+                        onChange={e => setLabelQR({ ...labelQR, fgColor: e.target.value })}
+                        style={{ fontSize: '0.85rem', padding: '8px 12px', flex: 1 }} />
+                    </div>
+                  </div>
+
+                  {/* Background Color */}
+                  <div>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Background Color</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input type="color" value={labelQR.bgColor}
+                        onChange={e => setLabelQR({ ...labelQR, bgColor: e.target.value })}
+                        style={{ width: 40, height: 40, border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', background: 'transparent', flexShrink: 0 }} />
+                      <input className="input" value={labelQR.bgColor}
+                        onChange={e => setLabelQR({ ...labelQR, bgColor: e.target.value })}
+                        style={{ fontSize: '0.85rem', padding: '8px 12px', flex: 1 }} />
+                    </div>
+                  </div>
+
+                  {/* Center Logo */}
+                  <div>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Center Logo</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '0.8rem', padding: '6px 12px' }}>
+                        Upload
+                        <input type="file" accept="image/*" style={{ display: 'none' }}
+                          onChange={e => {
+                            const file = e.target.files[0]
+                            if (!file) return
+                            const reader = new FileReader()
+                            reader.onload = ev => setLabelQR({ ...labelQR, logoFile: ev.target.result })
+                            reader.readAsDataURL(file)
+                          }} />
+                      </label>
+                      {(labelQR.logoFile || labelQR.logoUrl || brand.logo_url) && (
+                        <button type="button" onClick={() => setLabelQR({ ...labelQR, logoFile: null, logoUrl: null })}
+                          style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.75rem', cursor: 'pointer' }}>
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Logo Scale */}
+                  <div>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Logo Size</label>
+                    <input type="range" min={0.1} max={0.4} step={0.05} value={labelQR.logoScale}
+                      onChange={e => setLabelQR({ ...labelQR, logoScale: parseFloat(e.target.value) })}
+                      style={{ width: '100%', accentColor: '#FAFAFA' }} />
+                  </div>
+
+                  {/* CTA Text */}
+                  <div>
+                    <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>Call to Action Text</label>
+                    <input className="input" placeholder="e.g. Scan Me" value={labelQR.ctaText}
+                      onChange={e => setLabelQR({ ...labelQR, ctaText: e.target.value })}
+                      style={{ fontSize: '0.85rem', padding: '8px 12px' }} />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+                      disabled={savingLabelQR}
+                      onClick={async () => {
+                        await saveLabelQR()
+                        setEditingLabelQR(false)
+                        downloadPNG(`label-${brand.id}`, `${brand.name} Label`, {
+                          fg_color: labelQR.fgColor, bg_color: labelQR.bgColor,
+                          logo_url: labelQR.logoFile || labelQR.logoUrl || brand.logo_url,
+                          logo_scale: labelQR.logoScale, cta_text: labelQR.ctaText,
+                          products: null,
+                        }, `${scanUrl}/store/${brand.id}?label=1`)
+                      }}>
+                      {savingLabelQR ? 'Saving...' : 'Download PNG'}
+                    </button>
+                    <button className="btn btn-secondary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+                      disabled={savingLabelQR}
+                      onClick={async () => {
+                        await saveLabelQR()
+                        setEditingLabelQR(false)
+                      }}>
+                      {savingLabelQR ? 'Saving...' : 'Done'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

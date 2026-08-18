@@ -52,19 +52,38 @@ export default async (req) => {
       return new Response(JSON.stringify({ error: 'Missing type or data' }), { status: 400, headers })
     }
 
-    // --- Rate limit by IP ---
+    // --- Rate limit by IP + brand + type ---
+    // Allows many different customers on the same wifi (e.g. coffee shop)
+    // but blocks one person spamming the same form repeatedly.
     const clientIp = req.headers.get('x-nf-client-connection-ip')
       || (req.headers.get('x-forwarded-for') || '').split(',')[0].trim()
       || 'unknown'
 
     const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString()
-    const { count: recentCount } = await supabase
+
+    // Per-IP hard cap: 60 submissions per 10 min (shared wifi at a busy venue)
+    const { count: ipCount } = await supabase
       .from('rate_limits')
       .select('*', { count: 'exact', head: true })
       .eq('ip_address', clientIp)
       .gte('created_at', tenMinAgo)
 
-    if (recentCount >= 10) {
+    if (ipCount >= 60) {
+      return new Response(JSON.stringify({
+        error: 'Too many submissions. Please try again in a few minutes.',
+        rateLimited: true,
+      }), { status: 429, headers })
+    }
+
+    // Per-IP + brand + type: 5 per 10 min (catches one person spamming)
+    const { count: narrowCount } = await supabase
+      .from('rate_limits')
+      .select('*', { count: 'exact', head: true })
+      .eq('ip_address', clientIp)
+      .eq('source_type', type)
+      .gte('created_at', tenMinAgo)
+
+    if (narrowCount >= 5) {
       return new Response(JSON.stringify({
         error: 'Too many submissions. Please try again in a few minutes.',
         rateLimited: true,

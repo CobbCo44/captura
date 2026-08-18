@@ -283,6 +283,7 @@ export default function ScanPage({ previewData } = {}) {
           if (awardResult) {
             setLoyaltyState({ ...awardResult, returning: true })
             setLoyaltyForm({ firstName: '', email: savedEmail })
+            if (awardResult.serial_claimed) logSerialDenial(resolvedSerialData?.serial_id, qr.brand_id, savedContactId)
           }
         } else {
           const { data: balanceData } = await supabase.rpc('get_loyalty_balance', {
@@ -357,6 +358,26 @@ export default function ScanPage({ previewData } = {}) {
     if (/Mac/.test(ua)) return 'Mac'
     if (/Windows/.test(ua)) return 'Windows'
     return 'Unknown'
+  }
+
+  async function logSerialDenial(serialId, brandId, contactId) {
+    if (!supabase || !serialId || !brandId) return
+    try {
+      if (locationPromise.current) await locationPromise.current
+      const loc = locationRef.current
+      await supabase.from('serial_claim_denials').insert({
+        serial_id: serialId,
+        brand_id: brandId,
+        contact_id: contactId || null,
+        device: getDeviceInfo(),
+        user_agent: navigator.userAgent,
+        city: loc?.city ? `${loc.city}, ${loc.region}` : null,
+        region: loc?.region || null,
+        country: loc?.country || null,
+        latitude: loc?.lat || null,
+        longitude: loc?.lng || null,
+      })
+    } catch (e) { /* best-effort */ }
   }
 
   async function logBillingEvent(brandId, consumerEmail, consumerPhone, sourceType, sourceId) {
@@ -713,6 +734,7 @@ export default function ScanPage({ previewData } = {}) {
         })
         if (result) {
           setLoyaltyState(result)
+          if (result.serial_claimed) logSerialDenial(serialData?.serial_id, brandId, contactId)
           localStorage.setItem(`loyalty_email_${brandId}`, loyaltyForm.email)
           localStorage.setItem(`loyalty_contact_${brandId}`, contactId)
         }
@@ -783,7 +805,10 @@ export default function ScanPage({ previewData } = {}) {
             p_cooldown_hours: loyaltyProduct.loyalty_cooldown_hours || 24,
             p_serial_id: serialData?.serial_id || null,
           })
-          if (awardResult) setLoyaltyState({ ...awardResult, returning: true })
+          if (awardResult) {
+            setLoyaltyState({ ...awardResult, returning: true })
+            if (awardResult.serial_claimed) logSerialDenial(serialData?.serial_id, brandId, member.contact_id)
+          }
         }
       } else {
         setLoyaltyLookupError('No membership found for that email. Sign up below to get started.')
@@ -1620,8 +1645,21 @@ export default function ScanPage({ previewData } = {}) {
                       </div>
                     )}
 
+                    {/* Serial already claimed — friendly message */}
+                    {loyaltyState.awarded === false && loyaltyState.serial_claimed && (
+                      <div style={{
+                        textAlign: 'center', padding: '12px 16px',
+                        background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--line, rgba(255,255,255,0.11))',
+                        borderRadius: 'var(--r, 14px)',
+                      }}>
+                        <span style={{ color: 'var(--ink2, rgba(255,255,255,0.56))', fontSize: '0.85rem' }}>
+                          This code's point has already been claimed. Points are one per product.
+                        </span>
+                      </div>
+                    )}
+
                     {/* Cooldown message */}
-                    {loyaltyState.awarded === false && loyaltyState.cooldown_remaining_minutes > 0 && (
+                    {loyaltyState.awarded === false && !loyaltyState.serial_claimed && loyaltyState.cooldown_remaining_minutes > 0 && (
                       <div style={{
                         textAlign: 'center', padding: '12px 16px',
                         background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--line, rgba(255,255,255,0.11))',

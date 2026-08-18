@@ -1179,6 +1179,11 @@ export default function ScanPage({ previewData } = {}) {
             <h2 style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em', fontSize: 21, lineHeight: 1.1, margin: '0 0 3px', color: 'var(--ink)' }}>
               {product.name}
             </h2>
+            {product.gtin && (
+              <div style={{ fontSize: '0.7rem', color: 'var(--ink2, rgba(255,255,255,0.45))', marginTop: 2, letterSpacing: '0.03em' }}>
+                {product.gtin.replace(/^0+/, '').length <= 12 ? 'UPC' : 'GTIN'} {product.gtin.replace(/^0+/, '')}{serialData?.serial ? ` · Unit #${serialData.serial}` : ''}
+              </div>
+            )}
           </div>
         </div>
       )}

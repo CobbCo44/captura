@@ -683,6 +683,9 @@ export default function Landing() {
           <Link to="/terms" style={{ color: '#3F3F46', fontSize: '0.85rem' }}>Terms</Link>
           <Link to="/privacy" style={{ color: '#3F3F46', fontSize: '0.85rem' }}>Privacy</Link>
         </div>
+        <div style={{ width: '100%', textAlign: 'center', marginTop: 8, fontSize: '0.72rem', color: '#52525B', letterSpacing: '0.3px' }}>
+          Patent Pending Technology
+        </div>
       </footer>
 
       <style>{`

@@ -85,7 +85,7 @@ export default function StorefrontScanPage() {
           p_brand_id: brandId,
           p_contact_id: savedContactId,
           p_product_id: null,
-          p_cooldown_hours: 0,
+          p_cooldown_hours: brand?.loyalty_cooldown_hours ?? 12,
         })
         if (result) setLoyaltyState({ ...result, returning: true })
       } catch (err) {
@@ -142,7 +142,7 @@ export default function StorefrontScanPage() {
           p_brand_id: brandId,
           p_contact_id: contactId,
           p_product_id: null,
-          p_cooldown_hours: 0,
+          p_cooldown_hours: brand?.loyalty_cooldown_hours ?? 12,
         })
         if (result) {
           setLoyaltyState(result)
@@ -209,7 +209,7 @@ export default function StorefrontScanPage() {
           p_brand_id: brandId,
           p_contact_id: member.contact_id,
           p_product_id: null,
-          p_cooldown_hours: 0,
+          p_cooldown_hours: brand?.loyalty_cooldown_hours ?? 12,
         })
         if (awardResult) setLoyaltyState({ ...awardResult, returning: true })
       } else {
@@ -860,6 +860,20 @@ export default function StorefrontScanPage() {
                           fontSize: '0.75rem', fontWeight: 600,
                           background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e',
                         }}>+1 point earned for this visit!</div>
+                      )}
+                      {loyaltyState.awarded === false && loyaltyState.cooldown_remaining_minutes > 0 && (
+                        <div style={{
+                          marginTop: 8, display: 'inline-block', padding: '4px 12px', borderRadius: 20,
+                          fontSize: '0.75rem', fontWeight: 600,
+                          background: 'rgba(255, 165, 0, 0.15)', color: '#ffa500',
+                        }}>
+                          Come back in {loyaltyState.cooldown_remaining_minutes >= 1440
+                            ? `${Math.floor(loyaltyState.cooldown_remaining_minutes / 1440)}d ${Math.floor((loyaltyState.cooldown_remaining_minutes % 1440) / 60)}h`
+                            : loyaltyState.cooldown_remaining_minutes >= 60
+                            ? `${Math.floor(loyaltyState.cooldown_remaining_minutes / 60)}h ${Math.round(loyaltyState.cooldown_remaining_minutes % 60)}m`
+                            : `${Math.round(loyaltyState.cooldown_remaining_minutes)}m`
+                          } to earn another point
+                        </div>
                       )}
                     </div>
 

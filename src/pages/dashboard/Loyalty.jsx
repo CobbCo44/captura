@@ -25,10 +25,16 @@ export default function Loyalty({ brand }) {
   const [expandedMember, setExpandedMember] = useState(null)
   const [memberHistory, setMemberHistory] = useState([])
 
+  // Cooldown settings (storefronts)
+  const [cooldownHours, setCooldownHours] = useState(12)
+  const [cooldownSaving, setCooldownSaving] = useState(false)
+  const [cooldownSaved, setCooldownSaved] = useState(false)
+
   useEffect(() => {
     loadRewards()
     loadStats()
     loadMembers()
+    if (brand) setCooldownHours(brand.loyalty_cooldown_hours ?? 12)
   }, [brand])
 
   async function loadMembers() {
@@ -211,6 +217,17 @@ export default function Loyalty({ brand }) {
     setRewards(rewards.filter(r => r.id !== reward.id))
   }
 
+  const saveCooldown = async () => {
+    if (!supabase || !brand?.id) return
+    setCooldownSaving(true)
+    const { error } = await supabase.from('brands').update({
+      loyalty_cooldown_hours: cooldownHours,
+    }).eq('id', brand.id)
+    if (error) alert('Error saving: ' + error.message)
+    else { setCooldownSaved(true); setTimeout(() => setCooldownSaved(false), 2000) }
+    setCooldownSaving(false)
+  }
+
   const typeLabels = {
     discount_code: 'Discount Code',
     free_product: 'Free Product',
@@ -250,6 +267,7 @@ export default function Loyalty({ brand }) {
         {[
           { key: 'rewards', label: 'Rewards' },
           { key: 'members', label: `Members${members.length ? ` (${members.length})` : ''}` },
+          ...(brand?.business_type === 'storefront' ? [{ key: 'settings', label: 'Settings' }] : []),
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
             padding: '10px 20px', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer',
@@ -574,6 +592,50 @@ export default function Loyalty({ brand }) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Settings Tab (storefronts only) */}
+      {tab === 'settings' && brand?.business_type === 'storefront' && (
+        <div style={{ maxWidth: 480 }}>
+          <div className="card">
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 4 }}>Scan Cooldown</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
+              How long a customer has to wait before earning another loyalty point from your Counter QR.
+              This prevents someone from scanning the same code repeatedly to farm points.
+            </p>
+
+            <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+              Cooldown (hours)
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <input className="input" type="number" min="0" max="168" step="1"
+                value={cooldownHours}
+                onChange={e => setCooldownHours(parseInt(e.target.value) || 0)}
+                style={{ width: 100, fontSize: '1rem', padding: '10px 12px', textAlign: 'center' }} />
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                {cooldownHours === 0 ? 'No cooldown (every scan earns)'
+                  : cooldownHours < 24 ? `${cooldownHours} hour${cooldownHours === 1 ? '' : 's'} between points`
+                  : `${Math.round(cooldownHours / 24)} day${Math.round(cooldownHours / 24) === 1 ? '' : 's'} between points`}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
+              {[4, 8, 12, 24, 48].map(h => (
+                <button key={h} onClick={() => setCooldownHours(h)} style={{
+                  padding: '6px 14px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600,
+                  border: 'none', cursor: 'pointer',
+                  background: cooldownHours === h ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
+                  color: cooldownHours === h ? '#fff' : 'var(--text-muted)',
+                }}>{h}h</button>
+              ))}
+            </div>
+
+            <button className="btn btn-primary" onClick={saveCooldown} disabled={cooldownSaving}
+              style={{ fontSize: '0.85rem', padding: '10px 24px' }}>
+              {cooldownSaving ? 'Saving...' : cooldownSaved ? 'Saved!' : 'Save'}
+            </button>
           </div>
         </div>
       )}

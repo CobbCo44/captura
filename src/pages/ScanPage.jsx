@@ -278,6 +278,7 @@ export default function ScanPage({ previewData } = {}) {
             p_contact_id: savedContactId,
             p_product_id: loyaltyProduct.id,
             p_cooldown_hours: loyaltyProduct.loyalty_cooldown_hours || 24,
+            p_serial_id: resolvedSerialData?.serial_id || null,
           })
           if (awardResult) {
             setLoyaltyState({ ...awardResult, returning: true })
@@ -708,6 +709,7 @@ export default function ScanPage({ previewData } = {}) {
           p_contact_id: contactId,
           p_product_id: product?.id,
           p_cooldown_hours: product?.loyalty_cooldown_hours || 24,
+          p_serial_id: serialData?.serial_id || null,
         })
         if (result) {
           setLoyaltyState(result)
@@ -779,6 +781,7 @@ export default function ScanPage({ previewData } = {}) {
             p_contact_id: member.contact_id,
             p_product_id: loyaltyProduct.id,
             p_cooldown_hours: loyaltyProduct.loyalty_cooldown_hours || 24,
+            p_serial_id: serialData?.serial_id || null,
           })
           if (awardResult) setLoyaltyState({ ...awardResult, returning: true })
         }

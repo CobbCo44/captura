@@ -20,6 +20,9 @@
   to = "/.netlify/functions/dpp-passport"
   status = 200
 
+[functions."autopilot-winback"]
+  schedule = "0 14 * * *"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

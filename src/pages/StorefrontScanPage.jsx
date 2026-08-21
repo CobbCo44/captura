@@ -79,6 +79,17 @@ export default function StorefrontScanPage() {
     } catch (e) { /* fire and forget */ }
   }
 
+  // Trigger welcome email server-side (first join only)
+  async function triggerWelcomeEmail(contactId, brandIdVal) {
+    try {
+      await fetch('/.netlify/functions/send-welcome-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contact_id: contactId, brand_id: brandIdVal }),
+      })
+    } catch (e) { /* fire and forget */ }
+  }
+
   useEffect(() => {
     loadStorefront()
   }, [brandId])
@@ -208,6 +219,8 @@ export default function StorefrontScanPage() {
           }
           localStorage.setItem(`loyalty_email_${brandId}`, loyaltyForm.email)
           localStorage.setItem(`loyalty_contact_${brandId}`, contactId)
+          // Welcome email — first join only, fire and forget
+          triggerWelcomeEmail(contactId, brandId)
         }
       }
     } catch (err) {

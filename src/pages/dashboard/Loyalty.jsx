@@ -30,11 +30,32 @@ export default function Loyalty({ brand }) {
   const [cooldownSaving, setCooldownSaving] = useState(false)
   const [cooldownSaved, setCooldownSaved] = useState(false)
 
+  // Autopilot state
+  const [autopilot, setAutopilot] = useState({
+    reward_ready: true,
+    welcome: true,
+    winback: true,
+    winback_days: 30,
+  })
+  const [autopilotSaving, setAutopilotSaving] = useState(false)
+  const [autopilotSaved, setAutopilotSaved] = useState(false)
+  const [autopilotStats, setAutopilotStats] = useState({ reward_ready: 0, welcome: 0, winback: 0, attribution: 0 })
+  const [flowBreakdown, setFlowBreakdown] = useState({ reward_ready: 0, welcome: 0, winback: 0 })
+
   useEffect(() => {
     loadRewards()
     loadStats()
     loadMembers()
-    if (brand) setCooldownHours(brand.loyalty_cooldown_hours ?? 12)
+    if (brand) {
+      setCooldownHours(brand.loyalty_cooldown_hours ?? 12)
+      setAutopilot({
+        reward_ready: brand.autopilot_reward_ready !== false,
+        welcome: brand.autopilot_welcome !== false,
+        winback: brand.autopilot_winback !== false,
+        winback_days: brand.winback_days ?? 30,
+      })
+      if (brand.business_type === 'storefront') loadAutopilotStats()
+    }
   }, [brand])
 
   async function loadMembers() {
@@ -226,6 +247,87 @@ export default function Loyalty({ brand }) {
     if (error) alert('Error saving: ' + error.message)
     else { setCooldownSaved(true); setTimeout(() => setCooldownSaved(false), 2000) }
     setCooldownSaving(false)
+  }
+
+  async function loadAutopilotStats() {
+    if (!supabase || !brand?.id || brand.id === 'demo') return
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const thirtyISO = thirtyDaysAgo.toISOString()
+
+    // Get sent counts per flow (last 30 days)
+    const { data: sentEmails } = await supabase
+      .from('autopilot_emails')
+      .select('flow, created_at, contact_id')
+      .eq('brand_id', brand.id)
+      .eq('outcome', 'sent')
+      .gte('created_at', thirtyISO)
+
+    if (sentEmails) {
+      const counts = { reward_ready: 0, welcome: 0, winback: 0 }
+      for (const e of sentEmails) {
+        if (counts[e.flow] !== undefined) counts[e.flow]++
+      }
+      setAutopilotStats(prev => ({ ...prev, ...counts }))
+
+      // Attribution: members who earned a point within 7 days of receiving any autopilot email
+      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000
+      const emailContactDates = sentEmails.map(e => ({ contact_id: e.contact_id, sent_at: new Date(e.created_at) }))
+
+      if (emailContactDates.length > 0) {
+        const uniqueContacts = [...new Set(emailContactDates.map(e => e.contact_id))]
+
+        // Get earned points for these contacts in the last 30 days
+        const { data: earnedPoints } = await supabase
+          .from('loyalty_points')
+          .select('contact_id, created_at')
+          .eq('brand_id', brand.id)
+          .eq('type', 'earned')
+          .in('contact_id', uniqueContacts)
+          .gte('created_at', thirtyISO)
+
+        if (earnedPoints) {
+          const attributedContacts = new Set()
+          const flowAttributed = { reward_ready: new Set(), welcome: new Set(), winback: new Set() }
+
+          for (const point of earnedPoints) {
+            const pointDate = new Date(point.created_at)
+            for (const email of emailContactDates) {
+              if (email.contact_id === point.contact_id && pointDate >= email.sent_at && (pointDate - email.sent_at) <= sevenDaysMs) {
+                attributedContacts.add(point.contact_id)
+                // Find which flow this email was
+                const matchingEmail = sentEmails.find(e => e.contact_id === email.contact_id && e.created_at === email.sent_at.toISOString())
+                if (matchingEmail && flowAttributed[matchingEmail.flow]) {
+                  flowAttributed[matchingEmail.flow].add(point.contact_id)
+                }
+                break
+              }
+            }
+          }
+
+          setAutopilotStats(prev => ({ ...prev, attribution: attributedContacts.size }))
+          setFlowBreakdown({
+            reward_ready: flowAttributed.reward_ready.size,
+            welcome: flowAttributed.welcome.size,
+            winback: flowAttributed.winback.size,
+          })
+        }
+      }
+    }
+  }
+
+  const saveAutopilot = async () => {
+    if (!supabase || !brand?.id) return
+    setAutopilotSaving(true)
+    const { error } = await supabase.from('brands').update({
+      autopilot_reward_ready: autopilot.reward_ready,
+      autopilot_welcome: autopilot.welcome,
+      autopilot_winback: autopilot.winback,
+      winback_days: autopilot.winback_days,
+    }).eq('id', brand.id)
+    if (error) alert('Error saving: ' + error.message)
+    else { setAutopilotSaved(true); setTimeout(() => setAutopilotSaved(false), 2000) }
+    setAutopilotSaving(false)
   }
 
   const typeLabels = {
@@ -598,7 +700,7 @@ export default function Loyalty({ brand }) {
 
       {/* Settings Tab (storefronts only) */}
       {tab === 'settings' && brand?.business_type === 'storefront' && (
-        <div style={{ maxWidth: 480 }}>
+        <div style={{ maxWidth: 560 }}>
           <div className="card">
             <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 4 }}>Scan Cooldown</h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
@@ -635,6 +737,132 @@ export default function Loyalty({ brand }) {
             <button className="btn btn-primary" onClick={saveCooldown} disabled={cooldownSaving}
               style={{ fontSize: '0.85rem', padding: '10px 24px' }}>
               {cooldownSaving ? 'Saving...' : cooldownSaved ? 'Saved!' : 'Save'}
+            </button>
+          </div>
+
+          {/* Storefront Autopilot */}
+          <div className="card" style={{ marginTop: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+              <div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 4 }}>Storefront Autopilot</h3>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+                  Automated emails that keep your loyalty members engaged. All emails respect consent preferences and include an unsubscribe link.
+                </p>
+              </div>
+            </div>
+
+            {/* Attribution headline */}
+            {autopilotStats.attribution > 0 && (
+              <div style={{
+                padding: '14px 18px', borderRadius: 10, marginBottom: 20,
+                background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.2)',
+              }}>
+                <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--success)' }}>
+                  Autopilot brought back {autopilotStats.attribution} customer{autopilotStats.attribution === 1 ? '' : 's'} this month
+                </div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  Members who visited within 7 days of receiving an autopilot email
+                  {(flowBreakdown.reward_ready > 0 || flowBreakdown.welcome > 0 || flowBreakdown.winback > 0) && (
+                    <span>
+                      {' '}&mdash;{' '}
+                      {[
+                        flowBreakdown.reward_ready > 0 && `${flowBreakdown.reward_ready} from Reward Ready`,
+                        flowBreakdown.welcome > 0 && `${flowBreakdown.welcome} from Welcome`,
+                        flowBreakdown.winback > 0 && `${flowBreakdown.winback} from Win-Back`,
+                      ].filter(Boolean).join(', ')}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Flow toggles */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 20 }}>
+              {[
+                {
+                  key: 'reward_ready',
+                  label: 'Reward Ready',
+                  desc: 'Notify members when they earn enough points for a reward',
+                  count: autopilotStats.reward_ready,
+                },
+                {
+                  key: 'welcome',
+                  label: 'Welcome',
+                  desc: 'Welcome new members when they first join your loyalty program',
+                  count: autopilotStats.welcome,
+                },
+                {
+                  key: 'winback',
+                  label: 'Win-Back',
+                  desc: `Re-engage members who haven't visited in ${autopilot.winback_days} days`,
+                  count: autopilotStats.winback,
+                },
+              ].map(flow => (
+                <div key={flow.key} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '14px 16px', borderRadius: 10,
+                  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                      <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{flow.label}</span>
+                      {flow.count > 0 && (
+                        <span style={{
+                          padding: '2px 8px', borderRadius: 10, fontSize: '0.7rem', fontWeight: 600,
+                          background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)',
+                        }}>{flow.count} sent (30d)</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{flow.desc}</div>
+                  </div>
+                  <div
+                    onClick={() => setAutopilot(prev => ({ ...prev, [flow.key]: !prev[flow.key] }))}
+                    style={{
+                      width: 52, height: 28, borderRadius: 14, cursor: 'pointer', flexShrink: 0, marginLeft: 12,
+                      background: autopilot[flow.key] ? 'var(--success)' : '#3F3F46',
+                      position: 'relative', transition: 'background 0.2s',
+                    }}
+                  >
+                    <div style={{
+                      width: 22, height: 22, borderRadius: '50%', background: 'white',
+                      position: 'absolute', top: 3,
+                      left: autopilot[flow.key] ? 27 : 3,
+                      transition: 'left 0.2s',
+                    }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Winback days input */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>
+                Win-Back trigger (days since last visit)
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <input className="input" type="number" min="7" max="180" step="1"
+                  value={autopilot.winback_days}
+                  onChange={e => setAutopilot(prev => ({ ...prev, winback_days: parseInt(e.target.value) || 30 }))}
+                  style={{ width: 80, fontSize: '1rem', padding: '10px 12px', textAlign: 'center' }} />
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                  days without a visit triggers a win-back email
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                {[14, 30, 45, 60, 90].map(d => (
+                  <button key={d} onClick={() => setAutopilot(prev => ({ ...prev, winback_days: d }))} style={{
+                    padding: '6px 14px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600,
+                    border: 'none', cursor: 'pointer',
+                    background: autopilot.winback_days === d ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
+                    color: autopilot.winback_days === d ? '#fff' : 'var(--text-muted)',
+                  }}>{d}d</button>
+                ))}
+              </div>
+            </div>
+
+            <button className="btn btn-primary" onClick={saveAutopilot} disabled={autopilotSaving}
+              style={{ fontSize: '0.85rem', padding: '10px 24px' }}>
+              {autopilotSaving ? 'Saving...' : autopilotSaved ? 'Saved!' : 'Save Autopilot Settings'}
             </button>
           </div>
         </div>

@@ -23,6 +23,7 @@ export default function Email({ brand }) {
 
   // Recent emails log
   const [recentEmails, setRecentEmails] = useState([])
+  const [blastsThisMonth, setBlastsThisMonth] = useState(0)
 
   // Member count for broadcast confirm
   const [memberCount, setMemberCount] = useState(0)
@@ -44,7 +45,25 @@ export default function Email({ brand }) {
     loadAutopilotStats()
     loadRecentEmails()
     loadMemberCount()
+    loadBlastCount()
   }, [brand])
+
+  async function loadBlastCount() {
+    if (!supabase || !brand?.id || brand.id === 'demo') return
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const { data } = await supabase
+      .from('autopilot_emails')
+      .select('created_at')
+      .eq('brand_id', brand.id)
+      .eq('flow', 'broadcast')
+      .eq('outcome', 'sent')
+      .gte('created_at', thirtyDaysAgo.toISOString())
+    if (data) {
+      const uniqueBlasts = new Set(data.map(d => d.created_at.substring(0, 16)))
+      setBlastsThisMonth(uniqueBlasts.size)
+    }
+  }
 
   async function loadMemberCount() {
     if (!supabase || !brand?.id || brand.id === 'demo') return
@@ -313,6 +332,9 @@ export default function Email({ brand }) {
           <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.5 }}>
             One-time email to all {memberCount || 'your'} loyalty members with consent. Flash sales, special hours, announcements.
           </p>
+          <div style={{ fontSize: '0.75rem', color: blastsThisMonth >= 4 ? 'var(--danger)' : 'var(--text-muted)', marginBottom: 14 }}>
+            {4 - blastsThisMonth} of 4 blasts remaining this month
+          </div>
 
           <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>Subject</label>
           <input className="input" placeholder="e.g. Half off everything for the next 6 hours!"
@@ -350,7 +372,7 @@ export default function Email({ brand }) {
 
           {!broadcastConfirm ? (
             <button className="btn btn-primary"
-              disabled={broadcastSending || !broadcast.subject.trim() || !broadcast.message.trim()}
+              disabled={broadcastSending || !broadcast.subject.trim() || !broadcast.message.trim() || blastsThisMonth >= 4}
               onClick={() => setBroadcastConfirm(true)}
               style={{ fontSize: '0.85rem', padding: '10px 24px' }}
             >
@@ -372,7 +394,7 @@ export default function Email({ brand }) {
                     })
                     const data = await res.json()
                     setBroadcastResult(data)
-                    if (data.sent > 0) { setBroadcast({ subject: '', message: '' }); loadRecentEmails() }
+                    if (data.sent > 0) { setBroadcast({ subject: '', message: '' }); loadRecentEmails(); loadBlastCount() }
                   } catch { setBroadcastResult({ error: 'Failed to send. Please try again.' }) }
                   setBroadcastSending(false)
                 }}

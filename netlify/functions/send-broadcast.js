@@ -34,6 +34,32 @@ export default async (req) => {
 
     if (!brand) return new Response(JSON.stringify({ error: 'Brand not found' }), { status: 200, headers })
 
+    // Cap: max 4 blasts per brand per month
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const { count: blastCount } = await supabase
+      .from('autopilot_emails')
+      .select('*', { count: 'exact', head: true })
+      .eq('brand_id', brand_id)
+      .eq('flow', 'broadcast')
+      .eq('outcome', 'sent')
+      .gte('created_at', thirtyDaysAgo.toISOString())
+
+    // Count unique blasts (grouped by same second = one blast)
+    const { data: blastDates } = await supabase
+      .from('autopilot_emails')
+      .select('created_at')
+      .eq('brand_id', brand_id)
+      .eq('flow', 'broadcast')
+      .eq('outcome', 'sent')
+      .gte('created_at', thirtyDaysAgo.toISOString())
+      .order('created_at', { ascending: false })
+
+    const uniqueBlasts = new Set((blastDates || []).map(d => d.created_at.substring(0, 16))) // group by minute
+    if (uniqueBlasts.size >= 4) {
+      return new Response(JSON.stringify({ error: 'You've reached the limit of 4 blasts per month. Try again next month.' }), { status: 200, headers })
+    }
+
     // Get all loyalty members with consent
     // A loyalty member = a contact who has at least one loyalty_points entry
     const { data: points } = await supabase

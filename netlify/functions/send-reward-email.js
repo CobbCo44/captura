@@ -153,14 +153,14 @@ export default async (req) => {
     }
 
     // 4. Get brand details
-    const { data: brand } = await supabase
+    const { data: brand, error: brandErr } = await supabase
       .from('brands')
       .select('id, name, logo_url, logo_dark_url, accent_hex, slug, business_type')
       .eq('id', brand_id)
       .single()
 
     if (!brand) {
-      await logSendAttempt(supabase, { contact_id, brand_id, reward_id, balance: serverBalance, consent_checked: true, consent_had: true, error: 'brand_not_found' })
+      await logSendAttempt(supabase, { contact_id, brand_id, reward_id, balance: serverBalance, consent_checked: true, consent_had: true, error: `brand_not_found:${brandErr?.message || 'no_data'}` })
       return new Response(JSON.stringify({ error: 'Brand not found' }), { status: 200, headers })
     }
 

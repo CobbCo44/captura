@@ -39,12 +39,16 @@ export default async (req) => {
     const rewards = rewardsRes.data || []
     const balance = balRes.data?.balance ?? 0
 
-    // Fetch autopilot toggle separately — column may not exist yet (pre-migration)
+    // Fetch autopilot toggle + custom messages separately — columns may not exist yet (pre-migration)
     if (brand) {
       try {
-        const { data: toggleData } = await supabase.from('brands').select('autopilot_welcome').eq('id', brand_id).single()
-        if (toggleData) brand.autopilot_welcome = toggleData.autopilot_welcome
-      } catch (_) { /* column doesn't exist yet — default to enabled */ }
+        const { data: toggleData } = await supabase.from('brands').select('autopilot_welcome, autopilot_welcome_subject, autopilot_welcome_message').eq('id', brand_id).single()
+        if (toggleData) {
+          brand.autopilot_welcome = toggleData.autopilot_welcome
+          brand.autopilot_welcome_subject = toggleData.autopilot_welcome_subject
+          brand.autopilot_welcome_message = toggleData.autopilot_welcome_message
+        }
+      } catch (_) { /* columns don't exist yet — use defaults */ }
     }
 
     if (!contact?.email) {
@@ -61,6 +65,18 @@ export default async (req) => {
     const firstName = contact.first_name || 'there'
     const accentColor = brand.accent_hex || '#22c55e'
     const scanUrl = `https://meetcaptura.com/store/${brand_id}`
+    const topReward = rewards.length > 0 ? rewards[0].name : ''
+
+    // Placeholder replacement helper
+    const fill = (tpl) => tpl
+      .replace(/\{name\}/gi, firstName)
+      .replace(/\{store\}/gi, brand.name)
+      .replace(/\{points\}/gi, String(balance))
+      .replace(/\{reward\}/gi, topReward)
+
+    // Custom or default subject/message
+    const subject = fill(brand.autopilot_welcome_subject || `You're in! Here's how loyalty works at {store}`)
+    const customMessage = brand.autopilot_welcome_message ? fill(brand.autopilot_welcome_message) : null
 
     // Rewards list HTML
     let rewardsHtml = ''
@@ -81,7 +97,18 @@ export default async (req) => {
       </div>`
     }
 
-    const bodyHtml = `
+    const bodyHtml = customMessage
+      ? `
+    <div style="font-size:32px;margin-bottom:8px;">&#9989;</div>
+    <h1 style="margin:0 0 8px;font-size:22px;color:#18181b;">${subject}</h1>
+    <p style="margin:0 0 20px;font-size:16px;color:#52525b;">${customMessage}</p>
+    <div style="background:#f9fafb;border:1px solid #e4e4e7;border-radius:10px;padding:16px;margin:0 0 4px;">
+      <div style="font-size:13px;color:#71717a;margin-bottom:4px;">Your starting balance</div>
+      <div style="font-size:28px;font-weight:800;color:${accentColor};">${balance} point${balance === 1 ? '' : 's'}</div>
+    </div>
+    ${rewardsHtml}
+    <a href="${scanUrl}" style="display:inline-block;margin-top:20px;padding:14px 32px;background:${accentColor};color:#ffffff;font-weight:700;font-size:16px;text-decoration:none;border-radius:10px;">Visit ${brand.name}</a>`
+      : `
     <div style="font-size:32px;margin-bottom:8px;">&#9989;</div>
     <h1 style="margin:0 0 8px;font-size:22px;color:#18181b;">You're in, ${firstName}!</h1>
     <p style="margin:0 0 6px;font-size:16px;color:#52525b;">Here's how loyalty works at ${brand.name}:</p>
@@ -113,7 +140,7 @@ export default async (req) => {
       flow: 'welcome',
       contact,
       brand,
-      subject: `You're in! Here's how loyalty works at ${brand.name}`,
+      subject,
       bodyHtml,
       dedupCheck,
       extra: { balance_at_send: balance },

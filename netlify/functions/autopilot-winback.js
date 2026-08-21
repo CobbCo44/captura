@@ -32,7 +32,7 @@ export default async () => {
   // 1. Get all storefront brands with winback enabled
   const { data: brands, error: brandsErr } = await supabase
     .from('brands')
-    .select('id, name, logo_url, logo_dark_url, accent_hex, business_type, autopilot_winback, winback_days')
+    .select('id, name, logo_url, logo_dark_url, accent_hex, business_type, autopilot_winback, winback_days, autopilot_winback_subject, autopilot_winback_message')
     .eq('business_type', 'storefront')
     .eq('autopilot_winback', true)
 
@@ -190,10 +190,34 @@ async function processWinbackForBrand(supabase, brand) {
 
     // Check if they're at or over a reward threshold
     const claimableReward = (rewards || []).find(r => balance >= r.points_required)
+    const rewardName = claimableReward ? claimableReward.name : ((rewards || [])[0]?.name || '')
+
+    // Placeholder replacement
+    const fill = (tpl) => tpl
+      .replace(/\{name\}/gi, firstName)
+      .replace(/\{store\}/gi, brand.name)
+      .replace(/\{points\}/gi, String(balance))
+      .replace(/\{reward\}/gi, rewardName)
 
     let subject, bodyHtml
-    if (claimableReward) {
-      // Lead with the reward
+
+    // Use custom messages if set
+    const customSubject = brand.autopilot_winback_subject ? fill(brand.autopilot_winback_subject) : null
+    const customMessage = brand.autopilot_winback_message ? fill(brand.autopilot_winback_message) : null
+
+    if (customSubject || customMessage) {
+      subject = customSubject || (claimableReward ? `Your ${claimableReward.name} is still waiting, ${firstName}!` : `It's been a while, ${firstName}!`)
+      const message = customMessage || (claimableReward ? `You have enough points to redeem ${claimableReward.name} at ${brand.name}.` : `You have points waiting for you at ${brand.name}.`)
+      bodyHtml = `
+      <div style="font-size:32px;margin-bottom:8px;">${claimableReward ? '&#127873;' : '&#128075;'}</div>
+      <h1 style="margin:0 0 8px;font-size:22px;color:#18181b;">${subject}</h1>
+      <p style="margin:0 0 20px;font-size:16px;color:#52525b;">${message}</p>
+      <div style="background:#f9fafb;border:1px solid #e4e4e7;border-radius:10px;padding:16px;margin:0 0 20px;">
+        <div style="font-size:13px;color:#71717a;margin-bottom:4px;">Your balance</div>
+        <div style="font-size:28px;font-weight:800;color:${accentColor};">${balance} point${balance === 1 ? '' : 's'}</div>
+      </div>
+      <a href="${scanUrl}" style="display:inline-block;margin-top:20px;padding:14px 32px;background:${accentColor};color:#ffffff;font-weight:700;font-size:16px;text-decoration:none;border-radius:10px;">Visit ${brand.name}</a>`
+    } else if (claimableReward) {
       subject = `Your ${claimableReward.name} is still waiting, ${firstName}!`
       bodyHtml = `
       <div style="font-size:32px;margin-bottom:8px;">&#127873;</div>
@@ -206,7 +230,6 @@ async function processWinbackForBrand(supabase, brand) {
       <p style="margin:0 0 4px;font-size:14px;color:#71717a;">Your balance: <strong style="color:#18181b;">${balance} points</strong></p>
       <a href="${scanUrl}" style="display:inline-block;margin-top:20px;padding:14px 32px;background:${accentColor};color:#ffffff;font-weight:700;font-size:16px;text-decoration:none;border-radius:10px;">Redeem Your Reward</a>`
     } else {
-      // Standard win-back
       subject = `It's been a while, ${firstName}!`
       bodyHtml = `
       <div style="font-size:32px;margin-bottom:8px;">&#128075;</div>

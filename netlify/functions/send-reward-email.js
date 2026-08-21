@@ -69,18 +69,43 @@ export default async (req) => {
       return new Response(JSON.stringify({ error: 'Brand not found' }), { status: 200, headers })
     }
 
-    // Fetch autopilot toggle separately — column may not exist yet (pre-migration)
+    // Fetch autopilot toggle + custom messages separately — columns may not exist yet (pre-migration)
     try {
-      const { data: toggleData } = await supabase.from('brands').select('autopilot_reward_ready').eq('id', brand_id).single()
-      if (toggleData) brand.autopilot_reward_ready = toggleData.autopilot_reward_ready
-    } catch (_) { /* column doesn't exist yet — default to enabled */ }
+      const { data: toggleData } = await supabase.from('brands').select('autopilot_reward_ready, autopilot_reward_subject, autopilot_reward_message').eq('id', brand_id).single()
+      if (toggleData) {
+        brand.autopilot_reward_ready = toggleData.autopilot_reward_ready
+        brand.autopilot_reward_subject = toggleData.autopilot_reward_subject
+        brand.autopilot_reward_message = toggleData.autopilot_reward_message
+      }
+    } catch (_) { /* columns don't exist yet — use defaults */ }
 
     // 2. Build reward email body
     const accentColor = brand.accent_hex || '#22c55e'
     const scanUrl = `https://meetcaptura.com/store/${brand_id}`
     const firstName = contact.first_name || 'there'
 
-    const bodyHtml = `
+    // Placeholder replacement
+    const fill = (tpl) => tpl
+      .replace(/\{name\}/gi, firstName)
+      .replace(/\{store\}/gi, brand.name)
+      .replace(/\{points\}/gi, String(serverBalance))
+      .replace(/\{reward\}/gi, reward.name)
+
+    const rewardSubject = fill(brand.autopilot_reward_subject || `You earned {reward}!`)
+    const customMessage = brand.autopilot_reward_message ? fill(brand.autopilot_reward_message) : null
+
+    const bodyHtml = customMessage
+      ? `
+    <div style="font-size:32px;margin-bottom:8px;">&#127881;</div>
+    <h1 style="margin:0 0 8px;font-size:22px;color:#18181b;">${rewardSubject}</h1>
+    <p style="margin:0 0 20px;font-size:16px;color:#52525b;">${customMessage}</p>
+    <div style="background:#f9fafb;border:1px solid #e4e4e7;border-radius:10px;padding:16px;margin:0 0 20px;">
+      <div style="font-size:20px;font-weight:700;color:#18181b;margin-bottom:4px;">${reward.name}</div>
+      <div style="font-size:14px;color:#71717a;">${reward.points_required} points${reward.reward_value ? ` \u00B7 ${reward.reward_value}` : ''}</div>
+    </div>
+    <p style="margin:0 0 4px;font-size:14px;color:#71717a;">Your balance: <strong style="color:#18181b;">${serverBalance} points</strong></p>
+    <a href="${scanUrl}" style="display:inline-block;margin-top:20px;padding:14px 32px;background:${accentColor};color:#ffffff;font-weight:700;font-size:16px;text-decoration:none;border-radius:10px;">Redeem Your Reward</a>`
+      : `
     <div style="font-size:32px;margin-bottom:8px;">&#127881;</div>
     <h1 style="margin:0 0 8px;font-size:22px;color:#18181b;">Hey ${firstName}, you earned a reward!</h1>
     <p style="margin:0 0 20px;font-size:16px;color:#52525b;">You have enough points to redeem:</p>
@@ -127,7 +152,7 @@ export default async (req) => {
       flow: 'reward_ready',
       contact,
       brand,
-      subject: `You earned ${reward.name}!`,
+      subject: rewardSubject,
       bodyHtml,
       dedupCheck,
       extra: { reward_id, balance_at_send: serverBalance },

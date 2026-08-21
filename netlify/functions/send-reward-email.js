@@ -155,7 +155,7 @@ export default async (req) => {
     // 4. Get brand details
     const { data: brand, error: brandErr } = await supabase
       .from('brands')
-      .select('id, name, logo_url, logo_dark_url, accent_hex, slug, business_type')
+      .select('id, name, logo_url, logo_dark_url, accent_hex, business_type')
       .eq('id', brand_id)
       .single()
 
@@ -167,7 +167,7 @@ export default async (req) => {
     // 5. Build URLs
     const scanUrl = brand.business_type === 'storefront'
       ? `https://meetcaptura.com/s/${brand_id}`
-      : `https://meetcaptura.com/s/${brand.slug || brand_id}`
+      : `https://meetcaptura.com/s/${brand_id}`
 
     const unsubToken = hmacSecret ? signUnsubParams(contact_id, brand_id, hmacSecret) : ''
     const unsubUrl = `https://meetcaptura.com/.netlify/functions/send-reward-email?action=unsubscribe&cid=${contact_id}&bid=${brand_id}&tok=${unsubToken}`

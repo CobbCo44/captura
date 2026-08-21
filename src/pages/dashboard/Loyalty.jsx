@@ -787,128 +787,135 @@ export default function Loyalty({ brand }) {
               </div>
             )}
 
-            {/* Flow cards — horizontal grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
-              {[
+            {(() => {
+              const flows = [
                 {
-                  key: 'reward_ready',
-                  label: 'Reward Ready',
-                  icon: '🎁',
-                  desc: 'When they earn a reward',
-                  count: autopilotStats.reward_ready,
-                  subjectKey: 'reward_subject',
-                  messageKey: 'reward_message',
+                  key: 'reward_ready', label: 'Reward Ready', icon: '🎁',
+                  desc: 'When they earn a reward', count: autopilotStats.reward_ready,
+                  subjectKey: 'reward_subject', messageKey: 'reward_message',
                   subjectDefault: 'You earned {reward}!',
                   messageDefault: 'Hey {name}, you have enough points to redeem {reward} at {store}. Come visit to claim it!',
                   placeholders: '{name}, {store}, {reward}, {points}',
                 },
                 {
-                  key: 'welcome',
-                  label: 'Welcome',
-                  icon: '👋',
-                  desc: 'When they first join',
-                  count: autopilotStats.welcome,
-                  subjectKey: 'welcome_subject',
-                  messageKey: 'welcome_message',
+                  key: 'welcome', label: 'Welcome', icon: '👋',
+                  desc: 'When they first join', count: autopilotStats.welcome,
+                  subjectKey: 'welcome_subject', messageKey: 'welcome_message',
                   subjectDefault: "You're in! Here's how loyalty works at {store}",
                   messageDefault: 'Welcome to {store} loyalty, {name}! Earn 1 point every time you visit. You currently have {points} points.',
                   placeholders: '{name}, {store}, {points}',
                 },
                 {
-                  key: 'winback',
-                  label: 'Win-Back',
-                  icon: '💌',
-                  desc: `After ${autopilot.winback_days}d inactive`,
-                  count: autopilotStats.winback,
-                  subjectKey: 'winback_subject',
-                  messageKey: 'winback_message',
+                  key: 'winback', label: 'Win-Back', icon: '💌',
+                  desc: `After ${autopilot.winback_days}d inactive`, count: autopilotStats.winback,
+                  subjectKey: 'winback_subject', messageKey: 'winback_message',
                   subjectDefault: "It's been a while, {name}!",
                   messageDefault: "Hey {name}, you have {points} points waiting at {store}. Come visit and keep earning toward your next reward!",
                   placeholders: '{name}, {store}, {points}, {reward}',
                 },
-              ].map(flow => {
-                const isExpanded = expandedFlow === flow.key
-                return (
-                  <div key={flow.key} style={{ display: 'flex', flexDirection: 'column' }}>
-                    <div
-                      onClick={() => setExpandedFlow(isExpanded ? null : flow.key)}
-                      style={{
-                        padding: '16px 14px', borderRadius: isExpanded ? '10px 10px 0 0' : 10,
-                        background: 'rgba(255,255,255,0.03)',
-                        border: isExpanded ? '1px solid rgba(255,255,255,0.12)' : '1px solid rgba(255,255,255,0.06)',
-                        borderBottom: isExpanded ? '1px solid rgba(255,255,255,0.06)' : undefined,
-                        cursor: 'pointer', transition: 'border-color 0.2s',
-                        flex: isExpanded ? undefined : 1,
-                      }}
-                    >
-                      {/* Toggle row */}
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                        <span style={{ fontSize: '1.3rem' }}>{flow.icon}</span>
+              ]
+              const activeFlow = flows.find(f => f.key === expandedFlow)
+
+              return (
+                <>
+                  {/* Flow cards — equal height row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: activeFlow ? 0 : 20 }}>
+                    {flows.map(flow => {
+                      const isSelected = expandedFlow === flow.key
+                      return (
                         <div
-                          onClick={e => { e.stopPropagation(); setAutopilot(prev => ({ ...prev, [flow.key]: !prev[flow.key] })) }}
+                          key={flow.key}
+                          onClick={() => setExpandedFlow(isSelected ? null : flow.key)}
                           style={{
-                            width: 44, height: 24, borderRadius: 12, cursor: 'pointer',
-                            background: autopilot[flow.key] ? 'var(--success)' : '#3F3F46',
-                            position: 'relative', transition: 'background 0.2s',
+                            padding: '16px', borderRadius: isSelected ? '10px 10px 0 0' : 10,
+                            background: isSelected ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.03)',
+                            border: isSelected ? '1px solid rgba(255,255,255,0.15)' : '1px solid rgba(255,255,255,0.06)',
+                            borderBottom: isSelected ? '1px solid transparent' : undefined,
+                            cursor: 'pointer', transition: 'all 0.15s',
                           }}
                         >
-                          <div style={{
-                            width: 18, height: 18, borderRadius: '50%', background: 'white',
-                            position: 'absolute', top: 3,
-                            left: autopilot[flow.key] ? 23 : 3,
-                            transition: 'left 0.2s',
-                          }} />
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                            <span style={{ fontSize: '1.4rem' }}>{flow.icon}</span>
+                            <div
+                              onClick={e => { e.stopPropagation(); setAutopilot(prev => ({ ...prev, [flow.key]: !prev[flow.key] })) }}
+                              style={{
+                                width: 44, height: 24, borderRadius: 12, cursor: 'pointer',
+                                background: autopilot[flow.key] ? 'var(--success)' : '#3F3F46',
+                                position: 'relative', transition: 'background 0.2s',
+                              }}
+                            >
+                              <div style={{
+                                width: 18, height: 18, borderRadius: '50%', background: 'white',
+                                position: 'absolute', top: 3,
+                                left: autopilot[flow.key] ? 23 : 3,
+                                transition: 'left 0.2s',
+                              }} />
+                            </div>
+                          </div>
+                          <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 2 }}>{flow.label}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 8 }}>{flow.desc}</div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                              {flow.count > 0 ? `${flow.count} sent (30d)` : 'No sends yet'}
+                            </span>
+                            <span style={{ fontSize: '0.7rem', color: isSelected ? '#fff' : 'var(--text-muted)', opacity: isSelected ? 1 : 0.5 }}>
+                              {isSelected ? '▲' : '✎'}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 2 }}>{flow.label}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{flow.desc}</div>
-                      {flow.count > 0 && (
-                        <div style={{
-                          marginTop: 8, padding: '3px 0', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)',
-                        }}>{flow.count} sent (30d)</div>
-                      )}
-                      <div style={{
-                        marginTop: 8, fontSize: '0.7rem', color: 'var(--text-muted)', opacity: 0.6,
-                      }}>{isExpanded ? '▲ Close' : '✎ Customize'}</div>
-                    </div>
-
-                    {/* Expanded: subject + message editor */}
-                    {isExpanded && (
-                      <div style={{
-                        padding: '14px', borderRadius: '0 0 10px 10px',
-                        background: 'rgba(255,255,255,0.02)',
-                        border: '1px solid rgba(255,255,255,0.12)', borderTop: 'none',
-                      }}>
-                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>
-                          Subject Line
-                        </label>
-                        <input
-                          className="input"
-                          placeholder={flow.subjectDefault}
-                          value={autopilot[flow.subjectKey]}
-                          onChange={e => setAutopilot(prev => ({ ...prev, [flow.subjectKey]: e.target.value }))}
-                          style={{ fontSize: '0.82rem', padding: '8px 10px', marginBottom: 10 }}
-                        />
-                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>
-                          Message
-                        </label>
-                        <textarea
-                          className="input"
-                          placeholder={flow.messageDefault}
-                          value={autopilot[flow.messageKey]}
-                          onChange={e => setAutopilot(prev => ({ ...prev, [flow.messageKey]: e.target.value }))}
-                          rows={3}
-                          style={{ fontSize: '0.82rem', padding: '8px 10px', resize: 'vertical', marginBottom: 6 }}
-                        />
-                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', opacity: 0.7 }}>
-                          Placeholders: {flow.placeholders}
-                        </div>
-                      </div>
-                    )}
+                      )
+                    })}
                   </div>
-                )
-              })}
-            </div>
+
+                  {/* Editor panel — full width below cards */}
+                  {activeFlow && (
+                    <div style={{
+                      padding: '20px', marginBottom: 20, borderRadius: '0 0 10px 10px',
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1px solid rgba(255,255,255,0.15)', borderTop: 'none',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>Customize {activeFlow.label} Email</div>
+                        <button
+                          onClick={() => setExpandedFlow(null)}
+                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: '4px 8px' }}
+                        >Done</button>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
+                            Subject Line
+                          </label>
+                          <input
+                            className="input"
+                            placeholder={activeFlow.subjectDefault}
+                            value={autopilot[activeFlow.subjectKey]}
+                            onChange={e => setAutopilot(prev => ({ ...prev, [activeFlow.subjectKey]: e.target.value }))}
+                            style={{ fontSize: '0.85rem', padding: '10px 12px' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
+                            Message Body
+                          </label>
+                          <textarea
+                            className="input"
+                            placeholder={activeFlow.messageDefault}
+                            value={autopilot[activeFlow.messageKey]}
+                            onChange={e => setAutopilot(prev => ({ ...prev, [activeFlow.messageKey]: e.target.value }))}
+                            rows={3}
+                            style={{ fontSize: '0.85rem', padding: '10px 12px', resize: 'vertical' }}
+                          />
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 8, opacity: 0.7 }}>
+                        Leave blank to use defaults. Placeholders: {activeFlow.placeholders}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
 
             {/* Winback days */}
             <div className="card" style={{ marginBottom: 20 }}>

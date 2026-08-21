@@ -19,6 +19,7 @@ export default function Email({ brand }) {
   const [broadcast, setBroadcast] = useState({ subject: '', message: '' })
   const [broadcastSending, setBroadcastSending] = useState(false)
   const [broadcastResult, setBroadcastResult] = useState(null)
+  const [broadcastConfirm, setBroadcastConfirm] = useState(false)
 
   // Recent emails log
   const [recentEmails, setRecentEmails] = useState([])
@@ -347,28 +348,44 @@ export default function Email({ brand }) {
             </div>
           )}
 
-          <button className="btn btn-primary"
-            disabled={broadcastSending || !broadcast.subject.trim() || !broadcast.message.trim()}
-            onClick={async () => {
-              if (!window.confirm(`This will email up to ${memberCount || '?'} loyalty members right now. Continue?`)) return
-              setBroadcastSending(true)
-              setBroadcastResult(null)
-              try {
-                const res = await fetch('/.netlify/functions/send-broadcast', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ brand_id: brand.id, subject: broadcast.subject, message: broadcast.message }),
-                })
-                const data = await res.json()
-                setBroadcastResult(data)
-                if (data.sent > 0) { setBroadcast({ subject: '', message: '' }); loadRecentEmails() }
-              } catch { setBroadcastResult({ error: 'Failed to send. Please try again.' }) }
-              setBroadcastSending(false)
-            }}
-            style={{ fontSize: '0.85rem', padding: '10px 24px' }}
-          >
-            {broadcastSending ? 'Sending...' : 'Send to All Members'}
-          </button>
+          {!broadcastConfirm ? (
+            <button className="btn btn-primary"
+              disabled={broadcastSending || !broadcast.subject.trim() || !broadcast.message.trim()}
+              onClick={() => setBroadcastConfirm(true)}
+              style={{ fontSize: '0.85rem', padding: '10px 24px' }}
+            >
+              Send to All Members
+            </button>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button className="btn btn-primary"
+                disabled={broadcastSending}
+                onClick={async () => {
+                  setBroadcastSending(true)
+                  setBroadcastResult(null)
+                  setBroadcastConfirm(false)
+                  try {
+                    const res = await fetch('/.netlify/functions/send-broadcast', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ brand_id: brand.id, subject: broadcast.subject, message: broadcast.message }),
+                    })
+                    const data = await res.json()
+                    setBroadcastResult(data)
+                    if (data.sent > 0) { setBroadcast({ subject: '', message: '' }); loadRecentEmails() }
+                  } catch { setBroadcastResult({ error: 'Failed to send. Please try again.' }) }
+                  setBroadcastSending(false)
+                }}
+                style={{ fontSize: '0.85rem', padding: '10px 24px', background: '#ef4444' }}
+              >
+                {broadcastSending ? 'Sending...' : `Yes, email ${memberCount || 'all'} members now`}
+              </button>
+              <button onClick={() => setBroadcastConfirm(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.85rem' }}>
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

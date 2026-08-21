@@ -122,7 +122,7 @@ export default function StorefrontScanPage() {
           p_brand_id: brandId,
           p_contact_id: savedContactId,
           p_product_id: null,
-          p_cooldown_hours: brand?.loyalty_cooldown_hours ?? 12,
+          p_cooldown_hours: brandData.loyalty_cooldown_hours ?? 12,
         })
         if (result) {
           setLoyaltyState({ ...result, returning: true })

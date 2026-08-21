@@ -50,6 +50,7 @@ export default function ScanPage({ previewData } = {}) {
   const [eventForm, setEventForm] = useState({ firstName: '', lastName: '', email: '', phone: '', ageConsent: false, marketingConsent: false })
   const [eventSubmitted, setEventSubmitted] = useState(false)
   const scanLogged = useRef(false)
+  const proofTimerRef = useRef(null)
   const [descExpanded, setDescExpanded] = useState(false)
   const [videoPlaying, setVideoPlaying] = useState(false)
   const [countdown, setCountdown] = useState('')
@@ -66,6 +67,9 @@ export default function ScanPage({ previewData } = {}) {
   const [loyaltyLookupMode, setLoyaltyLookupMode] = useState(false)
   const [loyaltyLookupEmail, setLoyaltyLookupEmail] = useState('')
   const [loyaltyLookupError, setLoyaltyLookupError] = useState('')
+  const [redemptionProof, setRedemptionProof] = useState(null)
+  const [proofClock, setProofClock] = useState(null)
+  const [thresholdCelebration, setThresholdCelebration] = useState(null)
 
   // Keep preview data in sync
   useEffect(() => {
@@ -75,6 +79,36 @@ export default function ScanPage({ previewData } = {}) {
     setActivePromo(previewData.promo || null)
     if (previewData.event) setEvent(previewData.event)
   }, [previewData])
+
+  // Live clock for redemption proof
+  useEffect(() => {
+    if (!redemptionProof) return
+    const tick = setInterval(() => setProofClock(new Date()), 1000)
+    proofTimerRef.current = setTimeout(() => {
+      setRedemptionProof(null)
+      setProofClock(null)
+      setShowLoyalty(false)
+    }, 5 * 60 * 1000)
+    return () => { clearInterval(tick); clearTimeout(proofTimerRef.current) }
+  }, [redemptionProof])
+
+  function checkThresholdCrossing(result, rewards) {
+    if (!result?.awarded || !rewards?.length) return null
+    const prevBal = result.previous_balance ?? 0
+    const newBal = result.balance ?? 0
+    const crossed = rewards.find(r => newBal >= r.points_required && prevBal < r.points_required)
+    return crossed || null
+  }
+
+  async function triggerRewardEmail(contactId, brandIdVal, rewardId, balance) {
+    try {
+      await fetch('/.netlify/functions/send-reward-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contact_id: contactId, brand_id: brandIdVal, reward_id: rewardId, balance }),
+      })
+    } catch (e) { /* fire and forget */ }
+  }
 
   // Countdown timer for promo
   useEffect(() => {
@@ -284,6 +318,12 @@ export default function ScanPage({ previewData } = {}) {
             setLoyaltyState({ ...awardResult, returning: true })
             setLoyaltyForm({ firstName: '', email: savedEmail })
             if (awardResult.serial_claimed) logSerialDenial(resolvedSerialData?.serial_id, qr.brand_id, savedContactId)
+            const crossed = checkThresholdCrossing(awardResult, rewards)
+            if (crossed) {
+              setThresholdCelebration(crossed)
+              setShowLoyalty(true)
+              triggerRewardEmail(savedContactId, qr.brand_id, crossed.id, awardResult.balance)
+            }
           }
         } else {
           const { data: balanceData } = await supabase.rpc('get_loyalty_balance', {
@@ -528,7 +568,7 @@ export default function ScanPage({ previewData } = {}) {
 
   // Build the TCPA consent text for checkbox B (used in form and stored as evidence)
   const brandNameForConsent = brand?.name || 'this brand'
-  const marketingConsentText = `I agree to receive recurring marketing texts, emails, and calls from ${brandNameForConsent}, including by automated technology, at the contact info I provided. My information was collected by Captura on behalf of ${brandNameForConsent}. Consent is not a condition of entry or purchase. Msg frequency varies. Msg & data rates may apply. Reply STOP to cancel, HELP for help.`
+  const marketingConsentText = `I agree to receive recurring marketing texts, emails, and calls from ${brandNameForConsent}, including by automated technology, at the contact info I provided. My information was collected by MeetCaptura on behalf of ${brandNameForConsent}. Consent is not a condition of entry or purchase. Msg frequency varies. Msg & data rates may apply. Reply STOP to cancel, HELP for help.`
 
   const handlePromoEntry = async (e) => {
     e.preventDefault()
@@ -735,6 +775,11 @@ export default function ScanPage({ previewData } = {}) {
         if (result) {
           setLoyaltyState(result)
           if (result.serial_claimed) logSerialDenial(serialData?.serial_id, brandId, contactId)
+          const crossed = checkThresholdCrossing(result, loyaltyRewards)
+          if (crossed) {
+            setThresholdCelebration(crossed)
+            triggerRewardEmail(contactId, brandId, crossed.id, result.balance)
+          }
           localStorage.setItem(`loyalty_email_${brandId}`, loyaltyForm.email)
           localStorage.setItem(`loyalty_contact_${brandId}`, contactId)
         }
@@ -771,8 +816,18 @@ export default function ScanPage({ previewData } = {}) {
     if (result?.success) {
       setLoyaltyRedeemed(result)
       setLoyaltyState(prev => ({ ...prev, balance: result.new_balance }))
+      setThresholdCelebration(null)
+      setRedemptionProof({
+        rewardName: result.reward_name,
+        rewardValue: result.reward_value,
+        storeName: brand?.name || 'Brand',
+        remainingBalance: result.new_balance,
+        redeemedAt: new Date(),
+      })
+      setProofClock(new Date())
     } else if (result?.error) {
-      alert(result.error)
+      const needed = reward.points_required - (loyaltyState?.balance || 0)
+      alert(`Not enough points. You have ${loyaltyState?.balance || 0} points, need ${needed} more.`)
     }
   }
 
@@ -808,6 +863,11 @@ export default function ScanPage({ previewData } = {}) {
           if (awardResult) {
             setLoyaltyState({ ...awardResult, returning: true })
             if (awardResult.serial_claimed) logSerialDenial(serialData?.serial_id, brandId, member.contact_id)
+            const crossed = checkThresholdCrossing(awardResult, loyaltyRewards)
+            if (crossed) {
+              setThresholdCelebration(crossed)
+              triggerRewardEmail(member.contact_id, brandId, crossed.id, awardResult.balance)
+            }
           }
         }
       } else {
@@ -884,17 +944,19 @@ export default function ScanPage({ previewData } = {}) {
   if (activePromo?.winner_name) {
     utilTiles.push({ type: 'winner', winnerName: `${activePromo.winner_name}${activePromo.winner_city ? ' \u00B7 ' + activePromo.winner_city : ''}`, sub: 'Won the last drop' })
   }
+  const loyaltyHasReward = loyaltyState?.returning && loyaltyRewards.some(r => (loyaltyState.balance || 0) >= r.points_required)
   if (product?.loyalty_enabled) {
     utilTiles.push({
       key: 'loyalty',
-      label: loyaltyState?.returning ? `${loyaltyState.balance} Points` : 'Loyalty',
-      sub: loyaltyState?.returning ? 'View rewards' : 'Earn points',
+      label: redemptionProof ? 'Reward Redeemed' : thresholdCelebration ? `You earned ${thresholdCelebration.name}!` : loyaltyState?.returning ? `${loyaltyState.balance} Points` : 'Loyalty',
+      sub: redemptionProof ? 'Show at counter' : thresholdCelebration ? 'Tap to redeem' : loyaltyHasReward ? 'You have a reward ready!' : loyaltyState?.returning ? 'View rewards' : 'Earn points',
       icon: (
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
         </svg>
       ),
       action: () => setShowLoyalty(true),
+      badge: redemptionProof || thresholdCelebration || loyaltyHasReward,
     })
   }
 
@@ -1145,7 +1207,7 @@ export default function ScanPage({ previewData } = {}) {
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', background: 'var(--surface)', color: 'var(--ink)', fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14, lineHeight: 1.5, ...t }}>
-      <style>{`@keyframes captura-pulse{0%,100%{opacity:1}50%{opacity:.25}}@keyframes captura-slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
+      <style>{`@keyframes captura-pulse{0%,100%{opacity:1}50%{opacity:.25}}@keyframes captura-slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes loyaltyPulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 12px rgba(34,197,94,0.25)}}@keyframes loyaltyDot{0%,100%{opacity:1}50%{opacity:.4}}@keyframes proofPulse{0%,100%{opacity:1}50%{opacity:.85}}`}</style>
 
       {/* 1. BRAND BAR */}
       {(brand?.logo_dark_url || brand?.logo_url) && (
@@ -1312,16 +1374,26 @@ export default function ScanPage({ previewData } = {}) {
           return (
             <div key={i} onClick={() => tile.href ? window.open(tile.href, '_blank') : tile.action?.()} style={{
               gridColumn: `span ${spanClass}`,
-              background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
+              background: tile.badge ? `linear-gradient(135deg, var(--tile), rgba(${accentBg === '#fff' || accentBg === '#ffffff' ? '255,255,255' : '34,197,94'}, 0.12))` : 'var(--tile)',
+              border: tile.badge ? '1px solid var(--accent)' : '1px solid var(--line)', borderRadius: 'var(--r)',
               position: 'relative', overflow: 'hidden', cursor: 'pointer',
               display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '10px 11px',
               transition: 'border-color 0.14s',
+              animation: tile.badge ? 'loyaltyPulse 2s ease-in-out infinite' : undefined,
             }}>
+              {tile.badge && (
+                <span style={{
+                  position: 'absolute', top: 8, right: 8, width: 8, height: 8,
+                  borderRadius: '50%', background: 'var(--accent)',
+                  boxShadow: `0 0 6px ${accentBg}`,
+                  animation: 'loyaltyDot 1.5s ease-in-out infinite',
+                }} />
+              )}
               {typeof tile.icon === 'string'
                 ? <span style={{ width: 20, height: 20, marginBottom: 'auto', color: 'var(--accent)' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(tile.icon) }} />
                 : <span style={{ width: 20, height: 20, marginBottom: 'auto', color: 'var(--accent)' }}>{tile.icon}</span>
               }
-              <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.15, color: 'var(--ink)' }}>
+              <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.15, color: tile.badge ? 'var(--accent)' : 'var(--ink)' }}>
                 {tile.label}
                 <small style={{ display: 'block', fontWeight: 400, fontSize: '9.5px', color: 'var(--ink2)', marginTop: 1 }}>{tile.sub}</small>
               </span>
@@ -1615,27 +1687,88 @@ export default function ScanPage({ previewData } = {}) {
             {loyaltyState && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-                {/* Redeemed success */}
-                {loyaltyRedeemed ? (
-                  <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                    <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>
-                      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="1.8" style={{ display: 'inline' }}>
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                      </svg>
-                    </div>
-                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--ink, #fff)', margin: '0 0 4px' }}>
-                      {loyaltyRedeemed.reward_name || 'Reward Redeemed!'}
+                {/* REDEMPTION PROOF SCREEN (staff-facing, one-time display) */}
+                {redemptionProof ? (
+                  <div style={{
+                    textAlign: 'center', padding: '24px 0',
+                    animation: 'proofPulse 3s ease-in-out infinite',
+                  }}>
+                    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.2" style={{ display: 'inline' }}>
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                      <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <h3 style={{ fontSize: '1.3rem', fontWeight: 800, margin: '12px 0 4px', color: '#22c55e' }}>
+                      Reward Redeemed
                     </h3>
-                    <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--accent)', margin: '8px 0' }}>
-                      {loyaltyRedeemed.reward_value || 'Enjoy your reward!'}
+                    <p style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--accent)', margin: '8px 0 4px' }}>
+                      {redemptionProof.rewardName}
                     </p>
-                    <button onClick={() => { setLoyaltyRedeemed(null); setShowLoyalty(false) }} style={{
-                      marginTop: 12, padding: '14px 32px', ...btnStyle, border: 'none',
-                      borderRadius: 'var(--r, 14px)', fontWeight: 700, cursor: 'pointer', fontSize: 14,
-                    }}>Done</button>
+                    {redemptionProof.rewardValue && (
+                      <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.7)', margin: '0 0 12px' }}>
+                        {redemptionProof.rewardValue}
+                      </p>
+                    )}
+                    <div style={{
+                      margin: '12px auto', padding: '10px 20px', borderRadius: 10,
+                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                      display: 'inline-block',
+                    }}>
+                      <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
+                        {redemptionProof.storeName}
+                      </div>
+                      <div style={{ fontSize: '1.6rem', fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace", color: '#fff' }}>
+                        {proofClock ? proofClock.toLocaleTimeString() : ''}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>
+                        {redemptionProof.redeemedAt.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                      </div>
+                    </div>
+                    <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', margin: '16px 0 4px' }}>
+                      You have <strong style={{ color: 'var(--accent)' }}>{redemptionProof.remainingBalance}</strong> {redemptionProof.remainingBalance === 1 ? 'point' : 'points'} toward your next reward.
+                    </p>
+                    <button onClick={() => {
+                      setRedemptionProof(null)
+                      setProofClock(null)
+                      setLoyaltyRedeemed(null)
+                      setShowLoyalty(false)
+                      clearTimeout(proofTimerRef.current)
+                    }} style={{
+                      marginTop: 16, padding: '14px 32px', background: 'rgba(255,255,255,0.08)', color: '#fff',
+                      border: '1px solid rgba(255,255,255,0.15)', borderRadius: 'var(--r, 14px)', fontWeight: 600,
+                      cursor: 'pointer', fontSize: '0.85rem',
+                    }}>Dismiss</button>
                   </div>
                 ) : (
                   <>
+                    {/* Threshold celebration banner */}
+                    {thresholdCelebration && (
+                      <div style={{
+                        textAlign: 'center', padding: '16px', borderRadius: 'var(--r, 14px)',
+                        background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)',
+                      }}>
+                        <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#4ade80', marginBottom: 4 }}>
+                          {loyaltyState.awarded ? `You just earned ${thresholdCelebration.name}!` : `You have a reward ready to redeem`}
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', marginBottom: 10 }}>
+                          {thresholdCelebration.points_required} points
+                        </div>
+                        <button onClick={() => handleLoyaltyRedeem(thresholdCelebration)} style={{
+                          padding: '10px 24px', ...btnStyle, border: 'none',
+                          borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem',
+                        }}>Redeem Now</button>
+                      </div>
+                    )}
+
+                    {/* Persistent banner for returning members who have a reward ready but didn't just cross */}
+                    {!thresholdCelebration && loyaltyRewards.some(r => (loyaltyState.balance || 0) >= r.points_required) && (
+                      <div style={{
+                        textAlign: 'center', padding: '12px 16px', borderRadius: 'var(--r, 14px)',
+                        background: 'rgba(255,255,255,0.04)', border: '1px solid var(--accent)',
+                      }}>
+                        <span style={{ color: 'var(--accent)', fontWeight: 600, fontSize: '0.85rem' }}>You have a reward ready to redeem</span>
+                      </div>
+                    )}
+
                     {/* Points balance */}
                     <div style={{ textAlign: 'center', padding: '12px 0' }}>
                       <div style={{ fontSize: '3rem', fontWeight: 800, color: 'var(--accent)', lineHeight: 1 }}>
@@ -1645,7 +1778,7 @@ export default function ScanPage({ previewData } = {}) {
                     </div>
 
                     {/* Point earned message */}
-                    {loyaltyState.awarded && (
+                    {loyaltyState.awarded && !thresholdCelebration && (
                       <div style={{
                         textAlign: 'center', padding: '12px 16px',
                         background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)',
@@ -1655,7 +1788,7 @@ export default function ScanPage({ previewData } = {}) {
                       </div>
                     )}
 
-                    {/* Serial already claimed — friendly message */}
+                    {/* Serial already claimed */}
                     {loyaltyState.awarded === false && loyaltyState.serial_claimed && (
                       <div style={{
                         textAlign: 'center', padding: '12px 16px',
@@ -1689,25 +1822,31 @@ export default function ScanPage({ previewData } = {}) {
                       <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--ink, #fff)', margin: '4px 0 10px' }}>Available Rewards</h4>
                       {loyaltyRewards.length > 0 ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                          {loyaltyRewards.map(reward => (
-                            <div key={reward.id} style={{
-                              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                              padding: '12px 14px', background: 'rgba(255,255,255,0.05)',
-                              border: '1px solid var(--line, rgba(255,255,255,0.11))',
-                              borderRadius: 'var(--r, 14px)',
-                            }}>
-                              <div>
-                                <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--ink, #fff)' }}>{reward.name}</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--ink2, rgba(255,255,255,0.56))' }}>{reward.points_required} points</div>
-                              </div>
-                              {loyaltyState.balance >= reward.points_required && (
-                                <button onClick={() => handleLoyaltyRedeem(reward)} style={{
+                          {loyaltyRewards.map(reward => {
+                            const canRedeem = (loyaltyState.balance || 0) >= reward.points_required
+                            return (
+                              <div key={reward.id} style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '12px 14px',
+                                background: canRedeem ? 'rgba(34, 197, 94, 0.06)' : 'rgba(255,255,255,0.05)',
+                                border: canRedeem ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid var(--line, rgba(255,255,255,0.11))',
+                                borderRadius: 'var(--r, 14px)',
+                              }}>
+                                <div>
+                                  <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--ink, #fff)' }}>{reward.name}</div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--ink2, rgba(255,255,255,0.56))' }}>
+                                    {canRedeem ? 'Ready to redeem' : `${reward.points_required - (loyaltyState.balance || 0)} more points needed`}
+                                  </div>
+                                </div>
+                                <button onClick={() => handleLoyaltyRedeem(reward)} disabled={!canRedeem} style={{
                                   padding: '8px 16px', ...btnStyle, border: 'none',
-                                  borderRadius: 8, fontWeight: 600, cursor: 'pointer', fontSize: '0.8rem',
+                                  borderRadius: 8, fontWeight: 600, fontSize: '0.8rem',
+                                  opacity: canRedeem ? 1 : 0.4,
+                                  cursor: canRedeem ? 'pointer' : 'not-allowed',
                                 }}>Redeem</button>
-                              )}
-                            </div>
-                          ))}
+                              </div>
+                            )
+                          })}
                         </div>
                       ) : (
                         <p style={{ color: 'var(--ink2, rgba(255,255,255,0.56))', fontSize: '0.85rem', textAlign: 'center', padding: '16px 0' }}>Rewards coming soon</p>

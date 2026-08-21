@@ -116,6 +116,10 @@ export default async (req) => {
     if (customer.gtin) {
       tags += `, gtin:${customer.gtin}`
     }
+    if (customer.city) {
+      const cityTag = customer.city.replace(/[,]/g, '').trim()
+      if (cityTag) tags += `, city:${cityTag}`
+    }
 
     // Build note with full details
     const noteLines = [customer.note || 'Added via Captura QR scan']
@@ -125,7 +129,8 @@ export default async (req) => {
     if (customer.city) noteLines.push(`City: ${customer.city}`)
     noteLines.push(`Date: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}`)
 
-    // Build customer data
+    // Build customer data — only set consent when the consumer actually checked the box
+    const hasConsent = customer.marketingConsent === true
     const customerData = {
       first_name: customer.firstName,
       last_name: customer.lastName,
@@ -133,12 +138,12 @@ export default async (req) => {
       phone: formattedPhone,
       tags,
       note: noteLines.join('\n'),
-      email_marketing_consent: customer.email ? {
+      email_marketing_consent: (customer.email && hasConsent) ? {
         state: 'subscribed',
         opt_in_level: 'single_opt_in',
         consent_updated_at: new Date().toISOString(),
       } : undefined,
-      sms_marketing_consent: formattedPhone ? {
+      sms_marketing_consent: (formattedPhone && hasConsent) ? {
         state: 'subscribed',
         opt_in_level: 'single_opt_in',
         consent_updated_at: new Date().toISOString(),

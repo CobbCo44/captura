@@ -104,7 +104,7 @@ export default async (req) => {
     <p style="margin:0 0 20px;font-size:16px;color:#52525b;">${customMessage}</p>
     <div style="background:#f9fafb;border:1px solid #e4e4e7;border-radius:10px;padding:16px;margin:0 0 4px;">
       <div style="font-size:13px;color:#71717a;margin-bottom:4px;">Your starting balance</div>
-      <div style="font-size:28px;font-weight:800;color:${accentColor};">${balance} point${balance === 1 ? '' : 's'}</div>
+      <div style="font-size:28px;font-weight:800;color:#D4A017;">${balance} point${balance === 1 ? '' : 's'}</div>
     </div>
     ${rewardsHtml}
     <a href="${scanUrl}" style="display:inline-block;margin-top:20px;padding:14px 32px;background:${accentColor};color:#ffffff;font-weight:700;font-size:16px;text-decoration:none;border-radius:10px;">Visit ${brand.name}</a>`
@@ -115,7 +115,7 @@ export default async (req) => {
     <p style="margin:0 0 20px;font-size:14px;color:#71717a;">Earn 1 point every time you visit and scan our QR code. Collect enough points and redeem them for rewards.</p>
     <div style="background:#f9fafb;border:1px solid #e4e4e7;border-radius:10px;padding:16px;margin:0 0 4px;">
       <div style="font-size:13px;color:#71717a;margin-bottom:4px;">Your starting balance</div>
-      <div style="font-size:28px;font-weight:800;color:${accentColor};">${balance} point${balance === 1 ? '' : 's'}</div>
+      <div style="font-size:28px;font-weight:800;color:#D4A017;">${balance} point${balance === 1 ? '' : 's'}</div>
     </div>
     ${rewardsHtml}
     <a href="${scanUrl}" style="display:inline-block;margin-top:20px;padding:14px 32px;background:${accentColor};color:#ffffff;font-weight:700;font-size:16px;text-decoration:none;border-radius:10px;">Visit ${brand.name}</a>`

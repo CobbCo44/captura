@@ -49,6 +49,11 @@ export default function Loyalty({ brand }) {
   const [flowBreakdown, setFlowBreakdown] = useState({ reward_ready: 0, welcome: 0, winback: 0 })
   const [expandedFlow, setExpandedFlow] = useState(null)
 
+  // Broadcast state
+  const [broadcast, setBroadcast] = useState({ subject: '', message: '' })
+  const [broadcastSending, setBroadcastSending] = useState(false)
+  const [broadcastResult, setBroadcastResult] = useState(null)
+
   useEffect(() => {
     loadRewards()
     loadStats()
@@ -946,6 +951,83 @@ export default function Loyalty({ brand }) {
             <button className="btn btn-primary" onClick={saveAutopilot} disabled={autopilotSaving}
               style={{ fontSize: '0.85rem', padding: '10px 24px' }}>
               {autopilotSaving ? 'Saving...' : autopilotSaved ? 'Saved!' : 'Save Autopilot Settings'}
+            </button>
+          </div>
+
+          {/* Broadcast */}
+          <div className="card" style={{ marginTop: 24 }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: 4 }}>Send a Blast</h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.5 }}>
+              Send a one-time email to all your loyalty members who opted in. Flash sales, special hours, announcements.
+              Uses {'{name}'} and {'{store}'} placeholders.
+            </p>
+
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
+              Subject Line
+            </label>
+            <input
+              className="input"
+              placeholder="e.g. Half off everything for the next 6 hours!"
+              value={broadcast.subject}
+              onChange={e => setBroadcast(prev => ({ ...prev, subject: e.target.value }))}
+              style={{ marginBottom: 12 }}
+            />
+
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
+              Message
+            </label>
+            <textarea
+              className="input"
+              placeholder={`e.g. Hey {name}, we're running a surprise flash sale at {store} today only. Come in before 6 PM and everything is 50% off!`}
+              value={broadcast.message}
+              onChange={e => setBroadcast(prev => ({ ...prev, message: e.target.value }))}
+              rows={4}
+              style={{ resize: 'vertical', marginBottom: 16 }}
+            />
+
+            {broadcastResult && (
+              <div style={{
+                padding: '12px 16px', borderRadius: 10, marginBottom: 16,
+                background: broadcastResult.error ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.08)',
+                border: broadcastResult.error ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(34, 197, 94, 0.2)',
+              }}>
+                {broadcastResult.error ? (
+                  <div style={{ fontSize: '0.85rem', color: 'var(--danger)' }}>{broadcastResult.error}</div>
+                ) : (
+                  <div style={{ fontSize: '0.85rem' }}>
+                    <strong style={{ color: 'var(--success)' }}>{broadcastResult.sent} sent</strong>
+                    {broadcastResult.skipped > 0 && <span style={{ color: 'var(--text-muted)' }}> · {broadcastResult.skipped} skipped (no consent)</span>}
+                    {broadcastResult.error_count > 0 && <span style={{ color: 'var(--danger)' }}> · {broadcastResult.error_count} errors</span>}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              className="btn btn-primary"
+              disabled={broadcastSending || !broadcast.subject.trim() || !broadcast.message.trim()}
+              onClick={async () => {
+                const memberCount = members.length || '?'
+                if (!window.confirm(`This will email up to ${memberCount} loyalty members right now. Continue?`)) return
+                setBroadcastSending(true)
+                setBroadcastResult(null)
+                try {
+                  const res = await fetch('/.netlify/functions/send-broadcast', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ brand_id: brand.id, subject: broadcast.subject, message: broadcast.message }),
+                  })
+                  const data = await res.json()
+                  setBroadcastResult(data)
+                  if (data.sent > 0) setBroadcast({ subject: '', message: '' })
+                } catch (err) {
+                  setBroadcastResult({ error: 'Failed to send. Please try again.' })
+                }
+                setBroadcastSending(false)
+              }}
+              style={{ fontSize: '0.85rem', padding: '10px 24px' }}
+            >
+              {broadcastSending ? 'Sending...' : 'Send to All Members'}
             </button>
           </div>
         </div>

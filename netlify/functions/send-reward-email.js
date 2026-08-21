@@ -22,7 +22,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { createHmac, timingSafeEqual } from 'crypto'
+import { createHmac, timingSafeEqual } from 'node:crypto'
 
 // --- HMAC helpers ---
 function signUnsubParams(cid, bid, secret) {

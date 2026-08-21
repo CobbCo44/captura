@@ -172,7 +172,7 @@ export default function StorefrontScanPage() {
     setLoyaltySubmitting(true)
     try {
       const consentTextForLoyalty = `I agree to receive recurring marketing texts, emails, and calls from ${brand?.name || 'this business'}, including by automated technology, at the contact info I provided. My information was collected by MeetCaptura on behalf of ${brand?.name || 'this business'}. Consent is not a condition of purchase. Msg frequency varies. Msg & data rates may apply. Reply STOP to cancel, HELP for help.`
-      const { data: contactId } = await supabase.rpc('get_or_create_contact', {
+      const { data: contactId, error: contactErr } = await supabase.rpc('get_or_create_contact', {
         p_brand_id: brandId,
         p_first_name: loyaltyForm.firstName,
         p_last_name: loyaltyForm.lastName,
@@ -183,13 +183,22 @@ export default function StorefrontScanPage() {
         p_sms_consent_at: loyaltyForm.marketingConsent ? new Date().toISOString() : null,
         p_sms_consent_text: loyaltyForm.marketingConsent ? consentTextForLoyalty : null,
       })
+      if (contactErr) {
+        console.error('Contact RPC error:', contactErr)
+        setLoyaltyLookupError('Something went wrong. Please try again.')
+        setLoyaltySubmitting(false)
+        return
+      }
       if (contactId) {
-        const { data: result } = await supabase.rpc('award_loyalty_point', {
+        const { data: result, error: awardErr } = await supabase.rpc('award_loyalty_point', {
           p_brand_id: brandId,
           p_contact_id: contactId,
           p_product_id: null,
           p_cooldown_hours: brand?.loyalty_cooldown_hours ?? 12,
         })
+        if (awardErr) {
+          console.error('Award RPC error:', awardErr)
+        }
         if (result) {
           setLoyaltyState(result)
           const crossed = checkThresholdCrossing(result, loyaltyRewards)
@@ -203,6 +212,7 @@ export default function StorefrontScanPage() {
       }
     } catch (err) {
       console.error('Loyalty error:', err)
+      setLoyaltyLookupError('Something went wrong. Please try again.')
     }
     setLoyaltySubmitting(false)
   }

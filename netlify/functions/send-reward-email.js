@@ -197,7 +197,7 @@ export default async (req) => {
       <div style="font-size:20px;font-weight:700;color:#18181b;margin-bottom:4px;">${reward.name}</div>
       <div style="font-size:14px;color:#71717a;">${reward.points_required} points${reward.reward_value ? ` \u00B7 ${reward.reward_value}` : ''}</div>
     </div>
-    <p style="margin:0 0 4px;font-size:14px;color:#71717a;">Your balance: <strong style="color:${accentColor};">${serverBalance} points</strong></p>
+    <p style="margin:0 0 4px;font-size:14px;color:#71717a;">Your balance: <strong style="color:#18181b;">${serverBalance} points</strong></p>
     <a href="${scanUrl}" style="display:inline-block;margin-top:20px;padding:14px 32px;background:${accentColor};color:#ffffff;font-weight:700;font-size:16px;text-decoration:none;border-radius:10px;">Redeem Your Reward</a>
   </td></tr>
   <tr><td style="padding:16px 24px 24px;text-align:center;border-top:1px solid #f4f4f5;">

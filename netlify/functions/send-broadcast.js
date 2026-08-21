@@ -3,6 +3,11 @@
  * POST with { brand_id, subject, message }
  * Same template shell, consent gate, HMAC unsub as all autopilot emails.
  * Logged to autopilot_emails with flow='broadcast'.
+ *
+ * Rate limits (both enforced server-side):
+ *   - Max 4 blasts per brand per rolling 30 days
+ *   - Min 24 hours between blasts
+ * Refusals are logged to autopilot_emails and surfaced with specific messages.
  */
 
 import { getSupabase, sendAutopilotEmail, logAutopilotEmail } from './lib/autopilot-email.js'
@@ -25,7 +30,7 @@ export default async (req) => {
       return new Response(JSON.stringify({ error: 'Missing brand_id, subject, or message' }), { status: 400, headers })
     }
 
-    // Verify the brand exists and is a storefront
+    // Verify the brand exists
     const { data: brand } = await supabase
       .from('brands')
       .select('id, name, logo_url, logo_dark_url, accent_hex, business_type')
@@ -34,18 +39,10 @@ export default async (req) => {
 
     if (!brand) return new Response(JSON.stringify({ error: 'Brand not found' }), { status: 200, headers })
 
-    // Cap: max 4 blasts per brand per month
+    // --- RATE LIMIT CHECKS ---
+    // Get all broadcast sends in the last 30 days (used for both checks)
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-    const { count: blastCount } = await supabase
-      .from('autopilot_emails')
-      .select('*', { count: 'exact', head: true })
-      .eq('brand_id', brand_id)
-      .eq('flow', 'broadcast')
-      .eq('outcome', 'sent')
-      .gte('created_at', thirtyDaysAgo.toISOString())
-
-    // Count unique blasts (grouped by same second = one blast)
     const { data: blastDates } = await supabase
       .from('autopilot_emails')
       .select('created_at')
@@ -55,13 +52,54 @@ export default async (req) => {
       .gte('created_at', thirtyDaysAgo.toISOString())
       .order('created_at', { ascending: false })
 
-    const uniqueBlasts = new Set((blastDates || []).map(d => d.created_at.substring(0, 16))) // group by minute
-    if (uniqueBlasts.size >= 4) {
-      return new Response(JSON.stringify({ error: 'You've reached the limit of 4 blasts per month. Try again next month.' }), { status: 200, headers })
+    // Count unique blasts (multiple sends in the same blast share a minute)
+    const uniqueBlastTimes = [...new Set((blastDates || []).map(d => d.created_at.substring(0, 16)))]
+
+    // Check 1: 24-hour gap
+    if (uniqueBlastTimes.length > 0) {
+      const lastBlastTime = new Date(blastDates[0].created_at)
+      const hoursSince = (Date.now() - lastBlastTime.getTime()) / (1000 * 60 * 60)
+
+      if (hoursSince < 24) {
+        const nextAvailable = new Date(lastBlastTime.getTime() + 24 * 60 * 60 * 1000)
+        const nextTime = nextAvailable.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'America/Los_Angeles' })
+
+        // Log the refusal
+        await supabase.from('error_log').insert({
+          source: 'broadcast_rate_limit',
+          message: `refused_daily_gap: ${Math.round(hoursSince)}h since last blast`,
+          metadata: { brand_id },
+        }).catch(() => {})
+
+        return new Response(JSON.stringify({
+          error: `You sent an announcement in the last 24 hours. Next one available at ${nextTime}.`,
+          refused: 'daily_gap',
+        }), { status: 200, headers })
+      }
     }
 
-    // Get all loyalty members with consent
-    // A loyalty member = a contact who has at least one loyalty_points entry
+    // Check 2: Monthly cap (4 per 30 days)
+    if (uniqueBlastTimes.length >= 4) {
+      // Find when the oldest of the 4 blasts will roll off
+      const oldestBlast = new Date(uniqueBlastTimes[uniqueBlastTimes.length - 1])
+      const resetDate = new Date(oldestBlast.getTime() + 30 * 24 * 60 * 60 * 1000)
+      const resetStr = resetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' })
+
+      // Log the refusal
+      await supabase.from('error_log').insert({
+        source: 'broadcast_rate_limit',
+        message: `refused_monthly_cap: ${uniqueBlastTimes.length} blasts in last 30d`,
+        metadata: { brand_id },
+      }).catch(() => {})
+
+      return new Response(JSON.stringify({
+        error: `You've used all 4 announcements this month. Resets on ${resetStr}.`,
+        refused: 'monthly_cap',
+      }), { status: 200, headers })
+    }
+
+    // --- SEND BLAST ---
+    // Get all loyalty members
     const { data: points } = await supabase
       .from('loyalty_points')
       .select('contact_id')
@@ -90,7 +128,6 @@ export default async (req) => {
     for (const contact of contacts) {
       const firstName = contact.first_name || 'there'
 
-      // Replace placeholders in subject and message
       const filledSubject = subject
         .replace(/\{name\}/gi, firstName)
         .replace(/\{store\}/gi, brand.name)
@@ -105,12 +142,10 @@ export default async (req) => {
       <p style="margin:0 0 20px;font-size:16px;color:#52525b;white-space:pre-line;">${filledMessage}</p>
       <a href="${scanUrl}" style="display:inline-block;margin-top:12px;padding:14px 32px;background:${accentColor};color:#ffffff;font-weight:700;font-size:16px;text-decoration:none;border-radius:10px;">Visit ${brand.name}</a>`
 
-      // sendAutopilotEmail handles consent gate + logging
-      // No dedup for broadcasts — they're intentional one-offs
       const result = await sendAutopilotEmail(supabase, {
         flow: 'broadcast',
         contact,
-        brand: { ...brand, autopilot_broadcast: true }, // always allow (no toggle for broadcast)
+        brand: { ...brand, autopilot_broadcast: true },
         subject: filledSubject,
         bodyHtml,
         dedupCheck: null,

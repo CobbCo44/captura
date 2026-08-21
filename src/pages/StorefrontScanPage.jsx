@@ -848,7 +848,7 @@ export default function StorefrontScanPage() {
       {showLoyalty && !isLabelQR && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 40, display: 'flex', flexDirection: 'column' }}>
           <div onClick={() => setShowLoyalty(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }} />
-          <div style={{
+          <div onClick={e => e.stopPropagation()} style={{
             position: 'relative', marginTop: 'auto', maxHeight: '85vh', overflowY: 'auto',
             background: kit.bg, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
             animation: 'captura-slide-up 0.25s ease-out',

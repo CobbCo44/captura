@@ -509,7 +509,29 @@ export default function StorefrontScanPage() {
       )}
 
       {/* 3. BENTO GRID */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridAutoRows: 84, gap: 9, padding: '14px 14px 16px' }}>
+      {(() => {
+        // Calculate how many grid rows the content will use
+        const hasPromo = !!activePromo
+        const hasVideo = !!videoId
+        const bigRows = (hasPromo ? 2 : 0) + (hasVideo ? 2 : 0)
+
+        // Count utility tiles to figure out how many pair-rows they need
+        let tileCount = 0
+        if (winnerPromo?.winner_name) tileCount++
+        if (loyaltyRewards.length > 0 && !isLabelQR) tileCount++
+        if (menuItems.length > 0 || menuImages.length > 0) tileCount++
+        if (defaultHours.length > 0) tileCount++
+        if (locations.length > 0) tileCount++
+        if (socials.length > 0) tileCount++
+        const utilRows = Math.ceil(tileCount / 2) || 0
+        const totalRows = bigRows + utilRows
+
+        // Available height: viewport minus header(46) + hours bar(~36) + footer(~50) + grid padding(30) + gaps
+        const reservedPx = 46 + (todayHours ? 36 : 0) + 50 + 30 + (totalRows - 1) * 9
+        const rowH = totalRows > 0 ? Math.max(60, Math.floor((844 - reservedPx) / totalRows)) : 84
+
+        return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridAutoRows: rowH, gap: 9, padding: '14px 14px 16px' }}>
 
         {/* a) PROMO TILE */}
         {activePromo && (
@@ -655,19 +677,18 @@ export default function StorefrontScanPage() {
                 <div key={tile.key} style={{
                   gridColumn: `span ${span}`, gridRow: 'span 1',
                   background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
-                  display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 14px',
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px',
                 }}>
-                  <span style={{
-                    background: 'var(--line)', color: 'var(--ink2)',
-                    fontFamily: "'IBM Plex Mono', monospace", fontSize: 8,
-                    letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 500,
-                    padding: '2px 6px', borderRadius: 3, marginBottom: 'auto', marginTop: 12,
-                    alignSelf: 'flex-start',
-                  }}>Last winner</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.2, color: 'var(--ink)', marginBottom: 12 }}>
-                    {tile.label}
-                    <small style={{ display: 'block', fontWeight: 400, fontSize: '9.5px', color: 'var(--ink2)', marginTop: 1 }}>{tile.sub}</small>
-                  </span>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8" style={{ flexShrink: 0 }}>
+                    <path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/>
+                    <path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/>
+                    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/>
+                    <path d="M18 2H6v7a6 6 0 0012 0V2z"/>
+                  </svg>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.85rem', lineHeight: 1.2 }}>{tile.label}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--ink2)', marginTop: 1 }}>{tile.sub}</div>
+                  </div>
                 </div>
               )
             }
@@ -699,40 +720,18 @@ export default function StorefrontScanPage() {
           })
         })()}
       </div>
+        )
+      })()}
 
-      {/* 4. SOCIALS BAR */}
-      {socials.length > 0 && (
-        <div id="captura-socials" style={{
-          display: 'flex', justifyContent: 'center', gap: 16, padding: '8px 14px 12px',
-        }}>
-          {socials.map(s => (
-            <a key={s.key} href={brand[s.key]} target="_blank" rel="noopener noreferrer"
-              style={{ color: 'rgba(255,255,255,0.4)', width: 24, height: 24 }}
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(s.svg) }} />
-          ))}
-        </div>
-      )}
-
-      {/* 5. FOOTER LINKS */}
-      <div style={{ display: 'flex', justifyContent: 'center', gap: 20, padding: '8px 14px 12px', flexWrap: 'wrap' }}>
-        {defaultHours.length > 0 && (
-          <span onClick={() => setShowHours(true)} style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', cursor: 'pointer' }}>Hours</span>
-        )}
-        {(locations.length > 0 || brand?.store_address) && (
-          <span onClick={() => locations.length > 0 ? setShowLocations(true) : window.open(`https://maps.google.com/?q=${encodeURIComponent(brand.store_address)}`, '_blank')}
-            style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', cursor: 'pointer' }}>
-            {locations.length > 1 ? 'Locations' : 'Location'}
-          </span>
-        )}
-        {(locations.length === 1 && locations[0].phone) || (!locations.length && brand?.store_phone) ? (
+      {/* 4. FOOTER */}
+      <div style={{ textAlign: 'center', padding: '8px 14px 20px' }}>
+        {((locations.length === 1 && locations[0].phone) || (!locations.length && brand?.store_phone)) && (
           <a href={`tel:${locations.length === 1 ? locations[0].phone : brand.store_phone}`}
-            style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', textDecoration: 'none' }}>Call Us</a>
-        ) : null}
-      </div>
-
-      {/* 6. POWERED BY */}
-      <div style={{ textAlign: 'center', padding: '4px 0 20px', fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)' }}>
-        Powered by MeetCaptura
+            style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', textDecoration: 'none', display: 'block', marginBottom: 8 }}>Call Us</a>
+        )}
+        <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)' }}>
+          Powered by MeetCaptura
+        </div>
       </div>
 
       {/* ===== MODALS ===== */}

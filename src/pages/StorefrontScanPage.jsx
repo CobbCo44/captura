@@ -390,6 +390,19 @@ export default function StorefrontScanPage() {
   const accentBg = brand?.accent_hex || '#FFFFFF'
   const accentInk = brand?.accent_ink_hex || '#000000'
   const kit = getKit(brand?.kit, brand)
+
+  // Detect if kit bg is light so modals use dark text
+  const isLightBg = (() => {
+    const hex = (kit.bg || '#0A0A0A').replace('#', '')
+    const r = parseInt(hex.substring(0, 2), 16)
+    const g = parseInt(hex.substring(2, 4), 16)
+    const b = parseInt(hex.substring(4, 6), 16)
+    return (r * 299 + g * 587 + b * 114) / 1000 > 128
+  })()
+  const modalInk = isLightBg ? '#1a1a1a' : '#ffffff'
+  const modalMuted = isLightBg ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)'
+  const modalLine = isLightBg ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.06)'
+  const modalHandle = isLightBg ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.2)'
   const headerFont = brand?.store_header_font || 'Inter'
   const storeHeaderLogo = brand?.store_header_logo
   const useLogoHeader = brand?.store_header_type === 'logo' && storeHeaderLogo
@@ -742,10 +755,10 @@ export default function StorefrontScanPage() {
           <div onClick={() => setShowHours(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }} />
           <div style={{
             position: 'relative', marginTop: 'auto', maxHeight: '85vh', overflowY: 'auto',
-            background: kit.bg, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
+            background: kit.bg, color: modalInk, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
             animation: 'captura-slide-up 0.25s ease-out',
           }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '0 auto 16px' }} />
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: modalHandle, margin: '0 auto 16px' }} />
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 16px', textAlign: 'center' }}>Hours</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {dayNames.map((day, i) => {
@@ -754,18 +767,18 @@ export default function StorefrontScanPage() {
                 return (
                   <div key={i} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.06)',
+                    padding: '8px 0', borderBottom: `1px solid ${modalLine}`,
                     fontWeight: isToday ? 700 : 400,
                   }}>
-                    <span style={{ fontSize: '0.9rem', color: isToday ? '#fff' : 'rgba(255,255,255,0.6)' }}>{day}</span>
+                    <span style={{ fontSize: '0.9rem', color: isToday ? modalInk : modalMuted }}>{day}</span>
                     {h?.closed ? (
                       <span style={{ fontSize: '0.85rem', color: '#ef4444' }}>Closed</span>
                     ) : h?.open_time && h?.close_time ? (
-                      <span style={{ fontSize: '0.85rem', color: isToday ? '#fff' : 'rgba(255,255,255,0.6)' }}>
+                      <span style={{ fontSize: '0.85rem', color: isToday ? modalInk : modalMuted }}>
                         {formatTime(h.open_time)} - {formatTime(h.close_time)}
                       </span>
                     ) : (
-                      <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.3)' }}>--</span>
+                      <span style={{ fontSize: '0.85rem', color: modalMuted }}>--</span>
                     )}
                   </div>
                 )
@@ -789,10 +802,10 @@ export default function StorefrontScanPage() {
           <div onClick={() => setShowLocations(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }} />
           <div style={{
             position: 'relative', marginTop: 'auto', maxHeight: '85vh', overflowY: 'auto',
-            background: kit.bg, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
+            background: kit.bg, color: modalInk, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
             animation: 'captura-slide-up 0.25s ease-out',
           }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '0 auto 16px' }} />
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: modalHandle, margin: '0 auto 16px' }} />
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 16px', textAlign: 'center' }}>Locations</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {locations.map(loc => {
@@ -801,17 +814,18 @@ export default function StorefrontScanPage() {
                 return (
                 <div key={loc.id} style={{
                   padding: '14px 16px', borderRadius: 12,
-                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)',
+                  background: isLightBg ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${modalLine}`,
                 }}>
                   <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 6 }}>{loc.name}</div>
                   {loc.address && (
-                    <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>{loc.address}</div>
+                    <div style={{ fontSize: '0.85rem', color: modalMuted, marginBottom: 4 }}>{loc.address}</div>
                   )}
                   {loc.phone && (
-                    <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>{loc.phone}</div>
+                    <div style={{ fontSize: '0.85rem', color: modalMuted, marginBottom: 4 }}>{loc.phone}</div>
                   )}
                   {locToday && (
-                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>
+                    <div style={{ fontSize: '0.8rem', color: modalMuted, marginBottom: 8 }}>
                       Today: {locToday.closed ? (
                         <span style={{ color: '#ef4444' }}>Closed</span>
                       ) : locToday.open_time && locToday.close_time ? (
@@ -847,22 +861,23 @@ export default function StorefrontScanPage() {
           <div onClick={() => setShowFollow(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }} />
           <div style={{
             position: 'relative', marginTop: 'auto', maxHeight: '85vh', overflowY: 'auto',
-            background: kit.bg, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
+            background: kit.bg, color: modalInk, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
             animation: 'captura-slide-up 0.25s ease-out',
           }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '0 auto 16px' }} />
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: modalHandle, margin: '0 auto 16px' }} />
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 20px', textAlign: 'center' }}>Follow Us</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {socials.map(s => (
                 <a key={s.key} href={brand[s.key]} target="_blank" rel="noopener noreferrer" style={{
                   display: 'flex', alignItems: 'center', gap: 14, padding: '14px 16px', borderRadius: 12,
-                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)',
-                  textDecoration: 'none', color: '#fff',
+                  background: isLightBg ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${modalLine}`,
+                  textDecoration: 'none', color: modalInk,
                 }}>
-                  <span style={{ width: 28, height: 28, color: 'rgba(255,255,255,0.5)', flexShrink: 0 }}
+                  <span style={{ width: 28, height: 28, color: modalMuted, flexShrink: 0 }}
                     dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(s.svg) }} />
                   <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{s.label}</span>
-                  <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)' }}>↗</span>
+                  <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: modalMuted }}>↗</span>
                 </a>
               ))}
             </div>
@@ -876,10 +891,10 @@ export default function StorefrontScanPage() {
           <div onClick={() => setShowMenu(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }} />
           <div style={{
             position: 'relative', marginTop: 'auto', maxHeight: '85vh', overflowY: 'auto',
-            background: kit.bg, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
+            background: kit.bg, color: modalInk, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
             animation: 'captura-slide-up 0.25s ease-out',
           }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '0 auto 16px' }} />
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: modalHandle, margin: '0 auto 16px' }} />
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 16px', textAlign: 'center' }}>
               Menu / Services
             </h3>
@@ -891,7 +906,7 @@ export default function StorefrontScanPage() {
                   <div key={mi.id}>
                     {menuImages.length > 1 && (
                       <div style={{
-                        fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)',
+                        fontSize: '0.8rem', fontWeight: 600, color: modalMuted,
                         marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px',
                       }}>{mi.label}</div>
                     )}
@@ -899,7 +914,8 @@ export default function StorefrontScanPage() {
                       <a href={mi.url} target="_blank" rel="noopener noreferrer"
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                          padding: '14px', borderRadius: 12, background: 'rgba(255,255,255,0.08)',
+                          padding: '14px', borderRadius: 12,
+                          background: isLightBg ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)',
                           color: accentBg, textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem',
                         }}>
                         📄 {menuImages.length > 1 ? mi.label : 'View Full Menu'} (PDF)
@@ -920,15 +936,15 @@ export default function StorefrontScanPage() {
                 <button onClick={() => setMenuCategory('all')} style={{
                   padding: '6px 14px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600,
                   border: 'none', cursor: 'pointer', flexShrink: 0,
-                  background: menuCategory === 'all' ? accentBg : 'rgba(255,255,255,0.08)',
-                  color: menuCategory === 'all' ? accentInk : '#fff',
+                  background: menuCategory === 'all' ? accentBg : (isLightBg ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)'),
+                  color: menuCategory === 'all' ? accentInk : modalInk,
                 }}>All</button>
                 {menuCategories.map(cat => (
                   <button key={cat} onClick={() => setMenuCategory(cat)} style={{
                     padding: '6px 14px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 600,
                     border: 'none', cursor: 'pointer', flexShrink: 0,
-                    background: menuCategory === cat ? accentBg : 'rgba(255,255,255,0.08)',
-                    color: menuCategory === cat ? accentInk : '#fff',
+                    background: menuCategory === cat ? accentBg : (isLightBg ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)'),
+                    color: menuCategory === cat ? accentInk : modalInk,
                   }}>{cat}</button>
                 ))}
               </div>
@@ -937,13 +953,13 @@ export default function StorefrontScanPage() {
             {/* Items */}
             {(menuCategory === 'all' ? menuCategories : [menuCategory]).map(cat => (
               <div key={cat} style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(255,255,255,0.4)', marginBottom: 10 }}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: modalMuted, marginBottom: 10 }}>
                   {cat}
                 </div>
                 {menuItems.filter(i => i.category === cat).map(item => (
                   <div key={item.id} style={{
                     display: 'flex', gap: 12, padding: '12px 0',
-                    borderBottom: '1px solid rgba(255,255,255,0.06)',
+                    borderBottom: `1px solid ${modalLine}`,
                   }}>
                     {item.image_url && (
                       <img src={item.image_url} alt="" style={{
@@ -960,7 +976,7 @@ export default function StorefrontScanPage() {
                         )}
                       </div>
                       {item.description && (
-                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)', marginTop: 2, lineHeight: 1.4 }}>
+                        <div style={{ fontSize: '0.8rem', color: modalMuted, marginTop: 2, lineHeight: 1.4 }}>
                           {item.description}
                         </div>
                       )}
@@ -979,16 +995,16 @@ export default function StorefrontScanPage() {
           <div onClick={() => setShowLoyalty(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }} />
           <div onClick={e => e.stopPropagation()} style={{
             position: 'relative', marginTop: 'auto', maxHeight: '85vh', overflowY: 'auto',
-            background: kit.bg, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
+            background: kit.bg, color: modalInk, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
             animation: 'captura-slide-up 0.25s ease-out',
           }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '0 auto 20px' }} />
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: modalHandle, margin: '0 auto 20px' }} />
 
             {/* Not identified */}
             {!loyaltyState && !loyaltyLookupMode && (
               <form onSubmit={handleLoyaltySubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, textAlign: 'center' }}>Earn Loyalty Points</h3>
-                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem', textAlign: 'center', margin: 0 }}>
+                <p style={{ color: modalMuted, fontSize: '0.85rem', textAlign: 'center', margin: 0 }}>
                   Sign up to start earning points with every visit
                 </p>
                 {loyaltyLookupError && (
@@ -998,17 +1014,17 @@ export default function StorefrontScanPage() {
                 )}
                 <input className="input" placeholder="First Name" value={loyaltyForm.firstName}
                   onChange={e => setLoyaltyForm({ ...loyaltyForm, firstName: e.target.value })} required
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: '0.9rem' }} />
+                  style={{ background: isLightBg ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)', border: `1px solid ${modalLine}`, borderRadius: 10, padding: '12px 14px', color: modalInk, fontSize: '0.9rem' }} />
                 <input className="input" placeholder="Last Name" value={loyaltyForm.lastName}
                   onChange={e => setLoyaltyForm({ ...loyaltyForm, lastName: e.target.value })} required
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: '0.9rem' }} />
+                  style={{ background: isLightBg ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)', border: `1px solid ${modalLine}`, borderRadius: 10, padding: '12px 14px', color: modalInk, fontSize: '0.9rem' }} />
                 <input className="input" type="email" placeholder="Email" value={loyaltyForm.email}
                   onChange={e => setLoyaltyForm({ ...loyaltyForm, email: e.target.value })} required
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: '0.9rem' }} />
+                  style={{ background: isLightBg ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)', border: `1px solid ${modalLine}`, borderRadius: 10, padding: '12px 14px', color: modalInk, fontSize: '0.9rem' }} />
                 <input className="input" type="tel" placeholder="Phone (optional)" value={loyaltyForm.phone}
                   onChange={e => setLoyaltyForm({ ...loyaltyForm, phone: e.target.value })}
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: '0.9rem' }} />
-                <label style={{ display: 'flex', gap: 10, fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.4, cursor: 'pointer' }}>
+                  style={{ background: isLightBg ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)', border: `1px solid ${modalLine}`, borderRadius: 10, padding: '12px 14px', color: modalInk, fontSize: '0.9rem' }} />
+                <label style={{ display: 'flex', gap: 10, fontSize: '0.75rem', color: modalMuted, lineHeight: 1.4, cursor: 'pointer' }}>
                   <input type="checkbox" checked={loyaltyForm.marketingConsent} onChange={e => setLoyaltyForm({ ...loyaltyForm, marketingConsent: e.target.checked })} style={{ marginTop: 3, accentColor: accentBg }} />
                   I agree to receive recurring marketing texts, emails, and calls from {brand?.name || 'this business'}, including by automated technology, at the contact info I provided. My information was collected by MeetCaptura on behalf of {brand?.name || 'this business'}. Consent is not a condition of purchase. Msg frequency varies. Msg & data rates may apply. Reply STOP to cancel, HELP for help.
                 </label>
@@ -1032,9 +1048,9 @@ export default function StorefrontScanPage() {
             {!loyaltyState && loyaltyLookupMode && (
               <form onSubmit={handleLoyaltyLookup} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, textAlign: 'center' }}>Welcome Back</h3>
-                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem', textAlign: 'center', margin: 0 }}>Enter the email you signed up with to find your points</p>
+                <p style={{ color: modalMuted, fontSize: '0.85rem', textAlign: 'center', margin: 0 }}>Enter the email you signed up with to find your points</p>
                 <input className="input" type="email" placeholder="Email" value={loyaltyLookupEmail} onChange={e => setLoyaltyLookupEmail(e.target.value)} required autoFocus
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: '0.9rem' }} />
+                  style={{ background: isLightBg ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)', border: `1px solid ${modalLine}`, borderRadius: 10, padding: '12px 14px', color: modalInk, fontSize: '0.9rem' }} />
                 <button type="submit" disabled={loyaltySubmitting} style={{
                   width: '100%', padding: 14, ...btnStyle, border: 'none', borderRadius: 12,
                   fontWeight: 700, cursor: loyaltySubmitting ? 'wait' : 'pointer', fontSize: 14,
@@ -1071,26 +1087,27 @@ export default function StorefrontScanPage() {
                       {redemptionProof.rewardName}
                     </p>
                     {redemptionProof.rewardValue && (
-                      <p style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.7)', margin: '0 0 12px' }}>
+                      <p style={{ fontSize: '1rem', color: modalMuted, margin: '0 0 12px' }}>
                         {redemptionProof.rewardValue}
                       </p>
                     )}
                     <div style={{
                       margin: '12px auto', padding: '10px 20px', borderRadius: 10,
-                      background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+                      background: isLightBg ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)',
+                      border: `1px solid ${modalLine}`,
                       display: 'inline-block',
                     }}>
-                      <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
+                      <div style={{ fontSize: '0.7rem', color: modalMuted, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>
                         {redemptionProof.storeName}
                       </div>
-                      <div style={{ fontSize: '1.6rem', fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace", color: '#fff' }}>
+                      <div style={{ fontSize: '1.6rem', fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace", color: modalInk }}>
                         {proofClock ? proofClock.toLocaleTimeString() : ''}
                       </div>
-                      <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)' }}>
+                      <div style={{ fontSize: '0.8rem', color: modalMuted }}>
                         {redemptionProof.redeemedAt.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                       </div>
                     </div>
-                    <p style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', margin: '16px 0 4px' }}>
+                    <p style={{ fontSize: '0.85rem', color: modalMuted, margin: '16px 0 4px' }}>
                       You have <strong style={{ color: accentBg }}>{redemptionProof.remainingBalance}</strong> {redemptionProof.remainingBalance === 1 ? 'point' : 'points'} toward your next reward.
                     </p>
                     <button onClick={() => {
@@ -1100,8 +1117,10 @@ export default function StorefrontScanPage() {
                       setShowLoyalty(false)
                       clearTimeout(proofTimerRef.current)
                     }} style={{
-                      marginTop: 16, padding: '14px 32px', background: 'rgba(255,255,255,0.08)', color: '#fff',
-                      border: '1px solid rgba(255,255,255,0.15)', borderRadius: 12, fontWeight: 600,
+                      marginTop: 16, padding: '14px 32px',
+                      background: isLightBg ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.08)',
+                      color: modalInk,
+                      border: `1px solid ${modalLine}`, borderRadius: 12, fontWeight: 600,
                       cursor: 'pointer', fontSize: '0.85rem',
                     }}>Dismiss</button>
                   </div>
@@ -1116,7 +1135,7 @@ export default function StorefrontScanPage() {
                         <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#4ade80', marginBottom: 4 }}>
                           {loyaltyState.awarded ? `You just earned ${thresholdCelebration.name}!` : `You have a reward ready to redeem`}
                         </div>
-                        <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.5)', marginBottom: 10 }}>
+                        <div style={{ fontSize: '0.8rem', color: modalMuted, marginBottom: 10 }}>
                           {thresholdCelebration.points_required} points
                         </div>
                         <button onClick={() => handleLoyaltyRedeem(thresholdCelebration)} style={{
@@ -1130,7 +1149,7 @@ export default function StorefrontScanPage() {
                     {!thresholdCelebration && loyaltyRewards.some(r => (loyaltyState.balance || 0) >= r.points_required) && (
                       <div style={{
                         textAlign: 'center', padding: '12px 16px', borderRadius: 10,
-                        background: 'rgba(255,255,255,0.04)', border: `1px solid ${accentBg}40`,
+                        background: isLightBg ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)', border: `1px solid ${accentBg}40`,
                       }}>
                         <span style={{ color: accentBg, fontWeight: 600, fontSize: '0.85rem' }}>You have a reward ready to redeem</span>
                       </div>
@@ -1141,7 +1160,7 @@ export default function StorefrontScanPage() {
                       <div style={{ fontSize: '3rem', fontWeight: 800, color: accentBg, lineHeight: 1 }}>
                         {loyaltyState.balance || 0}
                       </div>
-                      <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>Points</div>
+                      <div style={{ fontSize: '0.85rem', color: modalMuted, marginTop: 4 }}>Points</div>
                       {loyaltyState.awarded && !thresholdCelebration && (
                         <div style={{
                           marginTop: 8, display: 'inline-block', padding: '4px 12px', borderRadius: 20,
@@ -1168,7 +1187,7 @@ export default function StorefrontScanPage() {
                     {/* Rewards */}
                     {loyaltyRewards.length > 0 && (
                       <div>
-                        <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>
+                        <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: modalMuted, marginBottom: 8 }}>
                           Available Rewards
                         </div>
                         {loyaltyRewards.map(reward => {
@@ -1177,20 +1196,20 @@ export default function StorefrontScanPage() {
                             <div key={reward.id} style={{
                               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                               padding: '12px 14px', borderRadius: 10, marginBottom: 8,
-                              background: canRedeem ? 'rgba(34, 197, 94, 0.06)' : 'rgba(255,255,255,0.04)',
-                              border: canRedeem ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(255,255,255,0.06)',
+                              background: canRedeem ? 'rgba(34, 197, 94, 0.06)' : (isLightBg ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.04)'),
+                              border: canRedeem ? '1px solid rgba(34, 197, 94, 0.2)' : `1px solid ${modalLine}`,
                             }}>
                               <div>
                                 <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{reward.name}</div>
-                                <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>
+                                <div style={{ fontSize: '0.75rem', color: modalMuted }}>
                                   {canRedeem ? 'Ready to redeem' : `${reward.points_required - (loyaltyState.balance || 0)} more points needed`}
                                 </div>
                               </div>
                               <button onClick={() => handleLoyaltyRedeem(reward)} disabled={!canRedeem} style={{
                                 padding: '8px 16px', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: '0.8rem',
                                 cursor: canRedeem ? 'pointer' : 'not-allowed',
-                                background: canRedeem ? accentBg : 'rgba(255,255,255,0.06)',
-                                color: canRedeem ? accentInk : 'rgba(255,255,255,0.3)',
+                                background: canRedeem ? accentBg : (isLightBg ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'),
+                                color: canRedeem ? accentInk : modalMuted,
                               }}>Redeem</button>
                             </div>
                           )
@@ -1211,16 +1230,16 @@ export default function StorefrontScanPage() {
           <div onClick={() => setShowPromo(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }} />
           <div style={{
             position: 'relative', marginTop: 'auto', maxHeight: '85vh', overflowY: 'auto',
-            background: kit.bg, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
+            background: kit.bg, color: modalInk, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
             animation: 'captura-slide-up 0.25s ease-out',
           }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '0 auto 20px' }} />
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: modalHandle, margin: '0 auto 20px' }} />
 
             {promoSubmitted ? (
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
                 <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>🎉</div>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 4px' }}>You're entered!</h3>
-                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem' }}>Good luck!</p>
+                <p style={{ color: modalMuted, fontSize: '0.85rem' }}>Good luck!</p>
                 <button onClick={() => setShowPromo(false)} style={{
                   marginTop: 16, padding: '14px 32px', ...btnStyle, border: 'none',
                   borderRadius: 12, fontWeight: 700, cursor: 'pointer', fontSize: 14,
@@ -1230,7 +1249,7 @@ export default function StorefrontScanPage() {
               <form onSubmit={handlePromoSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, textAlign: 'center' }}>{activePromo.title}</h3>
                 {activePromo.description && (
-                  <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.85rem', textAlign: 'center', margin: 0 }}>{activePromo.description}</p>
+                  <p style={{ color: modalMuted, fontSize: '0.85rem', textAlign: 'center', margin: 0 }}>{activePromo.description}</p>
                 )}
                 {[
                   { key: 'firstName', placeholder: 'First Name', required: true },
@@ -1241,14 +1260,14 @@ export default function StorefrontScanPage() {
                   <input key={f.key} className="input" type={f.type || 'text'} placeholder={f.placeholder}
                     value={promoForm[f.key]} onChange={e => setPromoForm({ ...promoForm, [f.key]: e.target.value })}
                     required={f.required}
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: '#fff', fontSize: '0.9rem' }} />
+                    style={{ background: isLightBg ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)', border: `1px solid ${modalLine}`, borderRadius: 10, padding: '12px 14px', color: modalInk, fontSize: '0.9rem' }} />
                 ))}
                 {/* TCPA Consent */}
-                <label style={{ display: 'flex', gap: 10, fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', gap: 10, fontSize: '0.75rem', color: modalMuted, cursor: 'pointer' }}>
                   <input type="checkbox" checked={promoForm.ageConsent} onChange={e => setPromoForm({ ...promoForm, ageConsent: e.target.checked })} required />
                   I am 18 or older and agree to the giveaway rules.
                 </label>
-                <label style={{ display: 'flex', gap: 10, fontSize: '0.75rem', color: 'rgba(255,255,255,0.5)', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', gap: 10, fontSize: '0.75rem', color: modalMuted, cursor: 'pointer' }}>
                   <input type="checkbox" checked={promoForm.marketingConsent} onChange={e => setPromoForm({ ...promoForm, marketingConsent: e.target.checked })} />
                   I'd like to receive marketing communications from {brand?.name || 'this business'}.
                 </label>

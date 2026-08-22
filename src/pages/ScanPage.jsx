@@ -1209,7 +1209,7 @@ export default function ScanPage({ previewData } = {}) {
     <div style={{
       minHeight: '100vh', maxWidth: 480, margin: '0 auto', background: 'var(--surface)', color: 'var(--ink)',
       fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14, lineHeight: 1.5,
-      ...(brand?.kit_bg_image ? { backgroundImage: `url(${brand.kit_bg_image})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' } : {}),
+      ...(brand?.kit_bg_image ? { backgroundImage: `url(${brand.kit_bg_image})`, backgroundSize: '100% auto', backgroundPosition: 'top center', backgroundRepeat: 'no-repeat' } : {}),
       ...t,
     }}>
       <style>{`@keyframes captura-pulse{0%,100%{opacity:1}50%{opacity:.25}}@keyframes captura-slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes loyaltyPulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 12px rgba(34,197,94,0.25)}}@keyframes loyaltyDot{0%,100%{opacity:1}50%{opacity:.4}}@keyframes proofPulse{0%,100%{opacity:1}50%{opacity:.85}}`}</style>

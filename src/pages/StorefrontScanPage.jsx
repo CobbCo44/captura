@@ -592,6 +592,57 @@ export default function StorefrontScanPage() {
             })
           }
 
+          // Hours tile
+          if (defaultHours.length > 0) {
+            const th = defaultHours.find(h => h.day_of_week === today)
+            tiles.push({
+              key: 'hours',
+              label: th?.closed ? 'Closed Today' : 'Hours',
+              sub: th && !th.closed && th.open_time && th.close_time
+                ? `${formatTime(th.open_time)} - ${formatTime(th.close_time)}`
+                : 'View hours',
+              icon: (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+                  <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                </svg>
+              ),
+              action: () => setShowHours(true),
+            })
+          }
+
+          // Locations tile
+          if (locations.length > 0) {
+            tiles.push({
+              key: 'locations',
+              label: locations.length === 1 ? locations[0].name : `${locations.length} Locations`,
+              sub: locations.length === 1 ? (locations[0].address ? 'Get directions' : 'View details') : 'View all',
+              icon: (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+                </svg>
+              ),
+              action: () => setShowLocations(true),
+            })
+          }
+
+          // Follow tile (if socials exist)
+          if (socials.length > 0) {
+            tiles.push({
+              key: 'follow',
+              label: 'Follow Us',
+              sub: socials.map(s => s.label).slice(0, 3).join(', '),
+              icon: (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+                  <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+                </svg>
+              ),
+              action: () => {
+                const el = document.getElementById('captura-socials')
+                if (el) el.scrollIntoView({ behavior: 'smooth' })
+              },
+            })
+          }
+
           const span = tiles.length === 1 ? 4 : 2
 
           return tiles.map(tile => {
@@ -647,7 +698,7 @@ export default function StorefrontScanPage() {
 
       {/* 4. SOCIALS BAR */}
       {socials.length > 0 && (
-        <div style={{
+        <div id="captura-socials" style={{
           display: 'flex', justifyContent: 'center', gap: 16, padding: '8px 14px 12px',
         }}>
           {socials.map(s => (

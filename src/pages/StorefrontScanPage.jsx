@@ -9,6 +9,7 @@ export default function StorefrontScanPage() {
   const isLabelQR = searchParams.get('label') === '1'
   const [brand, setBrand] = useState(null)
   const [menuItems, setMenuItems] = useState([])
+  const [menuImages, setMenuImages] = useState([])
   const [hours, setHours] = useState([])
   const [promos, setPromos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -109,12 +110,13 @@ export default function StorefrontScanPage() {
     setBrand(brandData)
 
     // Load menu, hours, promos, loyalty rewards in parallel
-    const [menuRes, hoursRes, promosRes, rewardsRes, locationsRes] = await Promise.all([
+    const [menuRes, hoursRes, promosRes, rewardsRes, locationsRes, menuImagesRes] = await Promise.all([
       supabase.from('menu_items').select('*').eq('brand_id', brandId).eq('active', true).order('category').order('sort_order').order('name'),
       supabase.from('store_hours').select('*').eq('brand_id', brandId).order('day_of_week'),
       supabase.from('promos').select('*').eq('brand_id', brandId).or('active.eq.true,winner_announced_at.not.is.null').order('active', { ascending: false }).order('winner_announced_at', { ascending: false, nullsFirst: false }),
       supabase.from('loyalty_rewards').select('*').eq('brand_id', brandId).eq('active', true).order('points_required'),
       supabase.from('store_locations').select('*').eq('brand_id', brandId).order('sort_order').order('name'),
+      supabase.from('menu_images').select('*').eq('brand_id', brandId).order('sort_order').order('created_at'),
     ])
 
     setMenuItems(menuRes.data || [])
@@ -122,6 +124,7 @@ export default function StorefrontScanPage() {
     setPromos(promosRes.data || [])
     setLoyaltyRewards(rewardsRes.data || [])
     setLocations(locationsRes.data || [])
+    setMenuImages(menuImagesRes.data || [])
 
     // Check for returning loyalty member (skip for label QR codes)
     const savedEmail = localStorage.getItem(`loyalty_email_${brandId}`)
@@ -568,7 +571,7 @@ export default function StorefrontScanPage() {
           }
 
           // Menu tile
-          if (menuItems.length > 0 || brand.menu_image_url) {
+          if (menuItems.length > 0 || menuImages.length > 0) {
             tiles.push({
               key: 'menu',
               label: 'Menu',
@@ -778,23 +781,33 @@ export default function StorefrontScanPage() {
               Menu / Services
             </h3>
 
-            {/* Uploaded menu image */}
-            {brand.menu_image_url && (
-              <div style={{ marginBottom: 16 }}>
-                {brand.menu_image_url.endsWith('.pdf') ? (
-                  <a href={brand.menu_image_url} target="_blank" rel="noopener noreferrer"
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      padding: '14px', borderRadius: 12, background: 'rgba(255,255,255,0.08)',
-                      color: accentBg, textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem',
-                    }}>
-                    📄 View Full Menu (PDF)
-                  </a>
-                ) : (
-                  <img src={brand.menu_image_url} alt="Menu" style={{
-                    width: '100%', borderRadius: 12, objectFit: 'contain',
-                  }} />
-                )}
+            {/* Uploaded menu images */}
+            {menuImages.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+                {menuImages.map(mi => (
+                  <div key={mi.id}>
+                    {menuImages.length > 1 && (
+                      <div style={{
+                        fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)',
+                        marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.5px',
+                      }}>{mi.label}</div>
+                    )}
+                    {mi.url.endsWith('.pdf') ? (
+                      <a href={mi.url} target="_blank" rel="noopener noreferrer"
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                          padding: '14px', borderRadius: 12, background: 'rgba(255,255,255,0.08)',
+                          color: accentBg, textDecoration: 'none', fontWeight: 600, fontSize: '0.9rem',
+                        }}>
+                        📄 {menuImages.length > 1 ? mi.label : 'View Full Menu'} (PDF)
+                      </a>
+                    ) : (
+                      <img src={mi.url} alt={mi.label} style={{
+                        width: '100%', borderRadius: 12, objectFit: 'contain',
+                      }} />
+                    )}
+                  </div>
+                ))}
               </div>
             )}
 

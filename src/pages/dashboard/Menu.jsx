@@ -34,11 +34,13 @@ export default function Menu({ brand }) {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
 
-  // Menu image/PDF upload
-  const [menuImageUrl, setMenuImageUrl] = useState(null)
+  // Menu images (multiple)
+  const [menuImages, setMenuImages] = useState([])
   const [uploadingMenuImage, setUploadingMenuImage] = useState(false)
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef(null)
+  const [editingLabel, setEditingLabel] = useState(null)
+  const [labelValue, setLabelValue] = useState('')
 
   // CSV import
   const [csvPreview, setCsvPreview] = useState(null)
@@ -92,7 +94,18 @@ export default function Menu({ brand }) {
       store_phone: brand.store_phone || '',
       store_video_url: brand.store_video_url || '',
     })
-    setMenuImageUrl(brand.menu_image_url || null)
+    await loadMenuImages()
+  }
+
+  async function loadMenuImages() {
+    if (!supabase || !brand?.id || brand.id === 'demo') return
+    const { data } = await supabase
+      .from('menu_images')
+      .select('*')
+      .eq('brand_id', brand.id)
+      .order('sort_order')
+      .order('created_at')
+    setMenuImages(data || [])
   }
 
   async function loadHours() {
@@ -126,7 +139,7 @@ export default function Menu({ brand }) {
     setLocations(data || [])
   }
 
-  // --- Menu image/PDF upload ---
+  // --- Menu image/PDF upload (multiple) ---
   async function handleMenuImageUpload(file) {
     if (!supabase || !brand?.id || brand.id === 'demo') return
     const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf']
@@ -136,7 +149,7 @@ export default function Menu({ brand }) {
     }
     setUploadingMenuImage(true)
     const ext = file.name.split('.').pop()
-    const fileName = `${brand.id}/menu-image-${Date.now()}.${ext}`
+    const fileName = `${brand.id}/menu-image-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`
     const { error } = await supabase.storage.from('product-images').upload(fileName, file)
     if (error) {
       alert('Upload failed: ' + error.message)
@@ -145,22 +158,55 @@ export default function Menu({ brand }) {
     }
     const { data: urlData } = supabase.storage.from('product-images').getPublicUrl(fileName)
     const url = urlData.publicUrl
-    await supabase.from('brands').update({ menu_image_url: url }).eq('id', brand.id)
-    setMenuImageUrl(url)
+    const nextSort = menuImages.length
+    const label = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Menu'
+    await supabase.from('menu_images').insert({
+      brand_id: brand.id, url, label, sort_order: nextSort,
+    })
+    await loadMenuImages()
     setUploadingMenuImage(false)
   }
 
-  async function removeMenuImage() {
+  async function handleMultipleFiles(files) {
+    for (const file of files) {
+      await handleMenuImageUpload(file)
+    }
+  }
+
+  async function removeMenuImage(id) {
     if (!supabase || !brand?.id) return
-    await supabase.from('brands').update({ menu_image_url: null }).eq('id', brand.id)
-    setMenuImageUrl(null)
+    await supabase.from('menu_images').delete().eq('id', id)
+    setMenuImages(menuImages.filter(m => m.id !== id))
+  }
+
+  async function updateMenuLabel(id, label) {
+    if (!supabase) return
+    await supabase.from('menu_images').update({ label }).eq('id', id)
+    setMenuImages(menuImages.map(m => m.id === id ? { ...m, label } : m))
+    setEditingLabel(null)
+  }
+
+  async function moveMenu(id, direction) {
+    const idx = menuImages.findIndex(m => m.id === id)
+    const swapIdx = idx + direction
+    if (swapIdx < 0 || swapIdx >= menuImages.length) return
+    const updated = [...menuImages]
+    ;[updated[idx], updated[swapIdx]] = [updated[swapIdx], updated[idx]]
+    setMenuImages(updated)
+    await Promise.all(updated.map((m, i) =>
+      supabase.from('menu_images').update({ sort_order: i }).eq('id', m.id)
+    ))
   }
 
   const handleDrop = (e) => {
     e.preventDefault()
     setDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (file) handleMenuImageUpload(file)
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length === 1) {
+      handleMenuImageUpload(files[0])
+    } else if (files.length > 1) {
+      handleMultipleFiles(files)
+    }
   }
 
   // --- CSV import ---
@@ -422,7 +468,77 @@ export default function Menu({ brand }) {
       {tab === 'items' && <>
         {/* Menu Image Upload + CSV Import */}
         <div className="card" style={{ marginBottom: 24 }}>
-          {/* Drag-and-drop zone */}
+          {/* Uploaded menu images */}
+          {menuImages.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 12 }}>
+              {menuImages.map((mi, idx) => (
+                <div key={mi.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: 12, borderRadius: 10,
+                  background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)',
+                }}>
+                  {/* Thumbnail / icon */}
+                  {mi.url.endsWith('.pdf') ? (
+                    <div style={{
+                      width: 56, height: 56, borderRadius: 8, background: 'rgba(255,255,255,0.06)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', flexShrink: 0,
+                    }}>📄</div>
+                  ) : (
+                    <img src={mi.url} alt={mi.label} style={{
+                      width: 56, height: 56, borderRadius: 8, objectFit: 'cover', flexShrink: 0,
+                    }} />
+                  )}
+
+                  {/* Label (editable) */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {editingLabel === mi.id ? (
+                      <form onSubmit={e => { e.preventDefault(); updateMenuLabel(mi.id, labelValue) }}
+                        style={{ display: 'flex', gap: 6 }}>
+                        <input className="input" value={labelValue}
+                          onChange={e => setLabelValue(e.target.value)}
+                          autoFocus style={{ fontSize: '0.85rem', padding: '4px 8px' }} />
+                        <button type="submit" className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '4px 10px' }}>Save</button>
+                        <button type="button" onClick={() => setEditingLabel(null)} style={{
+                          background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.75rem', cursor: 'pointer',
+                        }}>Cancel</button>
+                      </form>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{mi.label}</span>
+                        <button onClick={() => { setEditingLabel(mi.id); setLabelValue(mi.label) }} style={{
+                          background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.7rem', cursor: 'pointer',
+                        }}>rename</button>
+                      </div>
+                    )}
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                      {mi.url.endsWith('.pdf') ? 'PDF' : 'Image'}
+                    </div>
+                  </div>
+
+                  {/* Reorder + delete */}
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
+                    {menuImages.length > 1 && (
+                      <>
+                        <button onClick={() => moveMenu(mi.id, -1)} disabled={idx === 0} style={{
+                          background: 'none', border: 'none', color: idx === 0 ? 'var(--border)' : 'var(--text-muted)',
+                          fontSize: '1rem', cursor: idx === 0 ? 'default' : 'pointer', padding: '2px 4px',
+                        }}>▲</button>
+                        <button onClick={() => moveMenu(mi.id, 1)} disabled={idx === menuImages.length - 1} style={{
+                          background: 'none', border: 'none', color: idx === menuImages.length - 1 ? 'var(--border)' : 'var(--text-muted)',
+                          fontSize: '1rem', cursor: idx === menuImages.length - 1 ? 'default' : 'pointer', padding: '2px 4px',
+                        }}>▼</button>
+                      </>
+                    )}
+                    <button onClick={() => removeMenuImage(mi.id)} style={{
+                      background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.8rem', cursor: 'pointer', padding: '4px 8px',
+                    }}>Remove</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Drag-and-drop zone (always visible for adding more) */}
           <div
             ref={dropRef}
             onDragOver={e => { e.preventDefault(); setDragging(true) }}
@@ -431,55 +547,35 @@ export default function Menu({ brand }) {
             style={{
               border: `2px dashed ${dragging ? '#FAFAFA' : 'var(--border)'}`,
               borderRadius: 12,
-              padding: menuImageUrl ? '12px' : '32px 20px',
+              padding: '24px 20px',
               textAlign: 'center',
               cursor: 'pointer',
               transition: 'border-color 0.2s, background 0.2s',
               background: dragging ? 'rgba(255,255,255,0.04)' : 'transparent',
               marginBottom: 12,
             }}
-            onClick={() => {
-              if (!menuImageUrl) document.getElementById('menu-image-input').click()
-            }}
+            onClick={() => document.getElementById('menu-image-input').click()}
           >
             {uploadingMenuImage ? (
               <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Uploading...</div>
-            ) : menuImageUrl ? (
-              <div>
-                {menuImageUrl.endsWith('.pdf') ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'center' }}>
-                    <span style={{ fontSize: '1.5rem' }}>📄</span>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Menu PDF uploaded</span>
-                  </div>
-                ) : (
-                  <img src={menuImageUrl} alt="Menu" style={{
-                    maxWidth: '100%', maxHeight: 200, borderRadius: 8, objectFit: 'contain',
-                  }} />
-                )}
-                <div style={{ marginTop: 10, display: 'flex', gap: 8, justifyContent: 'center' }}>
-                  <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '0.8rem', padding: '6px 14px' }}>
-                    Replace
-                    <input type="file" accept="image/*,.pdf" style={{ display: 'none' }}
-                      onChange={e => { if (e.target.files[0]) handleMenuImageUpload(e.target.files[0]) }} />
-                  </label>
-                  <button onClick={removeMenuImage} style={{
-                    background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.8rem', cursor: 'pointer',
-                  }}>Remove</button>
-                </div>
-              </div>
             ) : (
               <>
-                <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>📋</div>
+                <div style={{ fontSize: '1.5rem', marginBottom: 8 }}>{menuImages.length > 0 ? '➕' : '📋'}</div>
                 <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: 4 }}>
-                  Drop your menu image or PDF here
+                  {menuImages.length > 0 ? 'Add another menu' : 'Drop your menu images or PDFs here'}
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  JPG, PNG, WebP, or PDF. This shows on your scan page as-is.
+                  JPG, PNG, WebP, or PDF. {menuImages.length === 0 ? 'You can upload multiple menus.' : 'Drop one or more files.'}
                 </div>
               </>
             )}
-            <input id="menu-image-input" type="file" accept="image/*,.pdf" style={{ display: 'none' }}
-              onChange={e => { if (e.target.files[0]) handleMenuImageUpload(e.target.files[0]) }} />
+            <input id="menu-image-input" type="file" accept="image/*,.pdf" multiple style={{ display: 'none' }}
+              onChange={e => {
+                const files = Array.from(e.target.files)
+                if (files.length === 1) handleMenuImageUpload(files[0])
+                else if (files.length > 1) handleMultipleFiles(files)
+                e.target.value = ''
+              }} />
           </div>
 
           {/* CSV Import */}

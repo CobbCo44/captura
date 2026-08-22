@@ -441,7 +441,7 @@ export default function StorefrontScanPage() {
     <div style={{
       minHeight: '100vh', maxWidth: 480, margin: '0 auto', background: kit.bg, color: '#fff',
       fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14, lineHeight: 1.5,
-      ...(brand?.kit_bg_image ? { backgroundImage: `url(${brand.kit_bg_image})`, backgroundSize: '100% auto', backgroundPosition: 'top center', backgroundRepeat: 'no-repeat' } : {}),
+      ...(brand?.kit_bg_image ? { backgroundImage: `url(${brand.kit_bg_image})`, backgroundSize: '390px 844px', backgroundPosition: 'top center', backgroundRepeat: 'no-repeat' } : {}),
       ...t,
     }}>
       <style>{`

@@ -903,7 +903,7 @@ export default function ScanPage({ previewData } = {}) {
   const isPromoOnly = !product && !isEventQR
 
   // Brand tokens
-  const kit = getKit(brand?.kit)
+  const kit = getKit(brand?.kit, brand)
   const accentBg = brand?.accent_hex || '#FAFAFA'
   const accentInk = brand?.accent_ink_hex || '#09090B'
   const tokenVars = { '--scan-bg': kit.bg, '--scan-card': kit.card, '--scan-border': kit.border }
@@ -1206,7 +1206,12 @@ export default function ScanPage({ previewData } = {}) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', background: 'var(--surface)', color: 'var(--ink)', fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14, lineHeight: 1.5, ...t }}>
+    <div style={{
+      minHeight: '100vh', maxWidth: 480, margin: '0 auto', background: 'var(--surface)', color: 'var(--ink)',
+      fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14, lineHeight: 1.5,
+      ...(brand?.kit_bg_image ? { backgroundImage: `url(${brand.kit_bg_image})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' } : {}),
+      ...t,
+    }}>
       <style>{`@keyframes captura-pulse{0%,100%{opacity:1}50%{opacity:.25}}@keyframes captura-slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes loyaltyPulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 12px rgba(34,197,94,0.25)}}@keyframes loyaltyDot{0%,100%{opacity:1}50%{opacity:.4}}@keyframes proofPulse{0%,100%{opacity:1}50%{opacity:.85}}`}</style>
 
       {/* 1. BRAND BAR */}

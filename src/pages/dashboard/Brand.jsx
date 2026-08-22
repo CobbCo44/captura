@@ -22,6 +22,10 @@ export default function Brand({ brand, onBrandUpdate }) {
     accent_hex: '#FFFFFF',
     accent_ink_hex: '#000000',
     kit: 'clean',
+    kit_bg: '#0A0A0A',
+    kit_card: '#18181B',
+    kit_border: '#27272A',
+    kit_bg_image: '',
     social_instagram: '',
     social_tiktok: '',
     social_twitter: '',
@@ -65,6 +69,10 @@ export default function Brand({ brand, onBrandUpdate }) {
       accent_hex: brand.accent_hex || '#FFFFFF',
       accent_ink_hex: brand.accent_ink_hex || '#000000',
       kit: brand.kit || 'clean',
+      kit_bg: brand.kit_bg || '#0A0A0A',
+      kit_card: brand.kit_card || '#18181B',
+      kit_border: brand.kit_border || '#27272A',
+      kit_bg_image: brand.kit_bg_image || '',
       social_instagram: brand.social_instagram || '',
       social_tiktok: brand.social_tiktok || '',
       social_twitter: brand.social_twitter || '',
@@ -331,26 +339,98 @@ export default function Brand({ brand, onBrandUpdate }) {
               Sets the scan page background and card tones.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              {KITS.map(k => (
-                <div key={k.id} onClick={() => setForm({ ...form, kit: k.id })} style={{
-                  padding: 14, borderRadius: 10, cursor: 'pointer',
-                  border: form.kit === k.id ? '2px solid #FAFAFA' : '1px solid var(--border)',
-                  background: form.kit === k.id ? 'rgba(255,255,255,0.04)' : 'var(--bg)',
-                  transition: 'all 0.15s',
-                }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 4 }}>{k.name}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 10 }}>{k.desc}</div>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {[k.bg, k.card, k.border].map((c, i) => (
-                      <div key={i} style={{
-                        flex: 1, height: 24, borderRadius: 4, background: c,
-                        border: '1px solid rgba(255,255,255,0.08)',
-                      }} />
-                    ))}
+              {KITS.map(k => {
+                const isCustom = k.id === 'custom'
+                const swatches = isCustom && form.kit === 'custom'
+                  ? [form.kit_bg, form.kit_card, form.kit_border]
+                  : [k.bg, k.card, k.border]
+                return (
+                  <div key={k.id} onClick={() => setForm({ ...form, kit: k.id })} style={{
+                    padding: 14, borderRadius: 10, cursor: 'pointer',
+                    border: form.kit === k.id ? '2px solid #FAFAFA' : '1px solid var(--border)',
+                    background: form.kit === k.id ? 'rgba(255,255,255,0.04)' : 'var(--bg)',
+                    transition: 'all 0.15s',
+                  }}>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 4 }}>{k.name}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 10 }}>{k.desc}</div>
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      {swatches.map((c, i) => (
+                        <div key={i} style={{
+                          flex: 1, height: 24, borderRadius: 4, background: c,
+                          border: '1px solid rgba(255,255,255,0.08)',
+                        }} />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
+
+            {/* Custom kit color pickers */}
+            {form.kit === 'custom' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 4 }}>
+                {[
+                  { key: 'kit_bg', label: 'Background' },
+                  { key: 'kit_card', label: 'Card / Tile' },
+                  { key: 'kit_border', label: 'Border' },
+                ].map(({ key, label }) => (
+                  <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', width: 80 }}>{label}</label>
+                    <input type="color" value={form[key]} onChange={e => setForm({ ...form, [key]: e.target.value })}
+                      style={{ width: 36, height: 30, border: 'none', borderRadius: 6, cursor: 'pointer', background: 'none', padding: 0 }} />
+                    <input className="input" value={form[key]}
+                      onChange={e => setForm({ ...form, [key]: e.target.value })}
+                      style={{ width: 100, fontFamily: 'monospace', fontSize: '0.85rem' }} />
+                  </div>
+                ))}
+
+                {/* Background image */}
+                <div style={{ marginTop: 4 }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6 }}>Background Image</label>
+                  {form.kit_bg_image ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{
+                        width: 60, height: 60, borderRadius: 8, backgroundImage: `url(${form.kit_bg_image})`,
+                        backgroundSize: 'cover', backgroundPosition: 'center', border: '1px solid var(--border)',
+                      }} />
+                      <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '0.8rem', padding: '6px 12px' }}>
+                        Replace
+                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
+                          const file = e.target.files[0]
+                          if (!file || !supabase || !brand?.id) return
+                          const ext = file.name.split('.').pop()
+                          const fileName = `${brand.id}/kit-bg-${Date.now()}.${ext}`
+                          const { error } = await supabase.storage.from('product-images').upload(fileName, file)
+                          if (error) { alert('Upload failed'); return }
+                          const { data } = supabase.storage.from('product-images').getPublicUrl(fileName)
+                          setForm({ ...form, kit_bg_image: data.publicUrl })
+                        }} />
+                      </label>
+                      <button onClick={() => setForm({ ...form, kit_bg_image: '' })} style={{
+                        background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.8rem', cursor: 'pointer',
+                      }}>Remove</button>
+                    </div>
+                  ) : (
+                    <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '0.8rem', padding: '8px 14px', display: 'inline-block' }}>
+                      Upload Image
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async e => {
+                        const file = e.target.files[0]
+                        if (!file || !supabase || !brand?.id) return
+                        const ext = file.name.split('.').pop()
+                        const fileName = `${brand.id}/kit-bg-${Date.now()}.${ext}`
+                        const { error } = await supabase.storage.from('product-images').upload(fileName, file)
+                        if (error) { alert('Upload failed'); return }
+                        const { data } = supabase.storage.from('product-images').getPublicUrl(fileName)
+                        setForm({ ...form, kit_bg_image: data.publicUrl })
+                      }} />
+                    </label>
+                  )}
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                    Optional. Covers the full page behind cards and tiles.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Links */}

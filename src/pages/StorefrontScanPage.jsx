@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { supabase } from '../lib/supabase'
+import { getKit } from '../lib/kits'
 
 export default function StorefrontScanPage() {
   const { brandId } = useParams()
@@ -387,7 +388,7 @@ export default function StorefrontScanPage() {
 
   const accentBg = brand?.accent_hex || '#FFFFFF'
   const accentInk = brand?.accent_ink_hex || '#000000'
-  const kit = { bg: '#0A0A0A', card: '#18181B' }
+  const kit = getKit(brand?.kit, brand)
   const headerFont = brand?.store_header_font || 'Inter'
   const storeHeaderLogo = brand?.store_header_logo
   const useLogoHeader = brand?.store_header_type === 'logo' && storeHeaderLogo
@@ -437,7 +438,12 @@ export default function StorefrontScanPage() {
   ].filter(s => brand[s.key]) : []
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: 480, margin: '0 auto', background: kit.bg, color: '#fff', fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14, lineHeight: 1.5, ...t }}>
+    <div style={{
+      minHeight: '100vh', maxWidth: 480, margin: '0 auto', background: kit.bg, color: '#fff',
+      fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14, lineHeight: 1.5,
+      ...(brand?.kit_bg_image ? { backgroundImage: `url(${brand.kit_bg_image})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundAttachment: 'fixed' } : {}),
+      ...t,
+    }}>
       <style>{`
         @keyframes captura-pulse{0%,100%{opacity:1}50%{opacity:.25}}
         @keyframes captura-slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}

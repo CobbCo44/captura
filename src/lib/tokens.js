@@ -6,7 +6,7 @@ import { getKit } from './kits'
  * Every visual value in the scan page reads from these — zero hardcoded hex.
  */
 export function buildTokens(brand) {
-  const kit = getKit(brand?.kit)
+  const kit = getKit(brand?.kit, brand)
   const accent = brand?.accent_hex || '#FAFAFA'
   const ink = brand?.accent_ink_hex || '#09090B'
 

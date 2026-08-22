@@ -58,14 +58,18 @@ function renderSerialQRToCanvas(url, fgColor, bgColor, logoDataUrl, logoScale, c
       const img = new Image()
       img.crossOrigin = 'anonymous'
       img.onload = () => {
-        const logoSize = size * logoScale
-        const logoPos = (size - logoSize) / 2
-        const padding = logoSize * 0.12
+        const maxLogoSize = size * logoScale
+        const aspect = img.naturalWidth / img.naturalHeight
+        const logoW = aspect >= 1 ? maxLogoSize : maxLogoSize * aspect
+        const logoH = aspect >= 1 ? maxLogoSize / aspect : maxLogoSize
+        const logoX = (size - logoW) / 2
+        const logoY = (size - logoH) / 2
+        const padding = maxLogoSize * 0.12
         ctx.fillStyle = bgColor
-        roundRectPath(ctx, logoPos - padding, logoPos - padding,
-          logoSize + padding * 2, logoSize + padding * 2, 12)
+        roundRectPath(ctx, logoX - padding, logoY - padding,
+          logoW + padding * 2, logoH + padding * 2, 12)
         ctx.fill()
-        ctx.drawImage(img, logoPos, logoPos, logoSize, logoSize)
+        ctx.drawImage(img, logoX, logoY, logoW, logoH)
         resolve(canvas)
       }
       img.onerror = () => resolve(canvas)
@@ -501,15 +505,19 @@ export default function QRCodes({ brand }) {
       img.crossOrigin = 'anonymous'
       img.onload = () => {
         const logoScale = qr.logo_scale || 0.25
-        const logoSize = hiResSize * logoScale
-        const logoPos = (hiResSize - logoSize) / 2
-        const padding = logoSize * 0.12
+        const maxLogoSize = hiResSize * logoScale
+        const aspect = img.naturalWidth / img.naturalHeight
+        const logoW = aspect >= 1 ? maxLogoSize : maxLogoSize * aspect
+        const logoH = aspect >= 1 ? maxLogoSize / aspect : maxLogoSize
+        const logoX = (hiResSize - logoW) / 2
+        const logoY = (hiResSize - logoH) / 2
+        const padding = maxLogoSize * 0.12
 
         ctx.fillStyle = qr.bg_color || '#FFFFFF'
-        roundRect(ctx, logoPos - padding, logoPos - padding,
-          logoSize + padding * 2, logoSize + padding * 2, 12)
+        roundRect(ctx, logoX - padding, logoY - padding,
+          logoW + padding * 2, logoH + padding * 2, 12)
         ctx.fill()
-        ctx.drawImage(img, logoPos, logoPos, logoSize, logoSize)
+        ctx.drawImage(img, logoX, logoY, logoW, logoH)
         finishDownload()
       }
       img.onerror = () => finishDownload()
@@ -651,13 +659,17 @@ export default function QRCodes({ brand }) {
         img.crossOrigin = 'anonymous'
         img.onload = () => {
           const logoScale = qr.logo_scale || 0.25
-          const logoSz = pxSize * logoScale
-          const logoPos = (pxSize - logoSz) / 2
-          const pad = logoSz * 0.12
+          const maxLogoSz = pxSize * logoScale
+          const aspect = img.naturalWidth / img.naturalHeight
+          const logoW = aspect >= 1 ? maxLogoSz : maxLogoSz * aspect
+          const logoH = aspect >= 1 ? maxLogoSz / aspect : maxLogoSz
+          const logoX = (pxSize - logoW) / 2
+          const logoY = (pxSize - logoH) / 2
+          const pad = maxLogoSz * 0.12
           ctx.fillStyle = qr.bg_color || '#FFFFFF'
-          roundRect(ctx, logoPos - pad, logoPos - pad, logoSz + pad * 2, logoSz + pad * 2, 12)
+          roundRect(ctx, logoX - pad, logoY - pad, logoW + pad * 2, logoH + pad * 2, 12)
           ctx.fill()
-          ctx.drawImage(img, logoPos, logoPos, logoSz, logoSz)
+          ctx.drawImage(img, logoX, logoY, logoW, logoH)
           finalize()
         }
         img.onerror = finalize

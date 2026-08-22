@@ -51,6 +51,7 @@ export default function Menu({ brand }) {
     store_address: '', store_phone: '', store_video_url: '',
   })
   const [hours, setHours] = useState([])
+  const [hoursLocationId, setHoursLocationId] = useState(null) // null = default/brand-wide
   const [storeSaving, setStoreSaving] = useState(false)
   const [storeSaved, setStoreSaved] = useState(false)
 
@@ -108,13 +109,19 @@ export default function Menu({ brand }) {
     setMenuImages(data || [])
   }
 
-  async function loadHours() {
+  async function loadHours(locationId = null) {
     if (!supabase || !brand?.id || brand.id === 'demo') return
-    const { data } = await supabase
+    let query = supabase
       .from('store_hours')
       .select('*')
       .eq('brand_id', brand.id)
       .order('day_of_week')
+    if (locationId) {
+      query = query.eq('location_id', locationId)
+    } else {
+      query = query.is('location_id', null)
+    }
+    const { data } = await query
     if (data && data.length > 0) {
       setHours(data)
     } else {
@@ -126,6 +133,7 @@ export default function Menu({ brand }) {
         closed: i === 0, // Sunday closed by default
       })))
     }
+    setHoursLocationId(locationId)
   }
 
   async function loadLocations() {
@@ -405,16 +413,25 @@ export default function Menu({ brand }) {
       })
       .eq('id', brand.id)
 
-    // Save hours
-    for (const h of hours) {
-      await supabase.from('store_hours').upsert({
-        brand_id: brand.id,
-        day_of_week: h.day_of_week,
-        open_time: h.closed ? null : h.open_time,
-        close_time: h.closed ? null : h.close_time,
-        closed: h.closed,
-      }, { onConflict: 'brand_id,day_of_week' })
+    // Save hours — delete + insert to avoid expression-index upsert issues
+    const deleteQuery = supabase
+      .from('store_hours')
+      .delete()
+      .eq('brand_id', brand.id)
+    if (hoursLocationId) {
+      await deleteQuery.eq('location_id', hoursLocationId)
+    } else {
+      await deleteQuery.is('location_id', null)
     }
+    const hoursRows = hours.map(h => ({
+      brand_id: brand.id,
+      location_id: hoursLocationId || null,
+      day_of_week: h.day_of_week,
+      open_time: h.closed ? null : h.open_time,
+      close_time: h.closed ? null : h.close_time,
+      closed: h.closed,
+    }))
+    await supabase.from('store_hours').insert(hoursRows)
 
     if (!error) {
       setStoreSaved(true)
@@ -804,7 +821,30 @@ export default function Menu({ brand }) {
 
             {/* Hours */}
             <div className="card">
-              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 14 }}>Hours</label>
+              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 6 }}>Hours</label>
+              {locations.length > 0 && (
+                <>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: 12 }}>
+                    Set hours for each location, or use Default for all.
+                  </p>
+                  <div style={{ display: 'flex', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
+                    <button onClick={() => loadHours(null)} style={{
+                      padding: '5px 12px', borderRadius: 16, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
+                      border: 'none',
+                      background: hoursLocationId === null ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
+                      color: hoursLocationId === null ? '#fff' : 'var(--text-muted)',
+                    }}>Default</button>
+                    {locations.map(loc => (
+                      <button key={loc.id} onClick={() => loadHours(loc.id)} style={{
+                        padding: '5px 12px', borderRadius: 16, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
+                        border: 'none',
+                        background: hoursLocationId === loc.id ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.05)',
+                        color: hoursLocationId === loc.id ? '#fff' : 'var(--text-muted)',
+                      }}>{loc.name}</button>
+                    ))}
+                  </div>
+                </>
+              )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {hours.map(h => (
                   <div key={h.day_of_week} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

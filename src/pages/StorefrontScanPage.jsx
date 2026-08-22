@@ -397,7 +397,14 @@ export default function StorefrontScanPage() {
   const menuCategories = [...new Set(menuItems.map(i => i.category))].sort()
 
   const today = new Date().getDay()
-  const todayHours = hours.find(h => h.day_of_week === today)
+  // Default hours (no location) for the main page display
+  const defaultHours = hours.filter(h => !h.location_id)
+  const todayHours = defaultHours.find(h => h.day_of_week === today)
+  // Per-location hours lookup
+  const getLocationHours = (locationId) => {
+    const locHours = hours.filter(h => h.location_id === locationId)
+    return locHours.length > 0 ? locHours : defaultHours
+  }
 
   // Parse YouTube URL
   const getYouTubeId = (url) => {
@@ -653,7 +660,7 @@ export default function StorefrontScanPage() {
 
       {/* 5. FOOTER LINKS */}
       <div style={{ display: 'flex', justifyContent: 'center', gap: 20, padding: '8px 14px 12px', flexWrap: 'wrap' }}>
-        {hours.length > 0 && (
+        {defaultHours.length > 0 && (
           <span onClick={() => setShowHours(true)} style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', cursor: 'pointer' }}>Hours</span>
         )}
         {(locations.length > 0 || brand?.store_address) && (
@@ -688,7 +695,7 @@ export default function StorefrontScanPage() {
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 16px', textAlign: 'center' }}>Hours</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {dayNames.map((day, i) => {
-                const h = hours.find(hr => hr.day_of_week === i)
+                const h = defaultHours.find(hr => hr.day_of_week === i)
                 const isToday = i === today
                 return (
                   <div key={i} style={{
@@ -734,7 +741,10 @@ export default function StorefrontScanPage() {
             <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.2)', margin: '0 auto 16px' }} />
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '0 0 16px', textAlign: 'center' }}>Locations</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {locations.map(loc => (
+              {locations.map(loc => {
+                const locHours = getLocationHours(loc.id)
+                const locToday = locHours.find(h => h.day_of_week === today)
+                return (
                 <div key={loc.id} style={{
                   padding: '14px 16px', borderRadius: 12,
                   background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)',
@@ -744,7 +754,16 @@ export default function StorefrontScanPage() {
                     <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>{loc.address}</div>
                   )}
                   {loc.phone && (
-                    <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>{loc.phone}</div>
+                    <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', marginBottom: 4 }}>{loc.phone}</div>
+                  )}
+                  {locToday && (
+                    <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginBottom: 8 }}>
+                      Today: {locToday.closed ? (
+                        <span style={{ color: '#ef4444' }}>Closed</span>
+                      ) : locToday.open_time && locToday.close_time ? (
+                        <span>{formatTime(locToday.open_time)} - {formatTime(locToday.close_time)}</span>
+                      ) : '--'}
+                    </div>
                   )}
                   <div style={{ display: 'flex', gap: 12 }}>
                     {loc.address && (
@@ -761,7 +780,8 @@ export default function StorefrontScanPage() {
                     )}
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         </div>

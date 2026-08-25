@@ -995,7 +995,7 @@ export default function ScanPage({ previewData } = {}) {
     '--tile': kit.card,
     '--ink': '#fff',
     '--ink2': 'rgba(255,255,255,0.56)',
-    '--line': 'rgba(255,255,255,0.11)',
+    '--line': kit.id === 'custom' ? kit.border : 'rgba(255,255,255,0.11)',
     '--r': '14px',
   }
 

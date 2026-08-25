@@ -5,10 +5,11 @@ import { supabase } from '../lib/supabase'
 import { getKit } from '../lib/kits'
 import { loadTileConfig, resolveTileOrder } from '../lib/tiles'
 
-export default function StorefrontScanPage() {
-  const { brandId } = useParams()
+export default function StorefrontScanPage({ preview } = {}) {
+  const { brandId: routeBrandId } = useParams()
+  const brandId = preview?.brandId || routeBrandId
   const [searchParams] = useSearchParams()
-  const isLabelQR = searchParams.get('label') === '1'
+  const isLabelQR = preview ? preview.context === 'label' : searchParams.get('label') === '1'
   const [brand, setBrand] = useState(null)
   const [menuItems, setMenuItems] = useState([])
   const [menuImages, setMenuImages] = useState([])
@@ -166,8 +167,8 @@ export default function StorefrontScanPage() {
       }
     }
 
-    // Log scan
-    if (!scanLogged.current) {
+    // Log scan (never from dashboard previews)
+    if (!scanLogged.current && !preview) {
       scanLogged.current = true
       try {
         const geo = await fetch('/.netlify/functions/geo').then(r => r.json()).catch(() => ({}))
@@ -527,7 +528,7 @@ export default function StorefrontScanPage() {
 
       {/* 3. BENTO GRID */}
       {(() => {
-        const order = tileOrder || resolveTileOrder([], isLabelQR ? 'label' : 'counter', [])
+        const order = preview?.tileOrder || tileOrder || resolveTileOrder([], isLabelQR ? 'label' : 'counter', [])
         const on = k => order.find(o => o.key === k)?.enabled !== false
 
         const hasPromo = !!activePromo && on('promo')

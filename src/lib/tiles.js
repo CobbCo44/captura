@@ -80,15 +80,23 @@ export function resolveTileOrder(rows, context, customTiles) {
  * Fails soft: any error (e.g. migration not applied yet) returns the
  * defaults so scan pages never break.
  */
-export async function loadTileConfig(brandId, context) {
+export async function loadTileConfig(brandId, context, productId = null) {
   try {
+    let query = supabase.from('tile_settings').select('tile_key, enabled, sort, product_id')
+      .eq('brand_id', brandId).eq('context', context)
+    query = productId
+      ? query.or(`product_id.eq.${productId},product_id.is.null`)
+      : query.is('product_id', null)
     const [settingsRes, customRes] = await Promise.all([
-      supabase.from('tile_settings').select('tile_key, enabled, sort')
-        .eq('brand_id', brandId).eq('context', context),
+      query,
       supabase.from('custom_tiles').select('*')
         .eq('brand_id', brandId).eq('is_active', true).order('sort'),
     ])
-    return resolveTileOrder(settingsRes.data || [], context, customRes.data || [])
+    const rows = settingsRes.data || []
+    // A product with its own rows overrides the brand-wide (null) set
+    const productRows = productId ? rows.filter(r => r.product_id === productId) : []
+    const brandRows = rows.filter(r => !r.product_id)
+    return resolveTileOrder(productRows.length ? productRows : brandRows, context, customRes.data || [])
   } catch {
     return resolveTileOrder([], context, [])
   }

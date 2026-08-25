@@ -50,9 +50,11 @@ export default function ScanPage({ previewData } = {}) {
   const [tileOrder, setTileOrder] = useState(null)
 
   const tileBrandId = brand?.id
+  const tileProductId = product?.id
   useEffect(() => {
-    if (tileBrandId) loadTileConfig(tileBrandId, 'product').then(setTileOrder)
-  }, [tileBrandId])
+    if (previewData) return
+    if (tileBrandId) loadTileConfig(tileBrandId, 'product', tileProductId || null).then(setTileOrder)
+  }, [tileBrandId, tileProductId])
   const [event, setEvent] = useState(previewData?.event || null)
   const [eventForm, setEventForm] = useState({ firstName: '', lastName: '', email: '', phone: '', ageConsent: false, marketingConsent: false })
   const [eventSubmitted, setEventSubmitted] = useState(false)
@@ -943,7 +945,7 @@ export default function ScanPage({ previewData } = {}) {
   const hasPromoImage = activePromo?.image_url && promoState !== 'evergreen'
 
   // Utility tiles — order and visibility owner-controlled via tile_settings
-  const productOrder = tileOrder || resolveTileOrder([], 'product', [])
+  const productOrder = previewData?.tileOrder || tileOrder || resolveTileOrder([], 'product', [])
   const tileOn = k => productOrder.find(o => o.key === k)?.enabled !== false
   const utilDefs = {}
   if (product?.reorder_url) utilDefs.reorder = { key: 'reorder', type: 'reorder', label: 'Reorder', sub: 'Buy again', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>', href: product.reorder_url }

@@ -4,6 +4,7 @@ import { supabase, getAllBrands } from '../lib/supabase'
 import { createBrandForUser } from '../lib/createBrand'
 import { INDUSTRIES } from '../lib/industries'
 import Products from './dashboard/Products'
+import ScanPageTiles from './dashboard/ScanPageTiles'
 import QRCodes from './dashboard/QRCodes'
 import Scans from './dashboard/Scans'
 import VIPMembers from './dashboard/VIPMembers'
@@ -23,6 +24,7 @@ import Email from './dashboard/Email'
 const productNavItems = [
   { path: '', label: 'Overview', icon: '◎' },
   { path: 'brand', label: 'Brand', icon: '◆' },
+  { path: 'scan-page', label: 'Scan Page', icon: '▧' },
   { path: 'products', label: 'Products', icon: '▦' },
   { path: 'qr-codes', label: 'QR Codes', icon: '⊞' },
   { path: 'promos', label: 'Promos', icon: '🎁' },
@@ -39,6 +41,7 @@ const productNavItems = [
 const storefrontNavItems = [
   { path: '', label: 'Overview', icon: '◎' },
   { path: 'brand', label: 'Brand', icon: '◆' },
+  { path: 'scan-page', label: 'Scan Page', icon: '▧' },
   { path: 'menu', label: 'Menu / Services', icon: '▤' },
   { path: 'products', label: 'Products', icon: '▦' },
   { path: 'qr-codes', label: 'QR Codes', icon: '⊞' },
@@ -390,6 +393,7 @@ export default function Dashboard() {
           <Route path="menu" element={<Menu brand={brand} />} />
           <Route path="qr-codes" element={<QRCodes brand={brand} />} />
           <Route path="brand" element={<Brand brand={brand} onBrandUpdate={setBrand} />} />
+          <Route path="scan-page" element={<ScanPageTiles brand={brand} />} />
           <Route path="promos" element={<Promos brand={brand} />} />
           <Route path="events" element={<Events brand={brand} />} />
           <Route path="socials" element={<Socials brand={brand} />} />

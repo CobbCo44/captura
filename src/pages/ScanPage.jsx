@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { supabase } from '../lib/supabase'
 import { getKit } from '../lib/kits'
+import { loadTileConfig, resolveTileOrder } from '../lib/tiles'
 
 /**
  * Basic US phone validation: must have 10 digits after stripping formatting.
@@ -46,6 +47,12 @@ export default function ScanPage({ previewData } = {}) {
   const [showWarranty, setShowWarranty] = useState(false)
   const [warrantyForm, setWarrantyForm] = useState({ firstName: '', lastName: '', email: '', phone: '', purchaseDate: '', retailer: '', consent: false })
   const [warrantyRegistered, setWarrantyRegistered] = useState(false)
+  const [tileOrder, setTileOrder] = useState(null)
+
+  const tileBrandId = brand?.id
+  useEffect(() => {
+    if (tileBrandId) loadTileConfig(tileBrandId, 'product').then(setTileOrder)
+  }, [tileBrandId])
   const [event, setEvent] = useState(previewData?.event || null)
   const [eventForm, setEventForm] = useState({ firstName: '', lastName: '', email: '', phone: '', ageConsent: false, marketingConsent: false })
   const [eventSubmitted, setEventSubmitted] = useState(false)
@@ -935,18 +942,20 @@ export default function ScanPage({ previewData } = {}) {
 
   const hasPromoImage = activePromo?.image_url && promoState !== 'evergreen'
 
-  // Utility tiles
-  const utilTiles = []
-  if (product?.reorder_url) utilTiles.push({ type: 'reorder', label: 'Reorder', sub: 'Buy again', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>', href: product.reorder_url })
+  // Utility tiles — order and visibility owner-controlled via tile_settings
+  const productOrder = tileOrder || resolveTileOrder([], 'product', [])
+  const tileOn = k => productOrder.find(o => o.key === k)?.enabled !== false
+  const utilDefs = {}
+  if (product?.reorder_url) utilDefs.reorder = { key: 'reorder', type: 'reorder', label: 'Reorder', sub: 'Buy again', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>', href: product.reorder_url }
   if (product?.warranty_enabled) {
-    utilTiles.push({ type: 'warranty', label: 'Warranty', sub: 'Register', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>', action: () => setShowWarranty(true) })
+    utilDefs.warranty = { key: 'warranty', type: 'warranty', label: 'Warranty', sub: 'Register', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>', action: () => setShowWarranty(true) }
   }
   if (activePromo?.winner_name) {
-    utilTiles.push({ type: 'winner', winnerName: `${activePromo.winner_name}${activePromo.winner_city ? ' \u00B7 ' + activePromo.winner_city : ''}`, sub: 'Won the last drop' })
+    utilDefs.winner = { key: 'winner', type: 'winner', winnerName: `${activePromo.winner_name}${activePromo.winner_city ? ' \u00B7 ' + activePromo.winner_city : ''}`, sub: 'Won the last drop' }
   }
   const loyaltyHasReward = loyaltyState?.returning && loyaltyRewards.some(r => (loyaltyState.balance || 0) >= r.points_required)
   if (product?.loyalty_enabled) {
-    utilTiles.push({
+    utilDefs.loyalty = {
       key: 'loyalty',
       label: redemptionProof ? 'Reward Redeemed' : thresholdCelebration ? `You earned ${thresholdCelebration.name}!` : loyaltyState?.returning ? `${loyaltyState.balance} Points` : 'Loyalty',
       sub: redemptionProof ? 'Show at counter' : thresholdCelebration ? 'Tap to redeem' : loyaltyHasReward ? 'You have a reward ready!' : loyaltyState?.returning ? 'View rewards' : 'Earn points',
@@ -957,7 +966,23 @@ export default function ScanPage({ previewData } = {}) {
       ),
       action: () => setShowLoyalty(true),
       badge: redemptionProof || thresholdCelebration || loyaltyHasReward,
-    })
+    }
+  }
+  const utilTiles = []
+  for (const entry of productOrder) {
+    if (!entry.enabled) continue
+    if (entry.custom) {
+      utilTiles.push({
+        key: entry.key,
+        label: entry.custom.label,
+        sub: entry.custom.description || 'Open link',
+        image: entry.custom.image_url,
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>',
+        href: entry.custom.url,
+      })
+    } else if (utilDefs[entry.key]) {
+      utilTiles.push(utilDefs[entry.key])
+    }
   }
 
   // Token CSS vars matching reference
@@ -1263,8 +1288,9 @@ export default function ScanPage({ previewData } = {}) {
       {/* 3. BENTO GRID */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridAutoRows: 84, gap: 9, padding: '2px 14px 16px' }}>
 
-        {/* a) GIVEAWAY TILE */}
-        <div onClick={promoConfig.formAction} style={{
+        {(() => {
+        const promoTileEl = tileOn('promo') ? (
+        <div key="promo" onClick={promoConfig.formAction} style={{
           gridColumn: 'span 4', gridRow: 'span 2',
           background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
           position: 'relative', overflow: 'hidden', cursor: 'pointer',
@@ -1309,10 +1335,11 @@ export default function ScanPage({ previewData } = {}) {
             </button>
           </div>
         </div>
+        ) : null
 
         {/* b) VIDEO TILE */}
-        {!isPromoOnly && product?.content_url && getYouTubeId(product.content_url) && (
-          <div style={{
+        const videoTileEl = (tileOn('video') && !isPromoOnly && product?.content_url && getYouTubeId(product.content_url)) ? (
+          <div key="video" style={{
             gridColumn: 'span 4', gridRow: 'span 2',
             background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
             overflow: 'hidden',
@@ -1349,10 +1376,9 @@ export default function ScanPage({ previewData } = {}) {
               )}
             </div>
           </div>
-        )}
+        ) : null
 
-        {/* c) UTILITY TILES */}
-        {utilTiles.map((tile, i) => {
+        const renderUtil = (tile, i) => {
           const spanClass = utilTiles.length === 1 ? 4 : 2
           if (tile.type === 'winner') {
             return (
@@ -1394,7 +1420,9 @@ export default function ScanPage({ previewData } = {}) {
                   animation: 'loyaltyDot 1.5s ease-in-out infinite',
                 }} />
               )}
-              {typeof tile.icon === 'string'
+              {tile.image
+                ? <img src={tile.image} alt="" style={{ width: 20, height: 20, borderRadius: 5, objectFit: 'cover', marginBottom: 'auto', flexShrink: 0 }} />
+                : typeof tile.icon === 'string'
                 ? <span style={{ width: 20, height: 20, marginBottom: 'auto', color: 'var(--accent)' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(tile.icon) }} />
                 : <span style={{ width: 20, height: 20, marginBottom: 'auto', color: 'var(--accent)' }}>{tile.icon}</span>
               }
@@ -1404,7 +1432,16 @@ export default function ScanPage({ previewData } = {}) {
               </span>
             </div>
           )
-        })}
+        }
+
+        return productOrder.map((entry, i) => {
+          if (!entry.enabled) return null
+          if (entry.key === 'promo') return promoTileEl
+          if (entry.key === 'video') return videoTileEl
+          const tile = utilTiles.find(t => t.key === entry.key)
+          return tile ? renderUtil(tile, i) : null
+        })
+        })()}
       </div>
 
       {/* FORMS */}

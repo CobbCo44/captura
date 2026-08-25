@@ -3,6 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { supabase } from '../lib/supabase'
 import { getKit } from '../lib/kits'
+import { loadTileConfig, resolveTileOrder } from '../lib/tiles'
 
 export default function StorefrontScanPage() {
   const { brandId } = useParams()
@@ -15,6 +16,7 @@ export default function StorefrontScanPage() {
   const [promos, setPromos] = useState([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [tileOrder, setTileOrder] = useState(null)
 
   // Loyalty state
   const [loyaltyRewards, setLoyaltyRewards] = useState([])
@@ -107,6 +109,8 @@ export default function StorefrontScanPage() {
       .eq('id', brandId)
       .eq('business_type', 'storefront')
       .single()
+
+    loadTileConfig(brandId, isLabelQR ? 'label' : 'counter').then(setTileOrder)
 
     if (!brandData) { setNotFound(true); setLoading(false); return }
     setBrand(brandData)
@@ -523,19 +527,125 @@ export default function StorefrontScanPage() {
 
       {/* 3. BENTO GRID */}
       {(() => {
-        // Calculate how many grid rows the content will use
-        const hasPromo = !!activePromo
-        const hasVideo = !!videoId
+        const order = tileOrder || resolveTileOrder([], isLabelQR ? 'label' : 'counter', [])
+        const on = k => order.find(o => o.key === k)?.enabled !== false
+
+        const hasPromo = !!activePromo && on('promo')
+        const hasVideo = !!videoId && on('video')
         const bigRows = (hasPromo ? 2 : 0) + (hasVideo ? 2 : 0)
 
-        // Count utility tiles to figure out how many pair-rows they need
-        let tileCount = 0
-        if (winnerPromo?.winner_name) tileCount++
-        if (loyaltyRewards.length > 0 && !isLabelQR) tileCount++
-        if (menuItems.length > 0 || menuImages.length > 0) tileCount++
-        if (defaultHours.length > 0) tileCount++
-        if (locations.length > 0) tileCount++
-        if (socials.length > 0) tileCount++
+        // Utility tile definitions, gated by content exactly as before
+        const utilDefs = {}
+
+        if (winnerPromo?.winner_name) {
+          utilDefs.winner = {
+            key: 'winner',
+            type: 'winner',
+            label: `${winnerPromo.winner_name}${winnerPromo.winner_city ? ' \u00B7 ' + winnerPromo.winner_city : ''}`,
+            sub: 'Won the last drop',
+          }
+        }
+
+        const storeLoyaltyHasReward = loyaltyState?.returning && loyaltyRewards.some(r => (loyaltyState.balance || 0) >= r.points_required)
+        if (loyaltyRewards.length > 0) {
+          utilDefs.loyalty = {
+            key: 'loyalty',
+            label: redemptionProof ? 'Reward Redeemed' : thresholdCelebration ? `You earned ${thresholdCelebration.name}!` : loyaltyState?.returning ? `${loyaltyState.balance} Points` : 'Loyalty',
+            sub: redemptionProof ? 'Show at counter' : thresholdCelebration ? 'Tap to redeem' : storeLoyaltyHasReward ? 'You have a reward ready!' : loyaltyState?.returning ? 'View rewards' : 'Earn points',
+            icon: (
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+              </svg>
+            ),
+            action: () => setShowLoyalty(true),
+            badge: redemptionProof || thresholdCelebration || storeLoyaltyHasReward,
+          }
+        }
+
+        if (menuItems.length > 0 || menuImages.length > 0) {
+          utilDefs.menu = {
+            key: 'menu',
+            label: 'Menu',
+            sub: 'View menu',
+            icon: (
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+                <path d="M4 6h16M4 12h16M4 18h12"/>
+              </svg>
+            ),
+            action: () => setShowMenu(true),
+          }
+        }
+
+        if (defaultHours.length > 0) {
+          const th = defaultHours.find(h => h.day_of_week === today)
+          utilDefs.hours = {
+            key: 'hours',
+            label: th?.closed ? 'Closed Today' : 'Hours',
+            sub: th && !th.closed && th.open_time && th.close_time
+              ? `${formatTime(th.open_time)} - ${formatTime(th.close_time)}`
+              : 'View hours',
+            icon: (
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+                <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+              </svg>
+            ),
+            action: () => setShowHours(true),
+          }
+        }
+
+        if (locations.length > 0) {
+          utilDefs.locations = {
+            key: 'locations',
+            label: locations.length === 1 ? locations[0].name : `${locations.length} Locations`,
+            sub: locations.length === 1 ? (locations[0].address ? 'Get directions' : 'View details') : 'View all',
+            icon: (
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+              </svg>
+            ),
+            action: () => setShowLocations(true),
+          }
+        }
+
+        if (socials.length > 0) {
+          utilDefs.follow = {
+            key: 'follow',
+            label: 'Follow Us',
+            sub: socials.map(s => s.label).slice(0, 3).join(', '),
+            icon: (
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+                <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+              </svg>
+            ),
+            action: () => setShowFollow(true),
+          }
+        }
+
+        // Resolve the display list in saved order
+        const displayTiles = []
+        for (const entry of order) {
+          if (!entry.enabled) continue
+          if (entry.key === 'promo' || entry.key === 'video') continue
+          if (entry.custom) {
+            displayTiles.push({
+              key: entry.key,
+              label: entry.custom.label,
+              sub: entry.custom.description || 'Open link',
+              image: entry.custom.image_url,
+              icon: (
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+                  <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
+                  <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
+                </svg>
+              ),
+              action: () => window.open(entry.custom.url, '_blank', 'noopener'),
+            })
+          } else if (utilDefs[entry.key]) {
+            displayTiles.push(utilDefs[entry.key])
+          }
+        }
+
+        const tileCount = displayTiles.length
         const utilRows = Math.ceil(tileCount / 2) || 0
         const totalRows = bigRows + utilRows
 
@@ -543,12 +653,10 @@ export default function StorefrontScanPage() {
         const reservedPx = 46 + (todayHours ? 36 : 0) + 50 + 30 + (totalRows - 1) * 9
         const rowH = totalRows > 0 ? Math.max(60, Math.floor((844 - reservedPx) / totalRows)) : 84
 
-        return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridAutoRows: rowH, gap: 9, padding: '14px 14px 16px' }}>
+        const span = tileCount === 1 ? 4 : 2
 
-        {/* a) PROMO TILE */}
-        {activePromo && (
-          <div onClick={() => { setShowPromo(true); setPromoSubmitted(false) }} style={{
+        const promoTile = hasPromo ? (
+          <div key="promo" onClick={() => { setShowPromo(true); setPromoSubmitted(false) }} style={{
             gridColumn: 'span 4', gridRow: 'span 2',
             background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
             position: 'relative', overflow: 'hidden', cursor: 'pointer',
@@ -570,11 +678,10 @@ export default function StorefrontScanPage() {
               </div>
             </div>
           </div>
-        )}
+        ) : null
 
-        {/* c) VIDEO TILE */}
-        {videoId && (
-          <div style={{
+        const videoTile = hasVideo ? (
+          <div key="video" style={{
             gridColumn: 'span 4', gridRow: 'span 2',
             background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
             overflow: 'hidden',
@@ -586,152 +693,67 @@ export default function StorefrontScanPage() {
               allowFullScreen
             />
           </div>
-        )}
+        ) : null
 
-        {/* d) UTILITY TILES */}
-        {(() => {
-          const tiles = []
-
-          // Winner tile
-          if (winnerPromo?.winner_name) {
-            tiles.push({
-              key: 'winner',
-              type: 'winner',
-              label: `${winnerPromo.winner_name}${winnerPromo.winner_city ? ' \u00B7 ' + winnerPromo.winner_city : ''}`,
-              sub: 'Won the last drop',
-            })
-          }
-
-          // Loyalty tile (hidden on label QR codes)
-          const storeLoyaltyHasReward = loyaltyState?.returning && loyaltyRewards.some(r => (loyaltyState.balance || 0) >= r.points_required)
-          if (loyaltyRewards.length > 0 && !isLabelQR) {
-            tiles.push({
-              key: 'loyalty',
-              label: redemptionProof ? 'Reward Redeemed' : thresholdCelebration ? `You earned ${thresholdCelebration.name}!` : loyaltyState?.returning ? `${loyaltyState.balance} Points` : 'Loyalty',
-              sub: redemptionProof ? 'Show at counter' : thresholdCelebration ? 'Tap to redeem' : storeLoyaltyHasReward ? 'You have a reward ready!' : loyaltyState?.returning ? 'View rewards' : 'Earn points',
-              icon: (
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
-                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-                </svg>
-              ),
-              action: () => setShowLoyalty(true),
-              badge: redemptionProof || thresholdCelebration || storeLoyaltyHasReward,
-            })
-          }
-
-          // Menu tile
-          if (menuItems.length > 0 || menuImages.length > 0) {
-            tiles.push({
-              key: 'menu',
-              label: 'Menu',
-              sub: 'View menu',
-              icon: (
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
-                  <path d="M4 6h16M4 12h16M4 18h12"/>
-                </svg>
-              ),
-              action: () => setShowMenu(true),
-            })
-          }
-
-          // Hours tile
-          if (defaultHours.length > 0) {
-            const th = defaultHours.find(h => h.day_of_week === today)
-            tiles.push({
-              key: 'hours',
-              label: th?.closed ? 'Closed Today' : 'Hours',
-              sub: th && !th.closed && th.open_time && th.close_time
-                ? `${formatTime(th.open_time)} - ${formatTime(th.close_time)}`
-                : 'View hours',
-              icon: (
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
-                  <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-                </svg>
-              ),
-              action: () => setShowHours(true),
-            })
-          }
-
-          // Locations tile
-          if (locations.length > 0) {
-            tiles.push({
-              key: 'locations',
-              label: locations.length === 1 ? locations[0].name : `${locations.length} Locations`,
-              sub: locations.length === 1 ? (locations[0].address ? 'Get directions' : 'View details') : 'View all',
-              icon: (
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
-                </svg>
-              ),
-              action: () => setShowLocations(true),
-            })
-          }
-
-          // Follow tile (if socials exist)
-          if (socials.length > 0) {
-            tiles.push({
-              key: 'follow',
-              label: 'Follow Us',
-              sub: socials.map(s => s.label).slice(0, 3).join(', '),
-              icon: (
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
-                  <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
-                </svg>
-              ),
-              action: () => setShowFollow(true),
-            })
-          }
-
-          const span = tiles.length === 1 ? 4 : 2
-
-          return tiles.map(tile => {
-            if (tile.type === 'winner') {
-              return (
-                <div key={tile.key} style={{
-                  gridColumn: `span ${span}`, gridRow: 'span 1',
-                  background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
-                  display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px',
-                }}>
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8" style={{ flexShrink: 0 }}>
-                    <path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/>
-                    <path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/>
-                    <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/>
-                    <path d="M18 2H6v7a6 6 0 0012 0V2z"/>
-                  </svg>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.85rem', lineHeight: 1.2 }}>{tile.label}</div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--ink2)', marginTop: 1 }}>{tile.sub}</div>
-                  </div>
-                </div>
-              )
-            }
+        const renderUtil = (tile) => {
+          if (tile.type === 'winner') {
             return (
-              <div key={tile.key} onClick={tile.action} style={{
+              <div key={tile.key} style={{
                 gridColumn: `span ${span}`, gridRow: 'span 1',
-                background: tile.badge ? `linear-gradient(135deg, var(--tile), rgba(34,197,94,0.12))` : 'var(--tile)',
-                border: tile.badge ? '1px solid var(--accent)' : '1px solid var(--line)', borderRadius: 'var(--r)',
+                background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
                 display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px',
-                cursor: tile.action ? 'pointer' : 'default',
-                position: 'relative',
-                animation: tile.badge ? 'loyaltyPulse 2s ease-in-out infinite' : undefined,
               }}>
-                {tile.badge && (
-                  <span style={{
-                    position: 'absolute', top: 8, right: 8, width: 8, height: 8,
-                    borderRadius: '50%', background: 'var(--accent)',
-                    boxShadow: `0 0 6px ${accentBg}`,
-                    animation: 'loyaltyDot 1.5s ease-in-out infinite',
-                  }} />
-                )}
-                {tile.icon}
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8" style={{ flexShrink: 0 }}>
+                  <path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/>
+                  <path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/>
+                  <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/>
+                  <path d="M18 2H6v7a6 6 0 0012 0V2z"/>
+                </svg>
                 <div>
-                  <div style={{ fontWeight: 600, fontSize: '0.85rem', color: tile.badge ? 'var(--accent)' : undefined }}>{tile.label}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--ink2)' }}>{tile.sub}</div>
+                  <div style={{ fontWeight: 600, fontSize: '0.85rem', lineHeight: 1.2 }}>{tile.label}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--ink2)', marginTop: 1 }}>{tile.sub}</div>
                 </div>
               </div>
             )
-          })
-        })()}
+          }
+          return (
+            <div key={tile.key} onClick={tile.action} style={{
+              gridColumn: `span ${span}`, gridRow: 'span 1',
+              background: tile.badge ? `linear-gradient(135deg, var(--tile), rgba(34,197,94,0.12))` : 'var(--tile)',
+              border: tile.badge ? '1px solid var(--accent)' : '1px solid var(--line)', borderRadius: 'var(--r)',
+              display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px',
+              cursor: tile.action ? 'pointer' : 'default',
+              position: 'relative', overflow: 'hidden',
+              animation: tile.badge ? 'loyaltyPulse 2s ease-in-out infinite' : undefined,
+            }}>
+              {tile.badge && (
+                <span style={{
+                  position: 'absolute', top: 8, right: 8, width: 8, height: 8,
+                  borderRadius: '50%', background: 'var(--accent)',
+                  boxShadow: `0 0 6px ${accentBg}`,
+                  animation: 'loyaltyDot 1.5s ease-in-out infinite',
+                }} />
+              )}
+              {tile.image
+                ? <img src={tile.image} alt="" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+                : tile.icon}
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '0.85rem', color: tile.badge ? 'var(--accent)' : undefined }}>{tile.label}</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--ink2)' }}>{tile.sub}</div>
+              </div>
+            </div>
+          )
+        }
+
+        return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridAutoRows: rowH, gap: 9, padding: '14px 14px 16px' }}>
+        {order.map(entry => {
+          if (!entry.enabled) return null
+          if (entry.key === 'promo') return promoTile
+          if (entry.key === 'video') return videoTile
+          const tile = displayTiles.find(t => t.key === entry.key)
+          return tile ? renderUtil(tile) : null
+        })}
       </div>
         )
       })()}

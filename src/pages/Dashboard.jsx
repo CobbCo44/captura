@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom'
 import { supabase, getAllBrands } from '../lib/supabase'
+import { createBrandForUser } from '../lib/createBrand'
 import { INDUSTRIES } from '../lib/industries'
 import Products from './dashboard/Products'
 import QRCodes from './dashboard/QRCodes'
@@ -93,11 +94,10 @@ export default function Dashboard() {
       }
       let allBrands = await getAllBrands()
       if (allBrands.length === 0) {
-        const { data: newBrand } = await supabase.from('brands').insert({
-          user_id: user.id,
-          name: user.user_metadata?.brand_name || 'My Brand',
-          email: user.email,
-        }).select().single()
+        const { data: newBrand, error: createError } = await createBrandForUser(user)
+        if (createError) {
+          alert('We could not finish setting up your account: ' + createError.message + '. Please refresh to try again.')
+        }
         allBrands = newBrand ? [newBrand] : []
       }
       setBrands(allBrands)

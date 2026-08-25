@@ -98,7 +98,7 @@ export default function Storefronts() {
           <Link to="/login" style={{
             padding: '10px 20px', fontSize: '0.9rem', color: '#A1A1AA', fontWeight: 500,
           }}>Log In</Link>
-          <Link to="/login?signup=true" style={{
+          <Link to="/login?signup=true&type=storefront" style={{
             padding: '10px 24px', fontSize: '0.9rem', color: '#09090B',
             fontWeight: 600, background: '#FAFAFA', borderRadius: 8,
           }}>Get Started</Link>
@@ -124,7 +124,7 @@ export default function Storefronts() {
           Welcome emails, reward alerts, and win-back messages go out on their own. You just run your shop.
         </p>
         <div className="sf-cta-row">
-          <Link to="/login?signup=true" style={{
+          <Link to="/login?signup=true&type=storefront" style={{
             display: 'inline-block', padding: '17px 44px', fontSize: '1.05rem',
             color: '#09090B', fontWeight: 700, background: '#FAFAFA', borderRadius: 10,
           }}>Get Started</Link>
@@ -341,7 +341,7 @@ export default function Storefronts() {
           Right now, when Tuesday&rsquo;s slow, there&rsquo;s nothing you can do about it.
           With MeetCaptura, there is.
         </p>
-        <Link to="/login?signup=true" style={{
+        <Link to="/login?signup=true&type=storefront" style={{
           display: 'inline-block', padding: '18px 48px', fontSize: '1.05rem',
           color: '#09090B', fontWeight: 700, background: '#FAFAFA', borderRadius: 10,
         }}>Get Started</Link>

@@ -179,7 +179,7 @@ export default function ScanPage({ previewData } = {}) {
     if (lookupShortId) {
       const { data, error } = await supabase
         .from('qr_codes')
-        .select('*, products(*), promos(*), events(*), brands:brand_id(id, name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
+        .select('*, products(*), promos(*), events(*), brands:brand_id(id, name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, kit_bg, kit_card, kit_border, kit_bg_image, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
         .eq('short_id', lookupShortId)
         .single()
       if (!error && data) qr = data
@@ -199,7 +199,7 @@ export default function ScanPage({ previewData } = {}) {
         // (non-serialized QR codes embed the short_id in the /21/ position)
         const { data: qrByShortId } = await supabase
           .from('qr_codes')
-          .select('*, products(*), promos(*), events(*), brands:brand_id(id, name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
+          .select('*, products(*), promos(*), events(*), brands:brand_id(id, name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, kit_bg, kit_card, kit_border, kit_bg_image, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
           .eq('short_id', lookupSerial)
           .maybeSingle()
         if (qrByShortId) qr = qrByShortId
@@ -226,7 +226,7 @@ export default function ScanPage({ previewData } = {}) {
         // Try to find a QR code for this product so we get promo/event/brand data
         const { data: qrData } = await supabase
           .from('qr_codes')
-          .select('*, products(*), promos(*), events(*), brands:brand_id(id, name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
+          .select('*, products(*), promos(*), events(*), brands:brand_id(id, name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, kit_bg, kit_card, kit_border, kit_bg_image, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website)')
           .eq('product_id', prod.id)
           .limit(1)
           .maybeSingle()
@@ -237,7 +237,7 @@ export default function ScanPage({ previewData } = {}) {
           // Product exists but no QR code — load brand and promos directly
           const { data: brandData } = await supabase
             .from('brands')
-            .select('id, name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website')
+            .select('id, name, logo_url, logo_dark_url, logo_align, logo_size, accent_hex, accent_ink_hex, kit, kit_bg, kit_card, kit_border, kit_bg_image, social_instagram, social_tiktok, social_twitter, social_facebook, social_youtube, social_website')
             .eq('id', prod.brand_id)
             .single()
           setProduct(prod)

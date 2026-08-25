@@ -31,7 +31,6 @@ export default function ScanPageTiles({ brand }) {
 
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ label: '', url: '', description: '' })
-  const [formImage, setFormImage] = useState(null)
   const [adding, setAdding] = useState(false)
 
   const dragIndex = useRef(null)
@@ -135,21 +134,9 @@ export default function ScanPageTiles({ brand }) {
     if (!/^https?:\/\/\S+$/i.test(url)) { setMessage({ type: 'error', text: 'The link must start with http:// or https://' }); return }
     setAdding(true)
     setMessage(null)
-    let image_url = null
-    if (formImage) {
-      const path = `custom-tiles/${brand.id}-${Date.now()}-${formImage.name}`
-      const { error: upErr } = await supabase.storage.from('product-images').upload(path, formImage, { upsert: true })
-      if (upErr) {
-        setMessage({ type: 'error', text: 'Image upload failed: ' + upErr.message })
-        setAdding(false)
-        return
-      }
-      image_url = supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl
-    }
     const { data, error } = await supabase.from('custom_tiles').insert({
       brand_id: brand.id, label, url,
       description: form.description.trim() || null,
-      image_url,
       sort: customTiles.length,
     }).select().single()
     if (error) {
@@ -159,7 +146,6 @@ export default function ScanPageTiles({ brand }) {
       setOrder([...order, { key: `custom:${data.id}`, enabled: true, custom: data }])
       setDirty(true)
       setForm({ label: '', url: '', description: '' })
-      setFormImage(null)
       setShowForm(false)
       setMessage({ type: 'ok', text: `"${label}" added. Drag it where you want it, then save.` })
     }
@@ -323,10 +309,6 @@ export default function ScanPageTiles({ brand }) {
                 <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>Description (optional, one line)</label>
                 <input className="input" maxLength={80} placeholder="Reserve your spot" value={form.description}
                   onChange={e => setForm({ ...form, description: e.target.value })} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 6 }}>Image (optional)</label>
-                <input type="file" accept="image/*" onChange={e => setFormImage(e.target.files[0] || null)} style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }} />
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button className="btn btn-primary" onClick={addCustomTile} disabled={adding} style={{ padding: '10px 22px' }}>

@@ -48,7 +48,7 @@ export default function Menu({ brand }) {
 
   // Store info state
   const [storeForm, setStoreForm] = useState({
-    store_address: '', store_phone: '', store_video_url: '',
+    store_address: '', store_phone: '', store_email: '', store_video_url: '',
   })
   const [hours, setHours] = useState([])
   const [hoursLocationId, setHoursLocationId] = useState(null) // null = default/brand-wide
@@ -93,6 +93,7 @@ export default function Menu({ brand }) {
     setStoreForm({
       store_address: brand.store_address || '',
       store_phone: brand.store_phone || '',
+      store_email: brand.store_email || '',
       store_video_url: brand.store_video_url || '',
     })
     await loadMenuImages()
@@ -409,6 +410,7 @@ export default function Menu({ brand }) {
       .update({
         store_address: storeForm.store_address || null,
         store_phone: storeForm.store_phone || null,
+        store_email: storeForm.store_email || null,
         store_video_url: storeForm.store_video_url || null,
       })
       .eq('id', brand.id)
@@ -807,8 +809,16 @@ export default function Menu({ brand }) {
           </div>
 
           <form onSubmit={handleSaveStore} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {/* Video */}
+            {/* Contact + Video */}
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 6 }}>Contact Email</label>
+                <input className="input" type="email" placeholder="hello@yourstore.com" value={storeForm.store_email}
+                  onChange={e => setStoreForm({ ...storeForm, store_email: e.target.value })} />
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 4 }}>
+                  Optional. Shown as "Email Us" on your scan page so customers can reach you.
+                </p>
+              </div>
               <div>
                 <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 6 }}>Video URL</label>
                 <input className="input" placeholder="YouTube or Vimeo link" value={storeForm.store_video_url}

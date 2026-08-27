@@ -761,9 +761,17 @@ export default function StorefrontScanPage({ preview } = {}) {
 
       {/* 4. FOOTER */}
       <div style={{ textAlign: 'center', padding: '8px 14px 20px' }}>
-        {((locations.length === 1 && locations[0].phone) || (!locations.length && brand?.store_phone)) && (
-          <a href={`tel:${locations.length === 1 ? locations[0].phone : brand.store_phone}`}
-            style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', textDecoration: 'none', display: 'block', marginBottom: 8 }}>Call Us</a>
+        {(((locations.length === 1 && locations[0].phone) || (!locations.length && brand?.store_phone)) || brand?.store_email) && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 8 }}>
+            {((locations.length === 1 && locations[0].phone) || (!locations.length && brand?.store_phone)) && (
+              <a href={`tel:${locations.length === 1 ? locations[0].phone : brand.store_phone}`}
+                style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', textDecoration: 'none' }}>Call Us</a>
+            )}
+            {brand?.store_email && (
+              <a href={`mailto:${brand.store_email}`}
+                style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', textDecoration: 'none' }}>Email Us</a>
+            )}
+          </div>
         )}
         <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)' }}>
           Powered by MeetCaptura

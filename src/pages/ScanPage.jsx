@@ -1405,7 +1405,7 @@ export default function ScanPage({ previewData } = {}) {
             )
           }
           return (
-            <div key={i} onClick={() => tile.href ? window.open(tile.href, '_blank') : tile.action?.()} style={{
+            <div key={i} onClick={() => tile.href ? (window.location.href = tile.href) : tile.action?.()} style={{
               gridColumn: `span ${spanClass}`,
               background: tile.badge ? `linear-gradient(135deg, var(--tile), rgba(${accentBg === '#fff' || accentBg === '#ffffff' ? '255,255,255' : '34,197,94'}, 0.12))` : 'var(--tile)',
               border: tile.badge ? '1px solid var(--accent)' : '1px solid var(--line)', borderRadius: 'var(--r)',

@@ -639,7 +639,7 @@ export default function StorefrontScanPage({ preview } = {}) {
                   <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
                 </svg>
               ),
-              action: () => window.open(entry.custom.url, '_blank', 'noopener'),
+              action: () => { window.location.href = entry.custom.url },
             })
           } else if (utilDefs[entry.key]) {
             displayTiles.push(utilDefs[entry.key])

@@ -12,7 +12,7 @@ export default function Landing() {
         <div className="lp-nav-links" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <Link to="/storefronts" className="lp-sf-link" style={{
             padding: '10px 20px', fontSize: '0.9rem', color: '#A1A1AA', fontWeight: 500,
-          }}>For Storefronts</Link>
+          }}><span className="lp-sf-long">For Storefronts</span><span className="lp-sf-short">Storefronts</span></Link>
           <Link to="/login" style={{
             padding: '10px 20px', fontSize: '0.9rem', color: '#A1A1AA', fontWeight: 500,
           }}>Log In</Link>
@@ -691,11 +691,11 @@ export default function Landing() {
       <style>{`
         @media (max-width: 768px) {
           /* Nav: shrink so all three links fit on one line */
-          .lp-nav { padding: 12px 14px !important; }
-          .lp-nav img { height: 38px !important; }
-          .lp-nav-links { gap: 4px !important; }
-          .lp-nav-links a { padding: 8px 8px !important; font-size: 0.8rem !important; white-space: nowrap; }
-          .lp-nav-links a:last-child { padding: 8px 12px !important; }
+          .lp-nav { padding: 12px 10px !important; }
+          .lp-nav img { height: 32px !important; }
+          .lp-nav-links { gap: 2px !important; }
+          .lp-nav-links a { padding: 8px 6px !important; font-size: 0.78rem !important; white-space: nowrap; }
+          .lp-nav-links a:last-child { padding: 8px 10px !important; }
 
           /* Sections: tighter vertical rhythm */
           section { padding: 56px 20px !important; }
@@ -720,8 +720,10 @@ export default function Landing() {
 
           footer { padding: 24px 20px !important; }
         }
+        .lp-sf-short { display: none; }
         @media (max-width: 480px) {
-          .lp-sf-link { display: none !important; }
+          .lp-sf-long { display: none; }
+          .lp-sf-short { display: inline; }
         }
       `}</style>
     </div>

@@ -5,6 +5,7 @@ import { createBrandForUser } from '../lib/createBrand'
 import { INDUSTRIES } from '../lib/industries'
 import Products from './dashboard/Products'
 import ScanPageTiles from './dashboard/ScanPageTiles'
+import Billing from './dashboard/Billing'
 import QRCodes from './dashboard/QRCodes'
 import Scans from './dashboard/Scans'
 import VIPMembers from './dashboard/VIPMembers'
@@ -35,6 +36,7 @@ const productNavItems = [
   { path: 'loyalty', label: 'Loyalty', icon: '⭐' },
   { path: 'passport', label: 'Passport', icon: '🛂' },
   { path: 'insights', label: 'Insights', icon: '📊' },
+  { path: 'billing', label: 'Billing', icon: '💳' },
   { path: 'settings', label: 'Settings', icon: '⚙' },
 ]
 
@@ -53,6 +55,7 @@ const storefrontNavItems = [
   { path: 'loyalty', label: 'Loyalty', icon: '⭐' },
   { path: 'email', label: 'Email', icon: '✉' },
   { path: 'insights', label: 'Insights', icon: '📊' },
+  { path: 'billing', label: 'Billing', icon: '💳' },
   { path: 'settings', label: 'Settings', icon: '⚙' },
 ]
 
@@ -394,6 +397,7 @@ export default function Dashboard() {
           <Route path="qr-codes" element={<QRCodes brand={brand} />} />
           <Route path="brand" element={<Brand brand={brand} onBrandUpdate={setBrand} />} />
           <Route path="scan-page" element={<ScanPageTiles brand={brand} />} />
+          <Route path="billing" element={<Billing brand={brand} />} />
           <Route path="promos" element={<Promos brand={brand} />} />
           <Route path="events" element={<Events brand={brand} />} />
           <Route path="socials" element={<Socials brand={brand} />} />

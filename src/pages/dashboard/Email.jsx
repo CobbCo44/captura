@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 
 export default function Email({ brand }) {
@@ -199,6 +200,23 @@ export default function Email({ brand }) {
   ]
   const activeFlow = flows.find(f => f.key === expandedFlow)
 
+  // Tier enforcement: only for brands that have entered billing.
+  // No subscription_status = founding free ride, everything unlocked.
+  const billingActive = !!brand?.subscription_status
+  const hasGrowth = !billingActive || ['growth', 'pro'].includes(brand?.tier)
+  const lockedNotice = (feature) => (
+    <div className="card" style={{ padding: '18px', textAlign: 'center' }}>
+      <div style={{ fontSize: '1.4rem', marginBottom: 8 }}>🔒</div>
+      <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 4 }}>{feature} is a Growth feature</div>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', lineHeight: 1.6, marginBottom: 12 }}>
+        Upgrade to Growth to turn it on. Your data and members are untouched either way.
+      </p>
+      <Link to="/dashboard/billing" className="btn btn-primary" style={{ display: 'inline-block', padding: '10px 24px', fontSize: '0.85rem' }}>
+        Upgrade to Growth
+      </Link>
+    </div>
+  )
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
@@ -263,6 +281,9 @@ export default function Email({ brand }) {
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', opacity: 0.5 }}>
                       {isSelected ? '▲' : '✎'}
                     </span>
+                    {flow.key === 'winback' && !hasGrowth ? (
+                      <span style={{ fontSize: '0.9rem' }} title="Growth feature">🔒</span>
+                    ) : (
                     <div
                       onClick={e => { e.stopPropagation(); setAutopilot(prev => ({ ...prev, [flow.key]: !prev[flow.key] })) }}
                       style={{
@@ -278,6 +299,7 @@ export default function Email({ brand }) {
                         transition: 'left 0.2s',
                       }} />
                     </div>
+                    )}
                   </div>
                 </div>
               )
@@ -327,6 +349,7 @@ export default function Email({ brand }) {
         </div>
 
         {/* Blast */}
+        {!hasGrowth ? lockedNotice('Announcements') : (
         <div className="card">
           <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 4 }}>Send a Blast</h3>
           <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.5 }}>
@@ -409,6 +432,7 @@ export default function Email({ brand }) {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Recent email log */}

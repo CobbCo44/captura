@@ -32,7 +32,7 @@ export default async () => {
   // 1. Get all storefront brands with winback enabled
   const { data: brands, error: brandsErr } = await supabase
     .from('brands')
-    .select('id, name, logo_url, logo_dark_url, accent_hex, business_type, autopilot_winback, winback_days, autopilot_winback_subject, autopilot_winback_message')
+    .select('id, name, logo_url, logo_dark_url, accent_hex, business_type, autopilot_winback, winback_days, autopilot_winback_subject, autopilot_winback_message, subscription_status, tier')
     .eq('business_type', 'storefront')
     .eq('autopilot_winback', true)
 
@@ -42,6 +42,9 @@ export default async () => {
   }
 
   for (const brand of brands) {
+    // Tier enforcement: billed accounts need Growth+ for Win-Back.
+    // No subscription_status = founding free ride, not gated.
+    if (brand.subscription_status && !['growth', 'pro'].includes(brand.tier)) continue
     try {
       await processWinbackForBrand(supabase, brand)
     } catch (err) {

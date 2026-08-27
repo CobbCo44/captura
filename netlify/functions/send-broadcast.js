@@ -33,11 +33,17 @@ export default async (req) => {
     // Verify the brand exists
     const { data: brand } = await supabase
       .from('brands')
-      .select('id, name, logo_url, logo_dark_url, accent_hex, business_type')
+      .select('id, name, logo_url, logo_dark_url, accent_hex, business_type, subscription_status, tier')
       .eq('id', brand_id)
       .single()
 
     if (!brand) return new Response(JSON.stringify({ error: 'Brand not found' }), { status: 200, headers })
+
+    // Tier enforcement: billed accounts need Growth+ to send blasts.
+    // No subscription_status = founding free ride, not gated.
+    if (brand.subscription_status && !['growth', 'pro'].includes(brand.tier)) {
+      return new Response(JSON.stringify({ error: 'Announcements are a Growth feature. Upgrade on the Billing page to send blasts.' }), { status: 200, headers })
+    }
 
     // --- RATE LIMIT CHECKS ---
     // Get all broadcast sends in the last 30 days (used for both checks)

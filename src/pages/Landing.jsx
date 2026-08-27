@@ -4,13 +4,13 @@ export default function Landing() {
   return (
     <div style={{ minHeight: '100vh', overflow: 'hidden' }}>
       {/* Nav */}
-      <nav style={{
+      <nav className="lp-nav" style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '20px 40px', maxWidth: 1200, margin: '0 auto',
       }}>
         <img src="/images/meetcaptura-logo.png" alt="meetcaptura" style={{ height: 56, filter: 'invert(1)' }} />
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <Link to="/storefronts" style={{
+        <div className="lp-nav-links" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <Link to="/storefronts" className="lp-sf-link" style={{
             padding: '10px 20px', fontSize: '0.9rem', color: '#A1A1AA', fontWeight: 500,
           }}>For Storefronts</Link>
           <Link to="/login" style={{
@@ -24,7 +24,7 @@ export default function Landing() {
       </nav>
 
       {/* Hero */}
-      <section style={{
+      <section className="lp-hero" style={{
         padding: '120px 40px 60px', maxWidth: 1200, margin: '0 auto',
         display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 80, alignItems: 'center',
       }}>
@@ -53,7 +53,7 @@ export default function Landing() {
           }}>
             No app downloads. No loyalty card friction. Just a QR code on your product and a consumer who scans it.
           </p>
-          <div style={{ display: 'flex', gap: 14 }}>
+          <div className="lp-ctas" style={{ display: 'flex', gap: 14 }}>
             <Link to="/login?signup=true" style={{
               padding: '16px 36px', fontSize: '1rem', color: '#09090B',
               fontWeight: 700, background: '#FAFAFA', borderRadius: 10,
@@ -108,7 +108,7 @@ export default function Landing() {
         padding: '100px 40px', maxWidth: 1200, margin: '0 auto',
         borderTop: '1px solid #1C1C21',
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80 }}>
+        <div className="lp-grid2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80 }}>
           <div>
             <div style={{ fontSize: '0.75rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 16 }}>
               The problem
@@ -154,7 +154,7 @@ export default function Landing() {
           </h2>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2 }}>
+        <div className="lp-grid4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2 }}>
           {[
             { value: '$0.00', label: 'Cost per scan', sub: 'No hardware. No app. A printed QR code.' },
             { value: '10–25%', label: 'Opt-in rate', sub: 'Industry range for QR programs with a clear value offer (Uniqode and Bitly, 2026).' },
@@ -190,7 +190,7 @@ export default function Landing() {
           </h2>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
+        <div className="lp-grid3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 2 }}>
           {[
             {
               num: '01',
@@ -225,7 +225,7 @@ export default function Landing() {
         padding: '100px 40px', maxWidth: 1200, margin: '0 auto',
         borderTop: '1px solid #1C1C21',
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
+        <div className="lp-grid2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
           {/* Phone mockup - left side */}
           <div style={{
             background: '#131316', border: '1px solid #1C1C21', borderRadius: 32,
@@ -293,7 +293,7 @@ export default function Landing() {
         padding: '100px 40px', maxWidth: 1200, margin: '0 auto',
         borderTop: '1px solid #1C1C21',
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
+        <div className="lp-grid2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: '0.75rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 16 }}>
               Loyalty that lives on the product
@@ -351,7 +351,7 @@ export default function Landing() {
         padding: '100px 40px', maxWidth: 1200, margin: '0 auto',
         borderTop: '1px solid #1C1C21',
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80 }}>
+        <div className="lp-grid2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80 }}>
           <div>
             <div style={{ fontSize: '0.75rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 16 }}>
               What you capture
@@ -432,7 +432,7 @@ export default function Landing() {
         padding: '100px 40px', maxWidth: 1200, margin: '0 auto',
         borderTop: '1px solid #1C1C21',
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
+        <div className="lp-grid2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: '0.75rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 16 }}>
               Built-in intelligence
@@ -496,7 +496,7 @@ export default function Landing() {
         padding: '100px 40px', maxWidth: 1200, margin: '0 auto',
         borderTop: '1px solid #1C1C21',
       }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
+        <div className="lp-grid2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
           <div>
             <div style={{ fontSize: '0.75rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '3px', textTransform: 'uppercase', marginBottom: 16 }}>
               Works with Shopify
@@ -690,22 +690,38 @@ export default function Landing() {
 
       <style>{`
         @media (max-width: 768px) {
-          section { padding-left: 20px !important; padding-right: 20px !important; }
-          section > div[style*="grid-template-columns: 1fr 1fr"],
-          section[style*="grid-template-columns"] {
-            grid-template-columns: 1fr !important;
-            gap: 40px !important;
-          }
-          section > div[style*="grid-template-columns: repeat(3"],
-          section > div[style*="grid-template-columns: repeat(4"] {
-            grid-template-columns: 1fr !important;
-          }
-          section > div[style*="grid-template-columns: repeat"] > div {
+          /* Nav: shrink so all three links fit on one line */
+          .lp-nav { padding: 12px 14px !important; }
+          .lp-nav img { height: 38px !important; }
+          .lp-nav-links { gap: 4px !important; }
+          .lp-nav-links a { padding: 8px 8px !important; font-size: 0.8rem !important; white-space: nowrap; }
+          .lp-nav-links a:last-child { padding: 8px 12px !important; }
+
+          /* Sections: tighter vertical rhythm */
+          section { padding: 56px 20px !important; }
+          section h2 { font-size: 1.7rem !important; letter-spacing: -0.5px !important; }
+          section p { font-size: 0.95rem !important; }
+
+          /* Hero */
+          .lp-hero { padding: 36px 20px 56px !important; grid-template-columns: 1fr !important; gap: 44px !important; }
+          .lp-hero h1 { font-size: 2.2rem !important; letter-spacing: -1px !important; }
+          .lp-ctas { flex-direction: column; }
+          .lp-ctas a { text-align: center; }
+
+          /* Multi-column grids stack */
+          .lp-grid2 { grid-template-columns: 1fr !important; gap: 44px !important; }
+          .lp-grid3, .lp-grid4 { grid-template-columns: 1fr !important; }
+          .lp-grid3 > div, .lp-grid4 > div {
             border-right: none !important;
             border-bottom: 1px solid #1C1C21;
+            padding: 28px 24px !important;
           }
-          nav { padding: 16px 20px !important; }
+          .lp-grid3 > div:last-child, .lp-grid4 > div:last-child { border-bottom: none; }
+
           footer { padding: 24px 20px !important; }
+        }
+        @media (max-width: 480px) {
+          .lp-sf-link { display: none !important; }
         }
       `}</style>
     </div>

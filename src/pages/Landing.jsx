@@ -8,7 +8,7 @@ export default function Landing() {
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         padding: '20px 40px', maxWidth: 1200, margin: '0 auto',
       }}>
-        <img src="/images/meetcaptura-logo.png" alt="meetcaptura" style={{ height: 56, filter: 'invert(1)' }} />
+        <img src="/images/meetcaptura-logo-tight.png" alt="meetcaptura" style={{ height: 36, filter: 'invert(1)' }} />
         <div className="lp-nav-links" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           <Link to="/storefronts" className="lp-sf-link" style={{
             padding: '10px 20px', fontSize: '0.9rem', color: '#A1A1AA', fontWeight: 500,
@@ -692,7 +692,7 @@ export default function Landing() {
         @media (max-width: 768px) {
           /* Nav: shrink so all three links fit on one line */
           .lp-nav { padding: 12px 10px !important; }
-          .lp-nav img { height: 32px !important; }
+          .lp-nav img { height: 14px !important; }
           .lp-nav-links { gap: 2px !important; }
           .lp-nav-links a { padding: 8px 6px !important; font-size: 0.78rem !important; white-space: nowrap; }
           .lp-nav-links a:last-child { padding: 8px 10px !important; }

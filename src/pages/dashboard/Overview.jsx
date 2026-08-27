@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 
 export default function Overview({ brand }) {
@@ -112,6 +112,20 @@ export default function Overview({ brand }) {
   return (
     <div>
       <h1 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: 32 }}>Overview</h1>
+
+      {import.meta.env.VITE_BILLING_LIVE === 'true' && !brand?.subscription_status && (
+        <div style={{
+          padding: '14px 18px', borderRadius: 10, marginBottom: 24,
+          background: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.2)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap',
+        }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>Start your 14-day free trial</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 2 }}>Pick a plan to keep everything running. Nothing is charged for 14 days.</div>
+          </div>
+          <Link to="/dashboard/billing" className="btn btn-primary" style={{ padding: '10px 22px', fontSize: '0.85rem' }}>Choose a plan</Link>
+        </div>
+      )}
 
       {/* Onboarding Checklist */}
       {showChecklist && (

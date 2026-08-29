@@ -42,24 +42,6 @@ const STOREFRONT_PIECES = [
   'Loyalty points and rewards',
 ]
 
-const TIERS = [
-  {
-    tier: 'Starter',
-    price: '$99',
-    desc: 'The loyalty loop, running itself: scan page, menu, rewards, welcome and reward alerts.',
-  },
-  {
-    tier: 'Growth',
-    price: '$299',
-    badge: 'Most popular',
-    desc: 'Everything in Starter plus Win-Back, announcements, and the dashboard that shows how many customers Autopilot brought back.',
-  },
-  {
-    tier: 'Pro',
-    price: '$499',
-    desc: 'Everything in Growth for up to five locations, $89 per additional location.',
-  },
-]
 
 const eyebrow = {
   fontSize: '0.75rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '3px',
@@ -274,54 +256,6 @@ export default function Storefronts() {
               }}>{piece}</div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* 6. Pricing */}
-      <section style={sectionBase}>
-        <div style={{ textAlign: 'center', marginBottom: 56 }}>
-          <div style={eyebrow}>Pricing</div>
-          <h2 style={{ ...h2, marginBottom: 0 }}>Pick your speed.</h2>
-        </div>
-
-        <div className="sf-grid-3" style={{ display: 'grid', gap: 2 }}>
-          {TIERS.map((t, i) => (
-            <div key={t.tier} style={{
-              padding: '44px 32px', background: t.badge ? '#17171B' : '#131316',
-              borderRight: i < TIERS.length - 1 ? '1px solid #1C1C21' : 'none',
-              textAlign: 'center', position: 'relative',
-            }}>
-              {t.badge && (
-                <div style={{
-                  position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)',
-                  fontSize: '0.65rem', fontWeight: 700, letterSpacing: '1.5px',
-                  textTransform: 'uppercase', color: '#09090B', background: '#FAFAFA',
-                  padding: '5px 12px', borderRadius: 999, whiteSpace: 'nowrap',
-                }}>{t.badge}</div>
-              )}
-              <div style={{
-                fontSize: '0.8rem', color: '#3F3F46', fontWeight: 600, letterSpacing: '2px',
-                textTransform: 'uppercase', marginBottom: 12, marginTop: t.badge ? 18 : 0,
-              }}>{t.tier}</div>
-              <div style={{
-                fontSize: '2.5rem', fontWeight: 800, color: '#FAFAFA',
-                letterSpacing: '-1px', marginBottom: 14,
-              }}>
-                {t.price}<span style={{ fontSize: '1rem', fontWeight: 500, color: '#52525B' }}>/mo</span>
-              </div>
-              <p style={{ color: '#52525B', fontSize: '0.9rem', lineHeight: 1.7 }}>{t.desc}</p>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ textAlign: 'center', marginTop: 28 }}>
-          <p style={{ color: '#71717A', fontSize: '0.95rem', lineHeight: 1.7, marginBottom: 10 }}>
-            $199 setup. Waived for our founding storefronts, with your rate locked for twelve months.
-          </p>
-          <p style={{ color: '#3F3F46', fontSize: '0.85rem', lineHeight: 1.7, maxWidth: 560, margin: '0 auto' }}>
-            At a $10 average ticket, one extra customer a day covers Growth. Most shops get that from
-            the win-back email alone.
-          </p>
         </div>
       </section>
 

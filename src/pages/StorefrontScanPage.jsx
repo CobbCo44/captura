@@ -761,6 +761,24 @@ export default function StorefrontScanPage({ preview } = {}) {
 
       {/* 4. FOOTER */}
       <div style={{ textAlign: 'center', padding: '8px 14px 20px' }}>
+        {/* Social icons surface here whenever the Follow Us tile is hidden */}
+        {(() => {
+          const resolved = preview?.tileOrder || tileOrder || resolveTileOrder([], isLabelQR ? 'label' : 'counter', [])
+          const followTileOn = resolved.find(o => o.key === 'follow')?.enabled !== false
+          if (followTileOn || socials.length === 0) return null
+          return (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 18, marginBottom: 12 }}>
+              {socials.map(sc => (
+                <a key={sc.key} href={brand[sc.key]} target="_blank" rel="noopener noreferrer"
+                  aria-label={sc.label}
+                  style={{ width: 20, height: 20, color: 'rgba(255,255,255,0.45)' }}>
+                  <span style={{ display: 'block', width: 20, height: 20 }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(sc.svg) }} />
+                </a>
+              ))}
+            </div>
+          )
+        })()}
         {(((locations.length === 1 && locations[0].phone) || (!locations.length && brand?.store_phone)) || brand?.store_email) && (
           <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 8 }}>
             {((locations.length === 1 && locations[0].phone) || (!locations.length && brand?.store_phone)) && (

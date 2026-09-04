@@ -286,8 +286,8 @@ export default function ScanPageTiles({ brand }) {
               {saving ? 'Saving...' : 'Save Order'}
             </button>
             {!showForm && (
-              <button className="btn btn-secondary" onClick={() => setShowForm(true)} disabled={activeCustomCount >= 3} style={{ padding: '12px 20px' }}>
-                {activeCustomCount >= 3 ? 'Custom tile limit reached (3)' : '+ Add Custom Tile'}
+              <button className="btn btn-secondary" onClick={() => setShowForm(true)} disabled={activeCustomCount >= 6} style={{ padding: '12px 20px' }}>
+                {activeCustomCount >= 6 ? 'Custom tile limit reached (6)' : '+ Add Custom Tile'}
               </button>
             )}
           </div>

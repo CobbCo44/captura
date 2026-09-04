@@ -4,12 +4,12 @@ import { supabase } from '../../lib/supabase'
 
 const STOREFRONT_PLANS = [
   {
-    tier: 'starter', name: 'Starter', price: 99,
+    tier: 'starter', name: 'Starter', price: 125,
     desc: 'The loyalty loop, running itself.',
     features: ['Scan page with menu and prices', 'Hours and locations', 'Loyalty program with rewards', 'Welcome and reward alert emails', '1 location'],
   },
   {
-    tier: 'growth', name: 'Growth', price: 299, highlight: true,
+    tier: 'growth', name: 'Growth', price: 250, highlight: true,
     desc: 'Everything in Starter plus Autopilot at full power.',
     features: ['Everything in Starter', 'Win-Back emails', 'Announcements (4 per month)', 'Customers-brought-back dashboard', 'Consumer data export'],
   },

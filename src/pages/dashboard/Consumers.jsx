@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 
 export default function Consumers({ brand }) {
+  const isStorefront = brand?.business_type === 'storefront'
   const [vipMembers, setVipMembers] = useState([])
   const [promoEntries, setPromoEntries] = useState([])
   const [warrantyRegs, setWarrantyRegs] = useState([])
@@ -176,10 +177,31 @@ export default function Consumers({ brand }) {
         marketingConsent: ev.marketing_consent || false,
       }
     }),
+    ...contacts
+      .filter(c => {
+        const key = (c.email || '').toLowerCase().trim()
+        return !key || !legacyEmails.has(key)
+      })
+      .map(c => ({
+        id: `contact-${c.id}`,
+        firstName: c.first_name,
+        lastName: c.last_name || '',
+        email: c.email || '',
+        phone: c.phone || '',
+        product: '',
+        city: c.city || '',
+        type: c.source === 'loyalty' ? 'Loyalty' : 'Contact',
+        source: c.source === 'loyalty' ? 'Loyalty Signup' : (c.source ? c.source.charAt(0).toUpperCase() + c.source.slice(1) : 'Contact'),
+        date: c.created_at,
+        channel: (contactSerials[c.id]?.[0]?.channel) || '-',
+        contactId: c.id,
+        marketingConsent: c.sms_consent || false,
+      })),
   ].sort((a, b) => new Date(b.date) - new Date(a.date))
 
   const filtered = allConsumers.filter(c => {
     if (filter === 'vip' && c.type !== 'VIP') return false
+    if (filter === 'loyalty' && c.type !== 'Loyalty') return false
     if (filter === 'promo' && c.type !== 'Promo') return false
     if (filter === 'warranty' && c.type !== 'Warranty') return false
     if (filter === 'event' && c.type !== 'Event') return false
@@ -235,7 +257,9 @@ export default function Consumers({ brand }) {
         <div>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Consumer Data</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: 4 }}>
-            All consumers from VIP signups, promo entries, events, warranty registrations, and serialized QR scans
+            {isStorefront
+              ? 'All customers from loyalty signups, promo entries, and events'
+              : 'All consumers from loyalty signups, promo entries, events, warranty registrations, and serialized QR scans'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -251,6 +275,10 @@ export default function Consumers({ brand }) {
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#FAFAFA' }}>{allConsumers.length}</div>
         </div>
         <div className="card" style={{ padding: '16px 20px' }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Loyalty Members</div>
+          <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--success)' }}>{allConsumers.filter(c => c.type === 'Loyalty').length}</div>
+        </div>
+        <div className="card" style={{ padding: '16px 20px' }}>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Promo Entries</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#D4D4D8' }}>{promoEntries.length}</div>
         </div>
@@ -258,10 +286,12 @@ export default function Consumers({ brand }) {
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Event Entries</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#60A5FA' }}>{eventEntries.length}</div>
         </div>
+        {!isStorefront && (
         <div className="card" style={{ padding: '16px 20px' }}>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Warranty Regs</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#A1A1AA' }}>{warrantyRegs.length}</div>
         </div>
+        )}
         <div className="card" style={{ padding: '16px 20px' }}>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Serial Claims</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#C084FC' }}>{Object.values(contactSerials).flat().length}</div>
@@ -271,9 +301,10 @@ export default function Consumers({ brand }) {
       {/* Filters */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <button onClick={() => setFilter('all')} style={tabStyle(filter === 'all')}>All ({allConsumers.length})</button>
+        <button onClick={() => setFilter('loyalty')} style={tabStyle(filter === 'loyalty')}>Loyalty ({allConsumers.filter(c => c.type === 'Loyalty').length})</button>
         <button onClick={() => setFilter('promo')} style={tabStyle(filter === 'promo')}>Promo ({promoEntries.length})</button>
         <button onClick={() => setFilter('event')} style={tabStyle(filter === 'event')}>Event ({eventEntries.length})</button>
-        <button onClick={() => setFilter('warranty')} style={tabStyle(filter === 'warranty')}>Warranty ({warrantyRegs.length})</button>
+        {!isStorefront && <button onClick={() => setFilter('warranty')} style={tabStyle(filter === 'warranty')}>Warranty ({warrantyRegs.length})</button>}
         <input
           className="input"
           placeholder="Search name, email, phone, city, product..."
@@ -338,8 +369,8 @@ export default function Consumers({ brand }) {
                       <td style={{ padding: '12px 16px' }}>
                         <span style={{
                           padding: '3px 10px', borderRadius: 4, fontSize: '0.7rem', fontWeight: 600,
-                          background: c.type === 'VIP' ? 'rgba(34, 197, 94, 0.1)' : c.type === 'Event' ? 'rgba(96, 165, 250, 0.1)' : c.type === 'Serial' ? 'rgba(192, 132, 252, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                          color: c.type === 'VIP' ? 'var(--success)' : c.type === 'Event' ? '#60A5FA' : c.type === 'Serial' ? '#C084FC' : '#F59E0B',
+                          background: (c.type === 'VIP' || c.type === 'Loyalty') ? 'rgba(34, 197, 94, 0.1)' : c.type === 'Event' ? 'rgba(96, 165, 250, 0.1)' : c.type === 'Serial' ? 'rgba(192, 132, 252, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                          color: (c.type === 'VIP' || c.type === 'Loyalty') ? 'var(--success)' : c.type === 'Event' ? '#60A5FA' : c.type === 'Serial' ? '#C084FC' : '#F59E0B',
                         }}>
                           {c.source}
                         </span>

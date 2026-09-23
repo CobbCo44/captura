@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 
 import { supabase } from '../lib/supabase'
@@ -37,7 +37,45 @@ const labelStyle = { display: 'block', fontSize: '0.85rem', color: 'var(--text-m
 export default function Login() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const [mode, setMode] = useState(searchParams.get('signup') === 'true' ? 'signup' : 'login')
+  const [mode, setMode] = useState(() => {
+    if (typeof window !== 'undefined' && window.location.hash.includes('type=recovery')) return 'reset'
+    return searchParams.get('signup') === 'true' ? 'signup' : 'login'
+  })
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+
+  // The emailed reset link lands here with a recovery token in the URL.
+  // supabase-js turns it into a session and fires PASSWORD_RECOVERY —
+  // switch to the set-new-password form when that happens.
+  useEffect(() => {
+    if (!supabase) return
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setMode('reset')
+    })
+    return () => sub.subscription.unsubscribe()
+  }, [])
+
+  const handleSetNewPassword = async (e) => {
+    e.preventDefault()
+    setError('')
+    if (newPassword.length < 6) { setError('Password needs at least 6 characters.'); return }
+    if (newPassword !== confirmPassword) { setError('Those passwords don\u2019t match. Type the same one in both boxes.'); return }
+    setLoading(true)
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword })
+      if (updateError) throw updateError
+      navigate('/dashboard')
+    } catch (err) {
+      const msg = (err?.message || '').toLowerCase()
+      if (msg.includes('session') || msg.includes('not logged in') || msg.includes('missing')) {
+        setError('This reset link has expired or was already used. Go back to log in and tap "Forgot password?" for a fresh one.')
+      } else {
+        setError(humanAuthError(err, 'login'))
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -161,11 +199,58 @@ export default function Login() {
             <img src="/images/meetcaptura-logo.png" alt="MeetCaptura" style={{ height: 48, marginBottom: 8, filter: 'invert(1)' }} />
           </Link>
           <p style={{ color: 'var(--text-muted)' }}>
-            {isSignup ? 'Create your account' : 'Welcome back'}
+            {mode === 'reset' ? 'Set your new password' : isSignup ? 'Create your account' : 'Welcome back'}
           </p>
         </div>
 
-        {confirmSent ? (
+        {mode === 'reset' ? (
+          <form onSubmit={handleSetNewPassword} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.6, margin: 0 }}>
+              Pick a new password for your account. You'll be signed in as soon as it's saved.
+            </p>
+            <div>
+              <label style={labelStyle}>New password</label>
+              <input
+                type="password"
+                className="input"
+                placeholder="Min 6 characters"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                required
+                minLength={6}
+                autoFocus
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Type it again</label>
+              <input
+                type="password"
+                className="input"
+                placeholder="Same password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                required
+              />
+            </div>
+            {error && (
+              <div style={{
+                padding: '10px 14px', borderRadius: 8,
+                background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)',
+                fontSize: '0.85rem', lineHeight: 1.5,
+              }}>
+                {error}
+              </div>
+            )}
+            <button
+              type="submit"
+              className="btn btn-primary"
+              style={{ width: '100%', padding: '14px', marginTop: 8 }}
+              disabled={loading}
+            >
+              {loading ? 'Saving...' : 'Save Password & Log In'}
+            </button>
+          </form>
+        ) : confirmSent ? (
           <div className="card" style={{ textAlign: 'center', padding: '36px 28px' }}>
             <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 12 }}>Check your email</h2>
             <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.95rem' }}>

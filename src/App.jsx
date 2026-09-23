@@ -1,4 +1,6 @@
-import { Routes, Route } from 'react-router-dom'
+import { useEffect } from 'react'
+import { Routes, Route, useNavigate } from 'react-router-dom'
+import { supabase } from './lib/supabase'
 import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
 import ScanPage from './pages/ScanPage'
@@ -12,6 +14,19 @@ import GS1 from './pages/GS1'
 import Storefronts from './pages/Storefronts'
 
 export default function App() {
+  const navigate = useNavigate()
+
+  // Password-reset links can land on any page (Supabase redirects to the
+  // site root by default). Wherever the recovery ticket arrives, hand the
+  // user to the login page's set-new-password screen.
+  useEffect(() => {
+    if (!supabase) return
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') navigate('/login#type=recovery')
+    })
+    return () => sub.subscription.unsubscribe()
+  }, [navigate])
+
   return (
     <Routes>
       <Route path="/" element={<Landing />} />

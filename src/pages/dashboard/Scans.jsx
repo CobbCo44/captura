@@ -117,7 +117,12 @@ export default function Scans({ brand }) {
                   zoomControl={true}
                 >
                   <TileLayer
-                                        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"                    attribution='&copy; CARTO'
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+                    attribution='Tiles &copy; Esri'
+                    noWrap={true}
+                  />
+                  <TileLayer
+                    url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
                     noWrap={true}
                   />
                   {mapPoints.map((s, i) => (

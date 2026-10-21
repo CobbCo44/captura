@@ -149,7 +149,7 @@ export default function ScanPage({ previewData } = {}) {
   // Determine lookup mode
   const lookupShortId = qrId || null  // only /s/:qrId uses short_id lookup
   const lookupGtin = gtin ? gtin.replace(/\D/g, '').padStart(14, '0') : null
-  const lookupSerial = serial || null  // /21/ segment → serials table via RPC
+  const lookupSerial = serial || null  // /21/ segment (or /s/:qrId/:serial for no-GTIN batches) → serials table via RPC
 
   // Fetch location once via Netlify edge geo (free, unlimited, server-side)
   const locationPromise = useRef(null)
@@ -192,6 +192,18 @@ export default function ScanPage({ previewData } = {}) {
         .eq('short_id', lookupShortId)
         .single()
       if (!error && data) qr = data
+
+      // Serialized batch for a product without a GTIN (/s/:qrId/:serial)
+      if (qr && lookupSerial && qr.product_id) {
+        const { data: serialResult } = await supabase.rpc('lookup_serial_for_product', {
+          p_product_id: qr.product_id,
+          p_serial_value: lookupSerial,
+        })
+        if (serialResult && serialResult.length > 0) {
+          resolvedSerialData = serialResult[0]
+          setSerialData(resolvedSerialData)
+        }
+      }
     }
 
     // Path 2: serialized scan (/01/:gtin/21/:serial) — lookup via RPC
@@ -356,7 +368,7 @@ export default function ScanPage({ previewData } = {}) {
     scanLogged.current = true
 
     // Throttle: don't log duplicate scans within 5 minutes
-    const throttleKey = qr ? `scan_${qr.short_id}` : `scan_gtin_${lookupGtin}_${lookupSerial || ''}`
+    const throttleKey = qr ? `scan_${qr.short_id}${lookupSerial ? `_${lookupSerial}` : ''}` : `scan_gtin_${lookupGtin}_${lookupSerial || ''}`
     const lastScan = localStorage.getItem(throttleKey)
     if (lastScan && Date.now() - parseInt(lastScan) < 300000) return
     localStorage.setItem(throttleKey, String(Date.now()))
@@ -524,6 +536,12 @@ export default function ScanPage({ previewData } = {}) {
         await supabase.rpc('claim_serial', {
           p_serial_value: lookupSerial,
           p_gtin: lookupGtin,
+          p_contact_id: contactId,
+        })
+      } else if (contactId && serialData) {
+        await supabase.rpc('claim_serial_for_product', {
+          p_serial_value: lookupSerial,
+          p_product_id: serialData.product_id,
           p_contact_id: contactId,
         })
       }

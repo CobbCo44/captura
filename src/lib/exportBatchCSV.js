@@ -40,14 +40,32 @@ export async function exportBatchCSV(batchId) {
 
   const productName = batch.products?.name || ''
   const gtin = batch.products?.gtin || ''
+
+  // Without a GTIN, serial URLs go through the product's QR code (/s/:qrId/:serial).
+  // Prefer the QR code on the batch's channel, like the batch download does.
+  let qrShortId = null
+  if (!gtin) {
+    const { data: qrs } = await supabase
+      .from('qr_codes')
+      .select('short_id, channel_id')
+      .eq('product_id', batch.product_id)
+      .is('event_id', null)
+    const match = (qrs || []).find(q => q.channel_id === batch.channel_id) || (qrs || [])[0]
+    qrShortId = match?.short_id || null
+    if (!qrShortId) {
+      alert('This product has no GTIN, so its batch QR codes link through the product\'s QR code. Create a QR code for this product first.')
+      return
+    }
+  }
   const channelName = batch.channels?.name || ''
   const poRef = batch.po_reference || ''
 
   // Build CSV
   const header = 'serial,url,product_name,gtin,batch_id,channel_name,po_reference,created_at'
   const rows = allSerials.map(s => {
-    const g14 = gtin.replace(/\D/g, '').padStart(14, '0')
-    const url = `${SCAN_DOMAIN}/01/${g14}/21/${encodeURIComponent(s.serial)}`
+    const url = gtin
+      ? `${SCAN_DOMAIN}/01/${gtin.replace(/\D/g, '').padStart(14, '0')}/21/${encodeURIComponent(s.serial)}`
+      : `${SCAN_DOMAIN}/s/${qrShortId}/${encodeURIComponent(s.serial)}`
     return [
       csvEscape(s.serial),
       csvEscape(url),

@@ -36,6 +36,7 @@ export default function App() {
       {/* <Route path="/pricing" element={<Pricing />} /> */}
       <Route path="/01/:gtin/21/:serial" element={<ScanPage />} />
       <Route path="/01/:gtin" element={<ScanPage />} />
+      <Route path="/s/:qrId/:serial" element={<ScanPage />} />
       <Route path="/s/:qrId" element={<ScanPage />} />
       <Route path="/store/:brandId" element={<StorefrontScanPage />} />
       <Route path="/gs1" element={<GS1 />} />

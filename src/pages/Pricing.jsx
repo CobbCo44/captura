@@ -58,7 +58,7 @@ const productTiers = [
 const storefrontTiers = [
   {
     name: 'Starter',
-    price: '125',
+    price: '99',
     desc: 'The loyalty loop, running itself.',
     features: [
       'Scan page with menu and prices',
@@ -72,7 +72,7 @@ const storefrontTiers = [
   },
   {
     name: 'Growth',
-    price: '250',
+    price: '199',
     desc: 'Everything in Starter plus Autopilot at full power.',
     features: [
       'Everything in Starter',

@@ -20,8 +20,8 @@ export function getStripe() {
 // Stripe price, so the same code works in test mode and live mode.
 export const PLANS = {
   storefront: {
-    starter: { lookup_key: 'storefront_starter', name: 'MeetCaptura Storefront Starter', amount: 12500 },
-    growth: { lookup_key: 'storefront_growth', name: 'MeetCaptura Storefront Growth', amount: 25000 },
+    starter: { lookup_key: 'storefront_starter', name: 'MeetCaptura Storefront Starter', amount: 9900 },
+    growth: { lookup_key: 'storefront_growth', name: 'MeetCaptura Storefront Growth', amount: 19900 },
     pro: { lookup_key: 'storefront_pro', name: 'MeetCaptura Storefront Pro', amount: 49900 },
   },
   product: {

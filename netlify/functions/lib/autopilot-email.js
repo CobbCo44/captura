@@ -6,6 +6,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { createHmac, timingSafeEqual } from 'node:crypto'
+import { buildEmailHtml } from '../../../src/lib/emailTemplates.js'
 
 // --- Supabase ---
 export function getSupabase() {
@@ -56,34 +57,8 @@ export async function logAutopilotEmail(supabase, { contact_id, brand_id, flow, 
   } catch (e) { /* best-effort */ }
 }
 
-/**
- * Build the branded email HTML shell.
- * All flows share the same outer structure: logo, accent color, footer with unsub link.
- */
-export function buildEmailHtml({ brand, subject, bodyHtml, unsubUrl }) {
-  const logoUrl = brand.logo_dark_url || brand.logo_url
-  const accentColor = brand.accent_hex || '#22c55e'
-
-  return `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f4f4f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:32px 16px;">
-<tr><td align="center">
-<table width="100%" style="max-width:480px;background:#ffffff;border-radius:12px;overflow:hidden;">
-  ${logoUrl ? `<tr><td style="padding:24px 24px 0;text-align:center;"><img src="${logoUrl}" alt="${brand.name}" style="max-height:48px;max-width:200px;"></td></tr>` : ''}
-  <tr><td style="padding:24px;text-align:center;">
-    ${bodyHtml}
-  </td></tr>
-  <tr><td style="padding:16px 24px 24px;text-align:center;border-top:1px solid #f4f4f5;">
-    <p style="margin:0;font-size:11px;color:#a1a1aa;">
-      You're receiving this because you opted in to marketing communications from ${brand.name} via MeetCaptura.<br>
-      <a href="${unsubUrl}" style="color:#a1a1aa;text-decoration:underline;">Unsubscribe</a>
-    </p>
-  </td></tr>
-</table>
-</td></tr></table>
-</body></html>`
-}
+// Shared with the dashboard preview so owners see exactly what members get.
+export { buildEmailHtml }
 
 /**
  * Send an email via Resend. Returns { sent: true } or { error: string }.

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { buildEmailHtml, buildBroadcastBody, fillBroadcastText, isHttpUrl } from '../../lib/emailTemplates'
+
+const EMPTY_BROADCAST = { subject: '', message: '', imageUrl: '', buttonText: '', buttonUrl: '' }
 
 export default function Email({ brand }) {
   // Autopilot state
@@ -17,7 +20,10 @@ export default function Email({ brand }) {
   const [expandedFlow, setExpandedFlow] = useState(null)
 
   // Broadcast state
-  const [broadcast, setBroadcast] = useState({ subject: '', message: '' })
+  const [broadcast, setBroadcast] = useState(EMPTY_BROADCAST)
+  const [photoUploading, setPhotoUploading] = useState(false)
+  const [testSending, setTestSending] = useState(false)
+  const [testResult, setTestResult] = useState(null)
   const [broadcastSending, setBroadcastSending] = useState(false)
   const [broadcastResult, setBroadcastResult] = useState(null)
   const [broadcastConfirm, setBroadcastConfirm] = useState(false)
@@ -200,6 +206,63 @@ export default function Email({ brand }) {
   ]
   const activeFlow = flows.find(f => f.key === expandedFlow)
 
+  async function authHeaders() {
+    const { data: { session } } = await supabase.auth.getSession()
+    return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` }
+  }
+
+  function broadcastPayload(extra = {}) {
+    return JSON.stringify({
+      brand_id: brand.id,
+      subject: broadcast.subject,
+      message: broadcast.message,
+      image_url: broadcast.imageUrl || null,
+      button_text: broadcast.buttonText.trim() || null,
+      button_url: broadcast.buttonText.trim() ? broadcast.buttonUrl.trim() : null,
+      ...extra,
+    })
+  }
+
+  async function uploadBlastPhoto(file) {
+    if (!supabase || !brand?.id || !file) return
+    if (file.size > 5 * 1024 * 1024) { alert('Please use a photo under 5 MB.'); return }
+    setPhotoUploading(true)
+    const ext = file.name.split('.').pop()
+    const path = `blasts/${brand.id}/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('product-images').upload(path, file)
+    if (error) { alert(error.message); setPhotoUploading(false); return }
+    const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(path)
+    setBroadcast(prev => ({ ...prev, imageUrl: publicUrl }))
+    setPhotoUploading(false)
+  }
+
+  async function sendTestBlast() {
+    setTestSending(true)
+    setTestResult(null)
+    try {
+      const res = await fetch('/.netlify/functions/send-broadcast', { method: 'POST', headers: await authHeaders(), body: broadcastPayload({ test: true }) })
+      setTestResult(await res.json())
+    } catch { setTestResult({ error: 'Test failed to send. Please try again.' }) }
+    setTestSending(false)
+  }
+
+  const buttonLinkInvalid = broadcast.buttonText.trim() !== '' && !isHttpUrl(broadcast.buttonUrl.trim())
+  const blastReady = broadcast.subject.trim() && broadcast.message.trim() && !buttonLinkInvalid && !photoUploading
+  const previewFill = { firstName: 'Sam', storeName: brand?.name || '' }
+  const previewHtml = brand ? buildEmailHtml({
+    brand,
+    subject: fillBroadcastText(broadcast.subject, previewFill),
+    unsubUrl: '#',
+    bodyHtml: buildBroadcastBody({
+      brand,
+      subject: fillBroadcastText(broadcast.subject || 'Your subject line', previewFill),
+      message: fillBroadcastText(broadcast.message || 'Your message to members shows here.', previewFill),
+      imageUrl: broadcast.imageUrl,
+      buttonText: broadcast.buttonText.trim(),
+      buttonUrl: broadcast.buttonUrl.trim(),
+    }),
+  }) : ''
+
   // Tier enforcement: only for brands that have entered billing.
   // No subscription_status = founding free ride, everything unlocked.
   const billingActive = !!brand?.subscription_status
@@ -375,6 +438,58 @@ export default function Email({ brand }) {
             Placeholders: {'{name}'}, {'{store}'}
           </div>
 
+          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>Photo (optional)</label>
+          {broadcast.imageUrl ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+              <img src={broadcast.imageUrl} alt="" style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 8 }} />
+              <button type="button" onClick={() => setBroadcast(prev => ({ ...prev, imageUrl: '' }))}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem' }}>
+                Remove photo
+              </button>
+            </div>
+          ) : (
+            <label className="btn btn-secondary" style={{ display: 'inline-block', fontSize: '0.8rem', padding: '8px 14px', marginBottom: 14, cursor: 'pointer' }}>
+              {photoUploading ? 'Uploading...' : 'Add a photo'}
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" style={{ display: 'none' }}
+                disabled={photoUploading}
+                onChange={e => { uploadBlastPhoto(e.target.files?.[0]); e.target.value = '' }} />
+            </label>
+          )}
+
+          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>Button (optional)</label>
+          <div style={{ display: 'flex', gap: 8, marginBottom: buttonLinkInvalid ? 4 : 6 }}>
+            <input className="input" placeholder="Button text, e.g. Order now"
+              value={broadcast.buttonText}
+              onChange={e => setBroadcast(prev => ({ ...prev, buttonText: e.target.value }))}
+              style={{ flex: 1 }} />
+            <input className="input" placeholder="https://..."
+              value={broadcast.buttonUrl}
+              onChange={e => setBroadcast(prev => ({ ...prev, buttonUrl: e.target.value }))}
+              style={{ flex: 1.4 }} />
+          </div>
+          {buttonLinkInvalid && (
+            <div style={{ fontSize: '0.72rem', color: 'var(--danger)', marginBottom: 6 }}>Add a full link starting with https://</div>
+          )}
+          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: 14, opacity: 0.7 }}>
+            Leave blank to link to your store page.
+          </div>
+
+          <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>Preview</label>
+          <iframe title="Blast email preview" srcDoc={previewHtml} sandbox="allow-same-origin"
+            style={{ width: '100%', height: 460, border: '1px solid var(--border)', borderRadius: 8, background: '#f4f4f5', marginBottom: 10 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-secondary" onClick={sendTestBlast}
+              disabled={testSending || !blastReady}
+              style={{ fontSize: '0.8rem', padding: '8px 14px' }}>
+              {testSending ? 'Sending test...' : 'Send a test to me'}
+            </button>
+            {testResult && (
+              <span style={{ fontSize: '0.78rem', color: testResult.error ? 'var(--danger)' : 'var(--success)' }}>
+                {testResult.error || `Test sent to ${testResult.test_sent_to}`}
+              </span>
+            )}
+          </div>
+
           {broadcastResult && (
             <div style={{
               padding: '10px 14px', borderRadius: 8, marginBottom: 14,
@@ -395,7 +510,7 @@ export default function Email({ brand }) {
 
           {!broadcastConfirm ? (
             <button className="btn btn-primary"
-              disabled={broadcastSending || !broadcast.subject.trim() || !broadcast.message.trim() || blastsThisMonth >= 4}
+              disabled={broadcastSending || !blastReady || blastsThisMonth >= 4}
               onClick={() => setBroadcastConfirm(true)}
               style={{ fontSize: '0.85rem', padding: '10px 24px' }}
             >
@@ -412,12 +527,12 @@ export default function Email({ brand }) {
                   try {
                     const res = await fetch('/.netlify/functions/send-broadcast', {
                       method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ brand_id: brand.id, subject: broadcast.subject, message: broadcast.message }),
+                      headers: await authHeaders(),
+                      body: broadcastPayload(),
                     })
                     const data = await res.json()
                     setBroadcastResult(data)
-                    if (data.sent > 0) { setBroadcast({ subject: '', message: '' }); loadRecentEmails(); loadBlastCount() }
+                    if (data.sent > 0) { setBroadcast(EMPTY_BROADCAST); setTestResult(null); loadRecentEmails(); loadBlastCount() }
                   } catch { setBroadcastResult({ error: 'Failed to send. Please try again.' }) }
                   setBroadcastSending(false)
                 }}

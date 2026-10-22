@@ -1,6 +1,9 @@
 /**
  * Broadcast email — one-off blast to all consented loyalty members for a brand.
- * POST with { brand_id, subject, message }
+ * POST with { brand_id, subject, message, image_url?, button_text?, button_url?, test? }
+ * Requires the brand owner's session (Authorization: Bearer <access token>).
+ * test: true sends one copy to the owner's own email; it skips rate limits and
+ * isn't logged, so it doesn't use up one of the month's blasts.
  * Same template shell, consent gate, HMAC unsub as all autopilot emails.
  * Logged to autopilot_emails with flow='broadcast'.
  *
@@ -10,7 +13,9 @@
  * Refusals are logged to autopilot_emails and surfaced with specific messages.
  */
 
-import { getSupabase, sendAutopilotEmail, logAutopilotEmail } from './lib/autopilot-email.js'
+import { getSupabase, sendAutopilotEmail, sendViaResend, buildEmailHtml } from './lib/autopilot-email.js'
+import { authBrandOwner } from './lib/stripe-billing.js'
+import { buildBroadcastBody, fillBroadcastText, isHttpUrl } from '../../src/lib/emailTemplates.js'
 
 export default async (req) => {
   if (req.method === 'OPTIONS') {
@@ -25,19 +30,40 @@ export default async (req) => {
   if (!supabase) return new Response(JSON.stringify({ error: 'Server misconfigured' }), { status: 500, headers })
 
   try {
-    const { brand_id, subject, message } = await req.json()
+    const { brand_id, subject, message, image_url, button_text, button_url, test } = await req.json()
     if (!brand_id || !subject || !message) {
       return new Response(JSON.stringify({ error: 'Missing brand_id, subject, or message' }), { status: 400, headers })
     }
+    if (image_url && !isHttpUrl(image_url)) {
+      return new Response(JSON.stringify({ error: 'The photo link is not valid. Try uploading it again.' }), { status: 200, headers })
+    }
+    if (button_text && !isHttpUrl(button_url)) {
+      return new Response(JSON.stringify({ error: 'Add a full button link starting with https://' }), { status: 200, headers })
+    }
 
-    // Verify the brand exists
-    const { data: brand } = await supabase
-      .from('brands')
-      .select('id, name, logo_url, logo_dark_url, accent_hex, business_type, subscription_status, tier')
-      .eq('id', brand_id)
-      .single()
+    // Only the brand's owner can send blasts or tests
+    const auth = await authBrandOwner(supabase, req, brand_id)
+    if (auth.error) return new Response(JSON.stringify({ error: auth.error }), { status: 200, headers })
+    const brand = auth.brand
+    const content = { message, imageUrl: image_url, buttonText: button_text, buttonUrl: button_url }
 
-    if (!brand) return new Response(JSON.stringify({ error: 'Brand not found' }), { status: 200, headers })
+    // Test send: one copy to the owner, no rate limit, not logged as a blast
+    if (test) {
+      const resendKey = process.env.RESEND_API_KEY
+      if (!resendKey) return new Response(JSON.stringify({ error: 'Email sending is not configured.' }), { status: 200, headers })
+      const fill = { firstName: 'there', storeName: brand.name }
+      const testSubject = `[Test] ${fillBroadcastText(subject, fill)}`
+      const bodyHtml = buildBroadcastBody({ brand, ...content, subject: fillBroadcastText(subject, fill), message: fillBroadcastText(message, fill) })
+      const result = await sendViaResend({
+        resendKey,
+        from: `${brand.name} via MeetCaptura <rewards@meetcaptura.com>`,
+        to: auth.user.email,
+        subject: testSubject,
+        html: buildEmailHtml({ brand, subject: testSubject, bodyHtml, unsubUrl: '#' }),
+      })
+      if (result.error) return new Response(JSON.stringify({ error: 'Test email failed to send. Please try again.' }), { status: 200, headers })
+      return new Response(JSON.stringify({ test_sent_to: auth.user.email }), { status: 200, headers })
+    }
 
     // Tier enforcement: billed accounts need Growth+ to send blasts.
     // No subscription_status = founding free ride, not gated.
@@ -127,26 +153,14 @@ export default async (req) => {
       return new Response(JSON.stringify({ sent: 0, skipped: 0, error_count: 0, detail: 'no_contacts_found' }), { status: 200, headers })
     }
 
-    const accentColor = brand.accent_hex || '#22c55e'
-    const scanUrl = `https://meetcaptura.com/store/${brand_id}`
     let sent = 0, skipped = 0, errorCount = 0
 
     for (const contact of contacts) {
       const firstName = contact.first_name || 'there'
 
-      const filledSubject = subject
-        .replace(/\{name\}/gi, firstName)
-        .replace(/\{store\}/gi, brand.name)
-
-      const filledMessage = message
-        .replace(/\{name\}/gi, firstName)
-        .replace(/\{store\}/gi, brand.name)
-
-      const bodyHtml = `
-      <div style="font-size:32px;margin-bottom:8px;">&#128227;</div>
-      <h1 style="margin:0 0 8px;font-size:22px;color:#18181b;">${filledSubject}</h1>
-      <p style="margin:0 0 20px;font-size:16px;color:#52525b;white-space:pre-line;">${filledMessage}</p>
-      <a href="${scanUrl}" style="display:inline-block;margin-top:12px;padding:14px 32px;background:${accentColor};color:#ffffff;font-weight:700;font-size:16px;text-decoration:none;border-radius:10px;">Visit ${brand.name}</a>`
+      const fill = { firstName, storeName: brand.name }
+      const filledSubject = fillBroadcastText(subject, fill)
+      const bodyHtml = buildBroadcastBody({ brand, ...content, subject: filledSubject, message: fillBroadcastText(message, fill) })
 
       const result = await sendAutopilotEmail(supabase, {
         flow: 'broadcast',

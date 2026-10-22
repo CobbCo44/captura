@@ -194,7 +194,7 @@ export default function Billing({ brand }) {
 
       <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 20, lineHeight: 1.6 }}>
         Payments are handled by Stripe — your card details never touch our servers.
-        {isStorefront && ' Founding storefronts: $199 setup waived, rate locked for twelve months.'}
+        {isStorefront && ' Founding storefronts: no setup fee, and your monthly rate is locked for twelve months.'}
       </p>
     </div>
   )

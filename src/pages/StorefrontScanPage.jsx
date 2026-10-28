@@ -32,6 +32,7 @@ export default function StorefrontScanPage({ preview } = {}) {
   const [redemptionProof, setRedemptionProof] = useState(null)
   const [proofClock, setProofClock] = useState(null)
   const [thresholdCelebration, setThresholdCelebration] = useState(null)
+  const [pendingRedeem, setPendingRedeem] = useState(null)
 
   // Menu expanded
   const [showMenu, setShowMenu] = useState(false)
@@ -49,6 +50,7 @@ export default function StorefrontScanPage({ preview } = {}) {
 
   const scanLogged = useRef(false)
   const proofTimerRef = useRef(null)
+  const redeemConfirmRef = useRef(null)
 
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
@@ -65,6 +67,11 @@ export default function StorefrontScanPage({ preview } = {}) {
     return () => { clearInterval(tick); clearTimeout(proofTimerRef.current) }
   }, [redemptionProof])
 
+  // Bring the redeem confirmation into view when it's opened from the rewards list
+  useEffect(() => {
+    if (pendingRedeem) redeemConfirmRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [pendingRedeem])
+
   // Check threshold crossing after loyalty state changes
   function checkThresholdCrossing(result, rewards) {
     if (!result?.awarded || !rewards?.length) return null
@@ -72,6 +79,12 @@ export default function StorefrontScanPage({ preview } = {}) {
     const newBal = result.balance ?? 0
     const crossed = rewards.find(r => newBal >= r.points_required && prevBal < r.points_required)
     return crossed || null
+  }
+
+  // Best reward the member can already afford (highest threshold), for the scan pop-up
+  function readyReward(balance, rewards) {
+    const affordable = (rewards || []).filter(r => (balance || 0) >= r.points_required)
+    return affordable.length ? affordable[affordable.length - 1] : null
   }
 
   // Trigger reward-earned email server-side
@@ -149,10 +162,17 @@ export default function StorefrontScanPage({ preview } = {}) {
           setLoyaltyState({ ...result, returning: true })
           const crossed = checkThresholdCrossing(result, rewardsRes.data)
           if (crossed) {
-            setThresholdCelebration(crossed)
+            setThresholdCelebration({ ...crossed, justEarned: true })
             setShowLoyalty(true)
             const savedCid = localStorage.getItem(`loyalty_contact_${brandId}`)
             if (savedCid) triggerRewardEmail(savedCid, brandId, crossed.id, result.balance)
+          } else {
+            // Already had enough points from earlier visits: pop the reward up on this scan too
+            const ready = readyReward(result.balance, rewardsRes.data)
+            if (ready) {
+              setThresholdCelebration({ ...ready, justEarned: false })
+              setShowLoyalty(true)
+            }
           }
         }
       } catch (err) {
@@ -162,7 +182,14 @@ export default function StorefrontScanPage({ preview } = {}) {
             p_contact_id: savedContactId,
             p_brand_id: brandId,
           })
-          if (bal) setLoyaltyState({ ...bal, returning: true })
+          if (bal) {
+            setLoyaltyState({ ...bal, returning: true })
+            const ready = readyReward(bal.balance, rewardsRes.data)
+            if (ready) {
+              setThresholdCelebration({ ...ready, justEarned: false })
+              setShowLoyalty(true)
+            }
+          }
         } catch (e) {}
       }
     }
@@ -224,7 +251,7 @@ export default function StorefrontScanPage({ preview } = {}) {
           setLoyaltyState(result)
           const crossed = checkThresholdCrossing(result, loyaltyRewards)
           if (crossed) {
-            setThresholdCelebration(crossed)
+            setThresholdCelebration({ ...crossed, justEarned: true })
             triggerRewardEmail(contactId, brandId, crossed.id, result.balance)
           }
           localStorage.setItem(`loyalty_email_${brandId}`, loyaltyForm.email)
@@ -253,6 +280,7 @@ export default function StorefrontScanPage({ preview } = {}) {
         setLoyaltyRedeemed(data)
         setLoyaltyState(prev => ({ ...prev, balance: data.new_balance }))
         setThresholdCelebration(null)
+        setPendingRedeem(null)
         // Show the staff-facing proof screen
         setRedemptionProof({
           rewardName: data.reward_name,
@@ -310,8 +338,11 @@ export default function StorefrontScanPage({ preview } = {}) {
           setLoyaltyState({ ...awardResult, returning: true })
           const crossed = checkThresholdCrossing(awardResult, loyaltyRewards)
           if (crossed) {
-            setThresholdCelebration(crossed)
+            setThresholdCelebration({ ...crossed, justEarned: true })
             triggerRewardEmail(member.contact_id, brandId, crossed.id, awardResult.balance)
+          } else {
+            const ready = readyReward(awardResult.balance, loyaltyRewards)
+            if (ready) setThresholdCelebration({ ...ready, justEarned: false })
           }
         }
       } else {
@@ -551,8 +582,8 @@ export default function StorefrontScanPage({ preview } = {}) {
         if (loyaltyRewards.length > 0) {
           utilDefs.loyalty = {
             key: 'loyalty',
-            label: redemptionProof ? 'Reward Redeemed' : thresholdCelebration ? `You earned ${thresholdCelebration.name}!` : loyaltyState?.returning ? `${loyaltyState.balance} Points` : 'Loyalty',
-            sub: redemptionProof ? 'Show at counter' : thresholdCelebration ? 'Tap to redeem' : storeLoyaltyHasReward ? 'You have a reward ready!' : loyaltyState?.returning ? 'View rewards' : 'Earn points',
+            label: redemptionProof ? 'Reward Redeemed' : thresholdCelebration ? (thresholdCelebration.justEarned ? `You earned ${thresholdCelebration.name}!` : `${thresholdCelebration.name} ready`) : loyaltyState?.returning ? `${loyaltyState.balance} Points` : 'Loyalty',
+            sub: redemptionProof ? 'Show at counter' : thresholdCelebration ? 'Redeem at counter' : storeLoyaltyHasReward ? 'You have a reward ready!' : loyaltyState?.returning ? 'View rewards' : 'Earn points',
             icon: (
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
@@ -1041,7 +1072,7 @@ export default function StorefrontScanPage({ preview } = {}) {
       {/* LOYALTY MODAL (hidden on label QR codes) */}
       {showLoyalty && !isLabelQR && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 40, display: 'flex', flexDirection: 'column' }}>
-          <div onClick={() => setShowLoyalty(false)} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }} />
+          <div onClick={() => { setShowLoyalty(false); setPendingRedeem(null) }} style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)' }} />
           <div onClick={e => e.stopPropagation()} style={{
             position: 'relative', marginTop: 'auto', maxHeight: '85vh', overflowY: 'auto',
             background: kit.bg, color: modalInk, borderRadius: '20px 20px 0 0', padding: '20px 16px 32px',
@@ -1175,22 +1206,47 @@ export default function StorefrontScanPage({ preview } = {}) {
                   </div>
                 ) : (
                   <>
-                    {/* Threshold celebration banner */}
-                    {thresholdCelebration && (
+                    {/* Confirm before redeeming: the reward is used up on tap, so it should happen at the counter */}
+                    {pendingRedeem && (
+                      <div ref={redeemConfirmRef} style={{
+                        textAlign: 'center', padding: '18px 16px', borderRadius: 12,
+                        background: isLightBg ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.06)', border: `1px solid ${accentBg}66`,
+                      }}>
+                        <div style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: 6 }}>
+                          Redeem {pendingRedeem.name}?
+                        </div>
+                        <div style={{ fontSize: '0.82rem', color: modalMuted, marginBottom: 14, lineHeight: 1.5 }}>
+                          Show this screen to staff at the counter. Your reward is used once you tap Redeem.
+                        </div>
+                        <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+                          <button onClick={() => handleLoyaltyRedeem(pendingRedeem)} style={{
+                            padding: '12px 24px', ...btnStyle, border: 'none',
+                            borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem',
+                          }}>Redeem</button>
+                          <button onClick={() => setPendingRedeem(null)} style={{
+                            padding: '12px 20px', background: 'none', color: modalMuted,
+                            border: `1px solid ${modalLine}`, borderRadius: 10, fontWeight: 600, cursor: 'pointer', fontSize: '0.9rem',
+                          }}>Not yet</button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Reward pop-up: shown on scan whenever the member has a reward ready */}
+                    {thresholdCelebration && !pendingRedeem && (
                       <div style={{
                         textAlign: 'center', padding: '16px', borderRadius: 12,
                         background: 'rgba(34, 197, 94, 0.1)', border: '1px solid rgba(34, 197, 94, 0.3)',
                       }}>
                         <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#4ade80', marginBottom: 4 }}>
-                          {loyaltyState.awarded ? `You just earned ${thresholdCelebration.name}!` : `You have a reward ready to redeem`}
+                          {thresholdCelebration.justEarned ? `You just earned ${thresholdCelebration.name}!` : `Your ${thresholdCelebration.name} is ready`}
                         </div>
                         <div style={{ fontSize: '0.8rem', color: modalMuted, marginBottom: 10 }}>
                           {thresholdCelebration.points_required} points
                         </div>
-                        <button onClick={() => handleLoyaltyRedeem(thresholdCelebration)} style={{
-                          padding: '10px 24px', ...btnStyle, border: 'none',
-                          borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: '0.9rem',
-                        }}>Redeem Now</button>
+                        <button onClick={() => setPendingRedeem(thresholdCelebration)} style={{
+                          padding: '12px 28px', ...btnStyle, border: 'none',
+                          borderRadius: 10, fontWeight: 700, cursor: 'pointer', fontSize: '0.95rem',
+                        }}>Redeem at counter</button>
                       </div>
                     )}
 
@@ -1254,7 +1310,7 @@ export default function StorefrontScanPage({ preview } = {}) {
                                   {canRedeem ? 'Ready to redeem' : `${reward.points_required - (loyaltyState.balance || 0)} more points needed`}
                                 </div>
                               </div>
-                              <button onClick={() => handleLoyaltyRedeem(reward)} disabled={!canRedeem} style={{
+                              <button onClick={() => setPendingRedeem(reward)} disabled={!canRedeem} style={{
                                 padding: '8px 16px', borderRadius: 8, border: 'none', fontWeight: 700, fontSize: '0.8rem',
                                 cursor: canRedeem ? 'pointer' : 'not-allowed',
                                 background: canRedeem ? accentBg : (isLightBg ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'),

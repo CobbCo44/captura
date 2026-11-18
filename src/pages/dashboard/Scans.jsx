@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
 const tabStyle = (active) => ({
@@ -10,6 +10,23 @@ const tabStyle = (active) => ({
   border: active ? 'none' : '1px solid var(--border)',
   transition: 'all 0.15s',
 })
+
+// Mapbox's dark style when a public token is configured; Esri dark gray otherwise
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || ''
+
+// Zooms the map to fit the scans shown (local shops shouldn't open on the whole country)
+function FitToScans({ points }) {
+  const map = useMap()
+  const key = points.map(p => `${p.latitude},${p.longitude}`).join('|')
+  useEffect(() => {
+    if (!points.length) return
+    const lats = points.map(p => p.latitude)
+    const lngs = points.map(p => p.longitude)
+    const bounds = [[Math.min(...lats), Math.min(...lngs)], [Math.max(...lats), Math.max(...lngs)]]
+    map.fitBounds(bounds, { padding: [48, 48], maxZoom: 11 })
+  }, [key])
+  return null
+}
 
 // Which storefront QR a scan came from
 const SOURCES = {
@@ -153,37 +170,61 @@ export default function Scans({ brand }) {
                   style={{ height: '100%', width: '100%', background: '#09090B' }}
                   zoomControl={true}
                 >
-                  <TileLayer
-                    url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-                    attribution='Tiles &copy; Esri'
-                    noWrap={true}
-                  />
-                  <TileLayer
-                    url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
-                    noWrap={true}
-                  />
-                  {mapPoints.map((s, i) => (
-                    <CircleMarker
-                      key={s.id || i}
-                      center={[s.latitude, s.longitude]}
-                      radius={6}
-                      fillColor={isStorefront ? sourceOf(s).color : '#EF4444'}
-                      fillOpacity={0.9}
-                      color="#FFFFFF"
-                      weight={2}
-                      opacity={1}
-                    >
-                      <Popup>
-                        <div style={{ color: '#09090B', fontSize: '0.85rem' }}>
-                          <strong>{isStorefront ? sourceOf(s).label : (s.products?.name || 'Product')}</strong><br />
-                          {s.city || 'Unknown'}<br />
-                          <span style={{ color: '#71717A', fontSize: '0.75rem' }}>
-                            {new Date(s.scanned_at).toLocaleString()}
-                          </span>
-                        </div>
-                      </Popup>
-                    </CircleMarker>
-                  ))}
+                  {MAPBOX_TOKEN ? (
+                    <TileLayer
+                      url={`https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/512/{z}/{x}/{y}@2x?access_token=${MAPBOX_TOKEN}`}
+                      tileSize={512}
+                      zoomOffset={-1}
+                      attribution='&copy; Mapbox &copy; OpenStreetMap'
+                      noWrap={true}
+                    />
+                  ) : (
+                    <>
+                      <TileLayer
+                        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+                        attribution='Tiles &copy; Esri'
+                        noWrap={true}
+                      />
+                      <TileLayer
+                        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
+                        noWrap={true}
+                      />
+                    </>
+                  )}
+                  <FitToScans points={mapPoints} />
+                  {/* Untagged scans first (small, faded), then counter and label scans on top with a glow */}
+                  {[...mapPoints]
+                    .sort((a, b) => (SOURCES[a.source] ? 1 : 0) - (SOURCES[b.source] ? 1 : 0))
+                    .map((s, i) => {
+                      const tagged = isStorefront && SOURCES[s.source]
+                      const color = isStorefront ? sourceOf(s).color : '#EF4444'
+                      return [
+                        tagged && (
+                          <CircleMarker key={`glow-${s.id || i}`} center={[s.latitude, s.longitude]} radius={16}
+                            stroke={false} fillColor={color} fillOpacity={0.18} interactive={false} />
+                        ),
+                        <CircleMarker
+                          key={s.id || i}
+                          center={[s.latitude, s.longitude]}
+                          radius={tagged || !isStorefront ? 7 : 4}
+                          fillColor={color}
+                          fillOpacity={tagged || !isStorefront ? 1 : 0.45}
+                          color={tagged || !isStorefront ? '#FFFFFF' : color}
+                          weight={tagged || !isStorefront ? 2 : 0}
+                          opacity={1}
+                        >
+                          <Popup>
+                            <div style={{ color: '#09090B', fontSize: '0.85rem' }}>
+                              <strong>{isStorefront ? sourceOf(s).label : (s.products?.name || 'Product')}</strong><br />
+                              {s.city || 'Unknown'}<br />
+                              <span style={{ color: '#71717A', fontSize: '0.75rem' }}>
+                                {new Date(s.scanned_at).toLocaleString()}
+                              </span>
+                            </div>
+                          </Popup>
+                        </CircleMarker>,
+                      ]
+                    })}
                 </MapContainer>
               </div>
               <div className="card" style={{ maxHeight: 500, overflow: 'auto' }}>

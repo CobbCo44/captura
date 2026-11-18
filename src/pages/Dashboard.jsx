@@ -204,10 +204,10 @@ export default function Dashboard() {
 
   if (needsPlan) {
     return (
-      <div style={{ minHeight: '100vh', padding: '40px 24px 64px' }}>
-        <div style={{ maxWidth: 900, margin: '0 auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 40, flexWrap: 'wrap' }}>
-            <img src="/images/meetcaptura-logo.png" alt="MeetCaptura" style={{ height: 36, filter: 'invert(1)' }} />
+      <div style={{ minHeight: '100vh', padding: '28px 24px 72px' }}>
+        <div style={{ maxWidth: 1040, margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 56, flexWrap: 'wrap' }}>
+            <img src="/images/meetcaptura-logo-tight.png" alt="MeetCaptura" style={{ height: 30, filter: 'invert(1)' }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               {brands.length > 1 && (
                 <select className="input" value={brand.id} style={{ width: 'auto', padding: '8px 12px' }}
@@ -235,7 +235,31 @@ export default function Dashboard() {
               <button className="btn btn-primary" onClick={() => window.location.reload()} style={{ padding: '12px 28px' }}>Refresh</button>
             </div>
           ) : (
-            <Billing brand={brand} onboarding />
+            <>
+              <div style={{ textAlign: 'center', maxWidth: 820, margin: '0 auto 40px' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 14 }}>
+                  {brand.subscription_status === 'canceled' ? 'Reactivate your account' : 'Last step'}
+                </div>
+                <h1 style={{ fontSize: 'clamp(2rem, 4vw, 2.8rem)', fontWeight: 800, lineHeight: 1.15, margin: '0 0 14px' }}>
+                  {brand.subscription_status === 'canceled'
+                    ? `Pick a plan to bring ${brand.name} back`
+                    : `Choose a plan for ${brand.name}`}
+                </h1>
+                <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', lineHeight: 1.6, margin: '0 auto 22px', maxWidth: 560 }}>
+                  {brand.subscription_status === 'canceled'
+                    ? 'Your plan was canceled. Choose one to turn loyalty, emails and your scan page back on.'
+                    : 'Try any plan free for 14 days. Your card is only charged on day 15, and you can cancel anytime before then.'}
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: 22, flexWrap: 'wrap', fontSize: '0.88rem', color: 'var(--text)' }}>
+                  {['14 days free', 'Cancel anytime', 'No setup fee'].map(t => (
+                    <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                      <span style={{ color: '#22C55E', fontWeight: 700 }}>✓</span>{t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <Billing brand={brand} onboarding />
+            </>
           )}
         </div>
       </div>

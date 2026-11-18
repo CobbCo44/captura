@@ -212,7 +212,7 @@ export default function Login() {
       <div style={{ width: '100%', maxWidth: 440 }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <Link to="/">
-            <img src="/images/meetcaptura-logo.png" alt="MeetCaptura" style={{ height: 48, marginBottom: 8, filter: 'invert(1)' }} />
+            <img src="/images/meetcaptura-logo-tight.png" alt="MeetCaptura" style={{ height: 34, marginBottom: 14, filter: 'invert(1)' }} />
           </Link>
           <p style={{ color: 'var(--text-muted)' }}>
             {mode === 'reset' ? 'Set your new password' : confirmSent ? 'One last step' : isSignup ? 'Create your account' : 'Welcome back'}

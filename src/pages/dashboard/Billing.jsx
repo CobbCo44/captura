@@ -101,17 +101,15 @@ export default function Billing({ brand, onboarding = false }) {
   const hasSubscription = !!brand?.stripe_subscription_id && status && status !== 'canceled'
 
   return (
-    <div style={{ maxWidth: 860 }}>
-      <h1 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: 8 }}>
-        {!onboarding ? 'Billing' : status === 'canceled' ? 'Pick a plan to reactivate' : 'Choose your plan'}
-      </h1>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 24, lineHeight: 1.6 }}>
-        {onboarding && status === 'canceled'
-          ? `Your plan for ${brand?.name || 'this account'} was canceled. Pick a plan to turn everything back on.`
-          : onboarding
-          ? `Start ${brand?.name || 'your account'} with a 14-day free trial. Card required to start, nothing charged until day 15, cancel anytime.`
-          : 'Every plan starts with a 14-day free trial. Card required to start, nothing charged until day 15, cancel anytime from this page.'}
-      </p>
+    <div style={{ maxWidth: onboarding ? 'none' : 860 }}>
+      {!onboarding && (
+        <>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: 8 }}>Billing</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 24, lineHeight: 1.6 }}>
+            Every plan starts with a 14-day free trial. Card required to start, nothing charged until day 15, cancel anytime from this page.
+          </p>
+        </>
+      )}
 
       {checkoutResult === 'success' && (
         <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 20, background: 'rgba(34,197,94,0.1)', color: '#22C55E', fontSize: '0.9rem' }}>
@@ -134,7 +132,7 @@ export default function Billing({ brand, onboarding = false }) {
       )}
 
       {/* Current plan */}
-      {statusInfo && (
+      {statusInfo && !onboarding && (
         <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 28, flexWrap: 'wrap' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -198,10 +196,16 @@ export default function Billing({ brand, onboarding = false }) {
         })}
       </div>
 
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 20, lineHeight: 1.6 }}>
-        Payments are handled by Stripe — your card details never touch our servers.
-        {isStorefront && ' Founding storefronts: no setup fee, and your monthly rate is locked for twelve months.'}
-      </p>
+      {onboarding ? (
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 28, textAlign: 'center' }}>
+          Secure checkout by Stripe. Your card details never touch our servers.
+        </p>
+      ) : (
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 20, lineHeight: 1.6 }}>
+          Payments are handled by Stripe — your card details never touch our servers.
+          {isStorefront && ' Founding storefronts: no setup fee, and your monthly rate is locked for twelve months.'}
+        </p>
+      )}
     </div>
   )
 }

@@ -1887,18 +1887,20 @@ export default function QRCodes({ brand }) {
                         </div>
                       )}
                       {showAddChannel && (
-                        <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                          <input className="input" placeholder="Channel name" style={{ flex: 1 }}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 6 }}>
+                          <input className="input" placeholder="Channel name, e.g. Amazon US" style={{ width: '100%' }}
                             value={newChannelName} onChange={e => setNewChannelName(e.target.value)} />
-                          <select className="input" style={{ width: 110 }}
-                            value={newChannelType} onChange={e => setNewChannelType(e.target.value)}>
-                            <option value="retail">Retail</option>
-                            <option value="dtc">DTC</option>
-                            <option value="distributor">Distributor</option>
-                            <option value="event">Event</option>
-                          </select>
-                          <button type="button" className="btn btn-primary" style={{ padding: '8px 14px', fontSize: '0.8rem' }}
-                            onClick={addChannel}>Add</button>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <select className="input" style={{ flex: 1 }}
+                              value={newChannelType} onChange={e => setNewChannelType(e.target.value)}>
+                              <option value="retail">Retail</option>
+                              <option value="dtc">DTC</option>
+                              <option value="distributor">Distributor</option>
+                              <option value="event">Event</option>
+                            </select>
+                            <button type="button" className="btn btn-primary" style={{ padding: '8px 18px', fontSize: '0.85rem' }}
+                              onClick={addChannel} disabled={!newChannelName.trim()}>Add channel</button>
+                          </div>
                         </div>
                       )}
                     </div>

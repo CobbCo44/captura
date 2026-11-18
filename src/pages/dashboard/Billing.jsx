@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
+import { compTier } from '../../lib/billingAccess'
 
 // Plain-language plan copy: written for shop owners, not for us
 const STOREFRONT_PLANS = [
@@ -178,6 +179,40 @@ export default function Billing({ brand, onboarding = false }) {
   }
 
   const hasSubscription = !!brand?.stripe_subscription_id && status && status !== 'canceled'
+
+  const freeTier = compTier(brand)
+  if (freeTier && !onboarding) {
+    const freePlan = plans.find(p => p.tier === freeTier)
+    return (
+      <div style={{ maxWidth: 1120 }}>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 700, margin: '0 0 6px' }}>Billing</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', margin: 0 }}>Your plan and what's included.</p>
+        </div>
+        <div className="card" style={{ padding: '24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 24, alignItems: 'start' }}>
+          <div>
+            <div style={{ fontSize: '0.72rem', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>Your plan</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
+              <span style={{ fontWeight: 700, fontSize: '1.3rem' }}>{freePlan?.name || freeTier}</span>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>Free plan</span>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.6, margin: 0 }}>
+              MeetCaptura has given you this plan for free. There's nothing to pay and no card on file.
+            </p>
+          </div>
+          {freePlan && (
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {freePlan.features.map((f, i) => (
+                <li key={i} style={{ fontSize: '0.9rem', display: 'flex', gap: 10, lineHeight: 1.45 }}>
+                  <span style={{ color: '#22C55E', fontWeight: 700, flexShrink: 0 }}>✓</span>{f}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   const notice = (style, children) => (
     <div style={{ padding: '12px 16px', borderRadius: 10, marginBottom: 20, fontSize: '0.9rem', lineHeight: 1.5, ...style }}>{children}</div>

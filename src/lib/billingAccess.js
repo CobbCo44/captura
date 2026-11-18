@@ -13,16 +13,26 @@ export function isFoundingBrand(brand) {
   return new Date(brand.created_at) < new Date(FOUNDING_CUTOFF)
 }
 
-// True when the brand can use the dashboard: founding, or a live subscription
-// (past_due keeps access while the owner fixes their card).
+// A plan given for free by an admin (no Stripe): 'starter' | 'growth' | 'pro'
+export function compTier(brand) {
+  return ['starter', 'growth', 'pro'].includes(brand?.comp_tier) ? brand.comp_tier : null
+}
+
+// The tier whose features apply: a free plan wins over a paid one
+export function effectiveTier(brand) {
+  return compTier(brand) || brand?.tier || null
+}
+
+// True when the brand can use the dashboard: founding, a free plan, or a live
+// subscription (past_due keeps access while the owner fixes their card).
 export function hasActivePlan(brand) {
-  return isFoundingBrand(brand) || LIVE_STATUSES.includes(brand?.subscription_status)
+  return isFoundingBrand(brand) || !!compTier(brand) || LIVE_STATUSES.includes(brand?.subscription_status)
 }
 
 // Growth-tier features: blasts, win-back emails.
 export function hasGrowthFeatures(brand) {
   if (isFoundingBrand(brand)) return true
-  return hasActivePlan(brand) && ['growth', 'pro'].includes(brand?.tier)
+  return hasActivePlan(brand) && ['growth', 'pro'].includes(effectiveTier(brand))
 }
 
 // Which plan each storefront feature needs. Product brands aren't gated here yet.
@@ -43,7 +53,7 @@ export function canUseFeature(brand, feature) {
   if (isFoundingBrand(brand)) return true
   if (!hasActivePlan(brand)) return false
   const needed = STOREFRONT_FEATURES[feature]?.tier || 'starter'
-  return (TIER_RANK[brand.tier] || 0) >= TIER_RANK[needed]
+  return (TIER_RANK[effectiveTier(brand)] || 0) >= TIER_RANK[needed]
 }
 
 // Storefront locations included in the plan (Pro: up to 5)

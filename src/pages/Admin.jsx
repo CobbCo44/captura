@@ -1,6 +1,20 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { isFoundingBrand, compTier } from '../lib/billingAccess'
+
+const TIER_NAMES = { starter: 'Starter', growth: 'Growth', pro: 'Pro' }
+
+// One-line plan summary for a brand card
+function planLabel(b) {
+  if (compTier(b)) return { text: `Free ${TIER_NAMES[b.comp_tier]}`, color: '#22C55E' }
+  if (['trialing', 'active', 'past_due'].includes(b.subscription_status)) {
+    const status = b.subscription_status === 'trialing' ? 'trial' : b.subscription_status === 'past_due' ? 'payment issue' : 'paid'
+    return { text: `${TIER_NAMES[b.tier] || b.tier} · ${status}`, color: b.subscription_status === 'past_due' ? '#EF4444' : '#FAFAFA' }
+  }
+  if (isFoundingBrand(b)) return { text: 'Founding (free)', color: '#A1A1AA' }
+  return { text: b.subscription_status === 'canceled' ? 'Canceled' : 'No plan', color: '#71717A' }
+}
 
 // Admin emails authorized to access this console
 const ADMIN_EMAILS = (import.meta.env.VITE_ADMIN_EMAILS || '').split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
@@ -23,6 +37,28 @@ export default function Admin() {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
   })
+
+  const [compSaving, setCompSaving] = useState(null) // brand id being saved
+
+  // Give a brand a free plan (or remove it) through the admin-only function
+  async function setFreePlan(brand, tier) {
+    setCompSaving(brand.id)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/.netlify/functions/admin-set-comp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: session?.access_token, brand_id: brand.id, comp_tier: tier || null }),
+      })
+      const result = await res.json()
+      if (!res.ok || result.error) { alert(result.error || 'Could not update the plan.'); return }
+      setBrands(prev => prev.map(b => (b.id === brand.id ? { ...b, comp_tier: result.brand.comp_tier } : b)))
+    } catch {
+      alert('Could not update the plan.')
+    } finally {
+      setCompSaving(null)
+    }
+  }
 
   async function loadAllData() {
     setLoading(true)
@@ -336,6 +372,23 @@ export default function Admin() {
                       {b.industry || 'No industry'} &middot; Joined {new Date(b.created_at).toLocaleDateString()}
                     </div>
                   </div>
+                </div>
+                <div onClick={e => e.stopPropagation()} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                  padding: '10px 12px', borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', marginBottom: 16,
+                }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: planLabel(b).color }}>{planLabel(b).text}</span>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    Free plan
+                    <select value={b.comp_tier || ''} disabled={compSaving === b.id}
+                      onChange={e => setFreePlan(b, e.target.value)}
+                      style={{ background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 6, padding: '4px 6px', fontSize: '0.78rem' }}>
+                      <option value="">None</option>
+                      <option value="starter">Starter</option>
+                      <option value="growth">Growth</option>
+                      <option value="pro">Pro</option>
+                    </select>
+                  </label>
                 </div>
                 <div style={{ display: 'flex', gap: 24 }}>
                   <div>

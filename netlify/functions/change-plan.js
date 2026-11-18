@@ -4,7 +4,7 @@
  * Stripe prorates the difference on the next invoice.
  */
 
-import { getStripe, getSupabase, PLANS, ensurePrice, authBrandOwner, brandUpdateFromSubscription } from './lib/stripe-billing.js'
+import { getStripe, getSupabase, PLANS, ensurePrice, ensureUsagePrice, authBrandOwner, brandUpdateFromSubscription, baseItem, usageItem } from './lib/stripe-billing.js'
 
 const headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
 
@@ -39,13 +39,18 @@ export default async (req) => {
     }
 
     const price = await ensurePrice(stripe, plan)
-    const item = sub.items.data[0]
-    if (item.price.id === price.id) {
+    const usagePrice = await ensureUsagePrice(stripe, plan)
+    const item = baseItem(sub)
+    const metered = usageItem(sub)
+    const usageSame = !usagePrice || metered?.price?.id === usagePrice.id
+    if (item.price.id === price.id && usageSame) {
       return new Response(JSON.stringify({ unchanged: true }), { status: 200, headers })
     }
-
+    const items = [{ id: item.id, price: price.id }]
+    // Brand plans: move (or add) the per-contact price to the new plan's rate
+    if (usagePrice && !usageSame) items.push(metered ? { id: metered.id, price: usagePrice.id } : { price: usagePrice.id })
     const updated = await stripe.subscriptions.update(sub.id, {
-      items: [{ id: item.id, price: price.id }],
+      items,
       proration_behavior: 'create_prorations',
       metadata: { ...sub.metadata, brand_id: brand.id, tier },
     })

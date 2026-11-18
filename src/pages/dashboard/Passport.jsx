@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { canUseFeature } from '../../lib/billingAccess'
+import PlanLock from '../../components/PlanLock'
 
 /**
  * Predefined attribute keys that brands can pick from a dropdown.
@@ -232,6 +234,16 @@ export default function Passport({ brand }) {
   const scanDomain = import.meta.env.VITE_SCAN_DOMAIN || window.location.origin
 
   // ========== RENDER ==========
+
+  if (!canUseFeature(brand, 'passport')) {
+    return (
+      <div>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Digital Product Passport</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: 4, marginBottom: 28 }}>DPP-ready product records for EU ESPR.</p>
+        <PlanLock feature="passport" brand={brand} description="Publish a Digital Product Passport for each product: materials, care, repair and compliance data, linked from the same QR code on the package." />
+      </div>
+    )
+  }
 
   if (loading) {
     return <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>Loading...</div>

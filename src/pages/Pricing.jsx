@@ -4,52 +4,44 @@ import { supabase } from '../lib/supabase'
 
 const productTiers = [
   {
-    name: 'Starter',
+    name: 'Launch',
     price: '299',
-    perContact: '$1',
-    desc: 'For brands launching their first consumer capture program.',
+    perContact: '300 new contacts a month included, then $1 each',
+    desc: 'Turn the people who buy your products into contacts you own.',
     features: [
-      'Core dashboard',
-      'Up to 5 products',
-      '3 QR codes',
-      'Scan analytics + map',
-      'VIP member capture',
-      'CSV exports',
-      'Unlimited scans',
+      'A unique QR code on every item, up to 100,000 a year',
+      'Unlimited products, retail channels and batches',
+      'Warranty registration, promos, loyalty and events',
+      'Every contact tagged with the channel it came from',
+      'Live scan map and channel reporting',
+      'Shopify sync and CSV export',
     ],
     highlight: false,
   },
   {
     name: 'Growth',
-    price: '499',
-    perContact: '$1',
-    desc: 'For brands scaling consumer engagement across product lines.',
+    price: '999',
+    perContact: '1,250 new contacts a month included, then $0.80 each',
+    desc: 'For brands selling through several retailers at volume.',
     features: [
-      'Everything in Starter',
-      'Unlimited products',
-      'Unlimited QR codes',
-      'AI insights reports',
-      'Warranty registration',
-      'Reorder links',
-      'Promotional campaigns',
-      'Social media links',
-      'Consumer data dashboard',
+      'Everything in Launch',
+      'Up to 2 million serialized codes a year',
+      'Lower per-contact rate',
+      'AI insights and reports',
+      'Digital Product Passport (EU ESPR ready)',
     ],
     highlight: true,
   },
   {
     name: 'Enterprise',
     price: 'Custom',
-    perContact: 'Volume pricing',
-    desc: 'For large manufacturers with high-volume product lines.',
+    perContact: 'Volume pricing on contacts',
+    desc: 'For manufacturers labeling millions of units a year.',
     features: [
-      'Custom platform fee',
-      'Volume per-contact pricing',
       'Everything in Growth',
-      'Dedicated onboarding',
-      'Priority support',
-      'Admin controls',
-      'Dedicated account manager',
+      'Unlimited serialized codes',
+      'Annual contract and invoicing',
+      'Dedicated onboarding and support',
     ],
     highlight: false,
   },
@@ -141,7 +133,7 @@ export default function Pricing() {
         <p style={{ color: '#52525B', fontSize: '1.1rem', maxWidth: 520, margin: '0 auto' }}>
           {isStorefront
             ? 'Simple, flat monthly pricing. No per-contact fees, no surprises.'
-            : 'A platform fee plus $1 per consumer captured. You only pay for real contacts you own.'}
+            : 'A monthly fee that includes your first contacts, then about $1 for each new person who opts in. QR codes are free.'}
         </p>
       </div>
 
@@ -194,7 +186,7 @@ export default function Pricing() {
                 )}
               </div>
               {tier.perContact && (
-                <div style={{ color: '#A1A1AA', fontSize: '0.85rem', fontWeight: 600, marginTop: 4 }}>+ {tier.perContact} per captured contact</div>
+                <div style={{ color: '#A1A1AA', fontSize: '0.85rem', fontWeight: 600, marginTop: 4 }}>{tier.perContact}</div>
               )}
               <p style={{ color: '#52525B', fontSize: '0.85rem', lineHeight: 1.5, marginTop: 12 }}>{tier.desc}</p>
             </div>
@@ -228,7 +220,7 @@ export default function Pricing() {
       <div style={{ textAlign: 'center', color: '#52525B', fontSize: '0.9rem', marginBottom: 40, maxWidth: 560, margin: '0 auto 40px', lineHeight: 1.6 }}>
         {isStorefront
           ? 'Flat monthly pricing with no per-contact fees. Upgrade or cancel anytime.'
-          : 'You pay for results. $1 per opted-in consumer you actually capture. The platform fee covers your dashboard, analytics, and unlimited scans.'}
+          : 'A contact is one person who opts in through a warranty, promo, loyalty signup or event, counted once. Repeat visits from the same person are free, and so is everything collected during your 14-day trial.'}
       </div>
 
       <div style={{ textAlign: 'center', color: '#3F3F46', fontSize: '0.85rem', paddingBottom: 40 }}>

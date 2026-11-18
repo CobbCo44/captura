@@ -4,7 +4,7 @@
  * card details never touch our servers.
  */
 
-import { getStripe, getSupabase, PLANS, ensurePrice, authBrandOwner } from './lib/stripe-billing.js'
+import { getStripe, getSupabase, PLANS, ensurePrice, ensureUsagePrice, authBrandOwner } from './lib/stripe-billing.js'
 
 const headers = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
 
@@ -44,12 +44,16 @@ export default async (req) => {
     }
 
     const price = await ensurePrice(stripe, plan)
+    const usagePrice = await ensureUsagePrice(stripe, plan)
+    const lineItems = [{ price: price.id, quantity: 1 }]
+    // Metered items take no quantity; Stripe bills them from the contact meter
+    if (usagePrice) lineItems.push({ price: usagePrice.id })
     const origin = process.env.URL || 'https://meetcaptura.com'
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
-      line_items: [{ price: price.id, quantity: 1 }],
+      line_items: lineItems,
       subscription_data: {
         trial_period_days: 14,
         metadata: { brand_id: brand.id, tier },

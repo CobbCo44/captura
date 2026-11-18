@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
-import { compTier } from '../../lib/billingAccess'
+import { compTier, BRAND_PLAN_LIMITS } from '../../lib/billingAccess'
 
 // Plain-language plan copy: written for shop owners, not for us
 const STOREFRONT_PLANS = [
@@ -41,29 +41,49 @@ const STOREFRONT_PLANS = [
   },
 ]
 
+// Brand plans: platform fee with new contacts included, then a per-contact rate.
+// Numbers come from BRAND_PLAN_LIMITS so the page and the limits never disagree.
+const fmtRate = (n) => (n >= 1 ? `$${n}` : `$${n.toFixed(2)}`)
+const LAUNCH = BRAND_PLAN_LIMITS.starter
+const GROWTH = BRAND_PLAN_LIMITS.growth
 const PRODUCT_PLANS = [
   {
-    tier: 'starter', name: 'Starter', price: 299,
-    desc: 'Start collecting customer info from your products.',
+    tier: 'starter', name: LAUNCH.name, price: LAUNCH.price,
+    usageNote: `${LAUNCH.contacts} new contacts a month included, then ${fmtRate(LAUNCH.perContact)} each`,
+    desc: 'Turn the people who buy your products into contacts you own.',
     features: [
-      'Up to 5 products and 3 QR codes',
-      'See where and when people scan',
-      'Collect customer emails and phone numbers',
-      'Download your customer list',
+      'A unique QR code on every item, up to 100,000 a year',
+      'Unlimited products, retail channels and batches',
+      'Warranty registration, promos, loyalty and events',
+      'Every contact tagged with the channel it came from',
+      'Live scan map and channel reporting',
+      'Shopify sync and CSV export',
     ],
   },
   {
-    tier: 'growth', name: 'Growth', price: 499, highlight: true,
-    desc: 'For brands with a full product line.',
+    tier: 'growth', name: GROWTH.name, price: GROWTH.price, highlight: true,
+    usageNote: `${GROWTH.contacts.toLocaleString()} new contacts a month included, then ${fmtRate(GROWTH.perContact)} each`,
+    desc: 'For brands selling through several retailers at volume.',
     features: [
-      'Everything in Starter',
-      'Unlimited products and QR codes',
-      'A unique QR code on every item you make',
-      'Warranty registration and reorder links',
-      'Connect your Shopify store',
+      `Everything in ${LAUNCH.name}`,
+      'Up to 2 million serialized codes a year',
+      'Lower per-contact rate',
+      'AI insights and reports',
+      'Digital Product Passport (EU ESPR ready)',
     ],
   },
 ]
+
+const ENTERPRISE = {
+  name: 'Enterprise',
+  desc: 'For manufacturers labeling millions of units a year.',
+  features: [
+    'Unlimited serialized codes',
+    'Volume per-contact pricing',
+    'Annual contract and invoicing',
+    'Dedicated onboarding and support',
+  ],
+}
 
 const STATUS_LABELS = {
   trialing: { text: 'Free trial', color: '#22C55E' },
@@ -90,6 +110,20 @@ export default function Billing({ brand, onboarding = false }) {
     ? Math.max(0, Math.ceil((new Date(brand.trial_ends_at) - new Date()) / 86400000))
     : null
   const currentPlan = plans.find(p => p.tier === (brand?.tier || 'starter'))
+  const brandLimits = !isStorefront ? BRAND_PLAN_LIMITS[brand?.tier || 'starter'] : null
+
+  // Brands: new contacts collected this billing month (trial contacts are free)
+  const [contactsThisPeriod, setContactsThisPeriod] = useState(null)
+  useEffect(() => {
+    if (isStorefront || onboarding || !brand?.id || brand.id === 'demo' || !brand?.subscription_status) return
+    let cancelled = false
+    const starts = [brand.current_period_start, status === 'trialing' ? null : brand.trial_ends_at].filter(Boolean)
+    const since = starts.length ? new Date(Math.max(...starts.map(d => new Date(d).getTime()))).toISOString() : null
+    let q = supabase.from('contacts').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id)
+    if (since) q = q.gte('created_at', since)
+    q.then(({ count }) => { if (!cancelled) setContactsThisPeriod(count ?? 0) })
+    return () => { cancelled = true }
+  }, [brand?.id, brand?.current_period_start, status])
   const cancelsAt = brand?.cancel_at && status !== 'canceled' ? brand.cancel_at : null
 
   // Plan details come from Stripe; refresh them when the page opens in case a webhook was missed
@@ -299,6 +333,42 @@ export default function Billing({ brand, onboarding = false }) {
         </div>
       )}
 
+      {brandLimits && statusInfo && !onboarding && contactsThisPeriod !== null && (() => {
+        const included = brandLimits.contacts
+        const over = Math.max(0, contactsThisPeriod - included)
+        const pct = Math.min(100, Math.round((contactsThisPeriod / included) * 100))
+        const onTrial = status === 'trialing'
+        return (
+          <div className="card" style={{ padding: '20px 24px', marginBottom: 32, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20, alignItems: 'center' }}>
+            <div>
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>
+                {onTrial ? 'New contacts during your trial' : 'New contacts this billing month'}
+              </div>
+              <div style={{ fontSize: '1.3rem', fontWeight: 700 }}>
+                {contactsThisPeriod.toLocaleString()}
+                <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.95rem' }}>
+                  {onTrial ? ' · free while you\'re on trial' : ` of ${included.toLocaleString()} included`}
+                </span>
+              </div>
+            </div>
+            <div>
+              {!onTrial && (
+                <div style={{ height: 8, borderRadius: 999, background: 'rgba(255,255,255,0.08)', overflow: 'hidden', marginBottom: 8 }}>
+                  <div style={{ width: `${pct}%`, height: '100%', background: over ? '#F59E0B' : '#22C55E' }} />
+                </div>
+              )}
+              <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.5 }}>
+                {onTrial
+                  ? `After your trial, ${included.toLocaleString()} a month are included, then ${fmtRate(brandLimits.perContact)} each.`
+                  : over
+                    ? `${over.toLocaleString()} over: ${fmtRate(brandLimits.perContact)} each, about $${(over * brandLimits.perContact).toLocaleString(undefined, { maximumFractionDigits: 0 })} on your next bill.`
+                    : `${(included - contactsThisPeriod).toLocaleString()} left before ${fmtRate(brandLimits.perContact)} per contact applies.`}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {!onboarding && (
         <div style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 14 }}>
           {hasSubscription ? 'Change plan' : 'Plans'}
@@ -331,6 +401,9 @@ export default function Billing({ brand, onboarding = false }) {
                   <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>/mo</span>
                 </span>
               </div>
+              {plan.usageNote && (
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#22C55E', marginBottom: 8 }}>{plan.usageNote}</div>
+              )}
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.5, margin: '0 0 18px' }}>{plan.desc}</p>
               <ul style={{
                 listStyle: 'none', padding: '18px 0 0', margin: '0 0 22px', borderTop: '1px solid var(--border)',
@@ -355,7 +428,38 @@ export default function Billing({ brand, onboarding = false }) {
             </div>
           )
         })}
+        {!isStorefront && (
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', padding: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+              <span style={{ fontSize: '1.15rem', fontWeight: 700 }}>{ENTERPRISE.name}</span>
+              <span style={{ fontSize: '1.6rem', fontWeight: 800 }}>Custom</span>
+            </div>
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>Volume pricing on contacts</div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.5, margin: '0 0 18px' }}>{ENTERPRISE.desc}</p>
+            <ul style={{
+              listStyle: 'none', padding: '18px 0 0', margin: '0 0 22px', borderTop: '1px solid var(--border)',
+              display: 'flex', flexDirection: 'column', gap: 10, flex: 1,
+            }}>
+              {ENTERPRISE.features.map((f, i) => (
+                <li key={i} style={{ fontSize: '0.9rem', color: 'var(--text)', display: 'flex', gap: 10, lineHeight: 1.45 }}>
+                  <span style={{ color: '#22C55E', fontWeight: 700, flexShrink: 0 }}>✓</span>{f}
+                </li>
+              ))}
+            </ul>
+            <a className="btn btn-secondary" href="mailto:hello@meetcaptura.com?subject=MeetCaptura%20Enterprise"
+              style={{ padding: '12px', width: '100%', textAlign: 'center', textDecoration: 'none', boxSizing: 'border-box' }}>
+              Talk to us
+            </a>
+          </div>
+        )}
       </div>
+
+      {!isStorefront && (
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.6, marginTop: 20, maxWidth: 860 }}>
+          <strong style={{ color: 'var(--text)' }}>What counts as a contact:</strong> one person who opts in through a warranty registration,
+          promo, loyalty signup or event, counted once. When the same person comes back, it's free. Contacts collected during your free trial are free.
+        </p>
+      )}
 
       <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 24, textAlign: onboarding ? 'center' : 'left' }}>
         Secure payments by Stripe. Your card details never touch our servers.

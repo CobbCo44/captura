@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom'
-import { STOREFRONT_FEATURES } from '../lib/billingAccess'
+import { STOREFRONT_FEATURES, featureInfo } from '../lib/billingAccess'
 
 const TIER_NAMES = { growth: 'Growth', pro: 'Pro' }
 
 // Shown in place of a feature the brand's plan doesn't include.
 // compact: a one-line version for buttons and small sections.
-export default function PlanLock({ feature, description, compact = false }) {
-  const info = STOREFRONT_FEATURES[feature] || { tier: 'growth', name: 'This feature' }
+export default function PlanLock({ feature, description, compact = false, brand = null }) {
+  const info = (brand && featureInfo(brand, feature)) || STOREFRONT_FEATURES[feature] || { tier: 'growth', name: 'This feature' }
   const tierName = TIER_NAMES[info.tier] || 'a higher plan'
 
   if (compact) {

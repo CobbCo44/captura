@@ -3,6 +3,7 @@ import { supabase, generateShortId } from '../../lib/supabase'
 import BrandedQR from '../../components/BrandedQR'
 import generateQRCode from 'qr.js'
 import { buildGS1DigitalLink } from '../../lib/gs1'
+import { brandCodeLimit } from '../../lib/billingAccess'
 import { exportBatchCSV } from '../../lib/exportBatchCSV'
 import { jsPDF } from 'jspdf'
 import JSZip from 'jszip'
@@ -727,6 +728,16 @@ export default function QRCodes({ brand }) {
     if (!qty || qty < 1 || qty > 10000) {
       alert('Quantity must be between 1 and 10,000.')
       return
+    }
+    // Fair-use cap on serialized codes per rolling year, by plan
+    const codeLimit = brandCodeLimit(brand)
+    if (codeLimit !== Infinity) {
+      const yearAgo = Date.now() - 365 * 86400000
+      const printed = batches.filter(b => new Date(b.created_at).getTime() >= yearAgo).reduce((n, b) => n + (b.quantity || 0), 0)
+      if (printed + qty > codeLimit) {
+        alert(`Your plan includes ${codeLimit.toLocaleString()} serialized codes a year, and you've made ${printed.toLocaleString()} in the last 12 months. Upgrade your plan under Billing, or contact us about Enterprise.`)
+        return
+      }
     }
     if (!batchForm.productId) {
       alert('Please select a product.')

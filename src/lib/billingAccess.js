@@ -35,7 +35,7 @@ export function hasGrowthFeatures(brand) {
   return hasActivePlan(brand) && ['growth', 'pro'].includes(effectiveTier(brand))
 }
 
-// Which plan each storefront feature needs. Product brands aren't gated here yet.
+// Which plan each feature needs, per business type
 const TIER_RANK = { starter: 1, growth: 2, pro: 3 }
 export const STOREFRONT_FEATURES = {
   promos: { tier: 'growth', name: 'Giveaways and promos' },
@@ -47,16 +47,40 @@ export const STOREFRONT_FEATURES = {
   multiLocation: { tier: 'pro', name: 'More than one location' },
 }
 
+// Product brands: Launch (tier 'starter') and Growth
+export const BRAND_FEATURES = {
+  insights: { tier: 'growth', name: 'AI insights and reports' },
+  passport: { tier: 'growth', name: 'Digital Product Passport' },
+}
+
+// What each brand plan includes. Contacts are billed by Stripe; codes are a fair-use cap.
+export const BRAND_PLAN_LIMITS = {
+  starter: { name: 'Launch', price: 299, contacts: 300, perContact: 1, codesPerYear: 100000 },
+  growth: { name: 'Growth', price: 999, contacts: 1250, perContact: 0.8, codesPerYear: 2000000 },
+}
+
+export function featureInfo(brand, feature) {
+  const table = brand?.business_type === 'storefront' ? STOREFRONT_FEATURES : BRAND_FEATURES
+  return table[feature] || null
+}
+
 export function canUseFeature(brand, feature) {
   if (!brand || brand.id === 'demo') return true
-  if (brand.business_type !== 'storefront') return true
   if (isFoundingBrand(brand)) return true
   if (!hasActivePlan(brand)) return false
-  const needed = STOREFRONT_FEATURES[feature]?.tier || 'starter'
+  const needed = featureInfo(brand, feature)?.tier || 'starter'
   return (TIER_RANK[effectiveTier(brand)] || 0) >= TIER_RANK[needed]
 }
 
 // Storefront locations included in the plan (Pro: up to 5)
 export function locationLimit(brand) {
   return canUseFeature(brand, 'multiLocation') ? 5 : 1
+}
+
+// Serialized codes a product brand can print per rolling year (Infinity = no cap)
+export function brandCodeLimit(brand) {
+  if (!brand || brand.id === 'demo' || isFoundingBrand(brand)) return Infinity
+  const tier = effectiveTier(brand)
+  if (tier === 'pro') return Infinity
+  return BRAND_PLAN_LIMITS[tier]?.codesPerYear ?? BRAND_PLAN_LIMITS.starter.codesPerYear
 }

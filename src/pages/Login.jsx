@@ -144,6 +144,8 @@ export default function Login() {
         email,
         password,
         options: {
+          // The confirmation link opens the dashboard, already signed in
+          emailRedirectTo: `${window.location.origin}/dashboard`,
           data: {
             brand_name: businessName.trim(),
             owner_name: ownerName.trim(),
@@ -192,7 +194,7 @@ export default function Login() {
   async function resendConfirmation() {
     if (!supabase || resendState === 'sending') return
     setResendState('sending')
-    const { error: resendError } = await supabase.auth.resend({ type: 'signup', email })
+    const { error: resendError } = await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: `${window.location.origin}/dashboard` } })
     setResendState(resendError ? 'error' : 'sent')
   }
 

@@ -139,6 +139,7 @@ export default function QRCodes({ brand }) {
   const [showBatchForm, setShowBatchForm] = useState(false)
   const [batchForm, setBatchForm] = useState({ productId: '', quantity: '', channelId: '', newChannelName: '', newChannelType: 'retail', poReference: '', notes: '' })
   const [claimedCounts, setClaimedCounts] = useState({})
+  const [openGroups, setOpenGroups] = useState({})
   const [batchQrModal, setBatchQrModal] = useState(null)
   const [batchQrStyle, setBatchQrStyle] = useState({ fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoScale: 0.25, ctaText: '', shortId: null })
   const [batchDownloadProgress, setBatchDownloadProgress] = useState(null)
@@ -680,18 +681,11 @@ export default function QRCodes({ brand }) {
     setBatches(data || [])
 
     if (data && data.length > 0) {
-      const batchIds = data.map(b => b.id)
-      const { data: serials } = await supabase
-        .from('serials')
-        .select('batch_id, status')
-        .in('batch_id', batchIds)
-      if (serials) {
+      // Counted in the database so it stays right (and fast) with millions of codes
+      const { data: rows } = await supabase.rpc('batch_claim_counts', { p_brand_id: brand.id })
+      if (rows) {
         const counts = {}
-        serials.forEach(s => {
-          if (!counts[s.batch_id]) counts[s.batch_id] = { total: 0, claimed: 0 }
-          counts[s.batch_id].total++
-          if (s.status === 'claimed') counts[s.batch_id].claimed++
-        })
+        rows.forEach(r => { counts[r.batch_id] = { total: Number(r.total), claimed: Number(r.claimed) } })
         setClaimedCounts(counts)
       }
     }
@@ -1533,9 +1527,9 @@ export default function QRCodes({ brand }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['Date', 'Product', 'Qty', 'Channel', 'PO Ref', 'Notes', 'Claimed', ''].map((h, idx) => (
+                  {['Printed', 'Qty', 'PO Ref', 'Notes', 'Claimed', ''].map((h, idx) => (
                     <th key={idx} style={{
-                      padding: '12px 16px', textAlign: 'left',
+                      padding: idx === 0 ? '12px 16px 12px 68px' : '12px 16px', textAlign: 'left',
                       fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
                       textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap',
                     }}>{h}</th>
@@ -1543,21 +1537,16 @@ export default function QRCodes({ brand }) {
                 </tr>
               </thead>
               <tbody>
-                {batches.map(b => {
+                {(() => {
+                  const renderBatchRow = (b) => {
                   const counts = claimedCounts[b.id] || { total: b.quantity, claimed: 0 }
                   return (
                     <React.Fragment key={b.id}>
                     <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '12px 16px', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '12px 16px 12px 68px', whiteSpace: 'nowrap' }}>
                         {new Date(b.created_at).toLocaleDateString()}
                       </td>
-                      <td style={{ padding: '12px 16px', fontWeight: 500 }}>
-                        {b.products?.name || '-'}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>{b.quantity}</td>
-                      <td style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>
-                        {b.channels?.name || '-'}
-                      </td>
+                      <td style={{ padding: '12px 16px' }}>{Number(b.quantity).toLocaleString()}</td>
                       <td style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>
                         {b.po_reference || '-'}
                       </td>
@@ -1571,7 +1560,7 @@ export default function QRCodes({ brand }) {
                         <span style={{
                           color: counts.claimed > 0 ? 'var(--success)' : 'var(--text-muted)',
                         }}>
-                          {counts.claimed} / {counts.total}
+                          {counts.claimed.toLocaleString()} / {counts.total.toLocaleString()}
                         </span>
                       </td>
                       <td style={{ padding: '12px 16px', textAlign: 'right', whiteSpace: 'nowrap' }}>
@@ -1610,7 +1599,7 @@ export default function QRCodes({ brand }) {
                     </tr>
                     {expandedBatchId === b.id && (
                       <tr>
-                        <td colSpan={8} style={{ padding: 0, background: 'var(--bg)' }}>
+                        <td colSpan={6} style={{ padding: 0, background: 'var(--bg)' }}>
                           {serialsLoading ? (
                             <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading serials...</div>
                           ) : (
@@ -1684,7 +1673,75 @@ export default function QRCodes({ brand }) {
                     )}
                     </React.Fragment>
                   )
-                })}
+                  }
+                  const totals = (list) => list.reduce((t, b) => {
+                    const c = claimedCounts[b.id] || { total: b.quantity, claimed: 0 }
+                    return { codes: t.codes + c.total, claimed: t.claimed + c.claimed }
+                  }, { codes: 0, claimed: 0 })
+                  const fmt = (n) => n.toLocaleString()
+                  const summary = (list) => {
+                    const t = totals(list)
+                    return `${fmt(list.length)} batch${list.length === 1 ? '' : 'es'} · ${fmt(t.codes)} code${t.codes === 1 ? '' : 's'} · ${fmt(t.claimed)} claimed`
+                  }
+                  // Product -> channel -> batches (newest first, as loaded)
+                  const byProduct = new Map()
+                  for (const b of batches) {
+                    const pk = b.product_id || 'none'
+                    if (!byProduct.has(pk)) byProduct.set(pk, { name: b.products?.name || 'No product', channels: new Map() })
+                    const ck = b.channel_id || 'none'
+                    const prod = byProduct.get(pk)
+                    if (!prod.channels.has(ck)) prod.channels.set(ck, { name: b.channels?.name || 'No channel', batches: [] })
+                    prod.channels.get(ck).batches.push(b)
+                  }
+                  const products = [...byProduct.entries()].sort((x, y) => x[1].name.localeCompare(y[1].name))
+                  const isOpen = (key, fallback) => openGroups[key] ?? fallback
+                  const toggle = (key, fallback) => setOpenGroups(g => ({ ...g, [key]: !(g[key] ?? fallback) }))
+                  const chevron = (open) => (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                      style={{ flexShrink: 0, color: 'var(--text-muted)', transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s' }}>
+                      <path d="M9 6l6 6-6 6" />
+                    </svg>
+                  )
+                  return products.map(([pk, prod]) => {
+                    const pKey = `p:${pk}`
+                    const pDefault = products.length === 1
+                    const pOpen = isOpen(pKey, pDefault)
+                    const allBatches = [...prod.channels.values()].flatMap(c => c.batches)
+                    const channels = [...prod.channels.entries()].sort((x, y) => x[1].name.localeCompare(y[1].name))
+                    return (
+                      <React.Fragment key={pKey}>
+                        <tr onClick={() => toggle(pKey, pDefault)} style={{ cursor: 'pointer', borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.03)' }}>
+                          <td colSpan={6} style={{ padding: '14px 16px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              {chevron(pOpen)}
+                              <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>{prod.name}</span>
+                              <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.8rem' }}>{summary(allBatches)}</span>
+                            </div>
+                          </td>
+                        </tr>
+                        {pOpen && channels.map(([ck, ch]) => {
+                          const cKey = `c:${pk}:${ck}`
+                          const cDefault = channels.length === 1
+                          const cOpen = isOpen(cKey, cDefault)
+                          return (
+                            <React.Fragment key={cKey}>
+                              <tr onClick={() => toggle(cKey, cDefault)} style={{ cursor: 'pointer', borderBottom: '1px solid var(--border)' }}>
+                                <td colSpan={6} style={{ padding: '11px 16px 11px 40px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    {chevron(cOpen)}
+                                    <span style={{ fontWeight: 500 }}>{ch.name}</span>
+                                    <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.8rem' }}>{summary(ch.batches)}</span>
+                                  </div>
+                                </td>
+                              </tr>
+                              {cOpen && ch.batches.map(renderBatchRow)}
+                            </React.Fragment>
+                          )
+                        })}
+                      </React.Fragment>
+                    )
+                  })
+                })()}
               </tbody>
             </table>
           </div>

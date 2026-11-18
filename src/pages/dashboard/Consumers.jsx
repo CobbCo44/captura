@@ -51,10 +51,12 @@ export default function Consumers({ brand }) {
       })
     }
 
-    setVipMembers((vipRes.data || []).map(v => ({ ...v, _channel: qrChannelMap[v.qr_code_id] || null })))
-    setPromoEntries((promoRes.data || []).map(p => ({ ...p, _channel: qrChannelMap[p.qr_code_id] || null })))
-    setWarrantyRegs((warrantyRes.data || []).map(w => ({ ...w, _channel: qrChannelMap[w.qr_code_id] || null })))
-    setEventEntries(eventRes.data || [])
+    // Saved channel first (set when the entry was made); older entries fall back to their QR code's channel
+    const channelOf = (row) => channelNames[row.channel_id] || qrChannelMap[row.qr_code_id] || null
+    setVipMembers((vipRes.data || []).map(v => ({ ...v, _channel: channelOf(v) })))
+    setPromoEntries((promoRes.data || []).map(p => ({ ...p, _channel: channelOf(p) })))
+    setWarrantyRegs((warrantyRes.data || []).map(w => ({ ...w, _channel: channelOf(w) })))
+    setEventEntries((eventRes.data || []).map(ev => ({ ...ev, _channel: channelOf(ev) })))
 
     const contactsList = contactsRes.data || []
     setContacts(contactsList)
@@ -174,7 +176,7 @@ export default function Consumers({ brand }) {
         type: 'Event',
         source: ev.events?.name || 'Event Entry',
         date: ev.entered_at,
-        channel: emailToChannel[key] || '-',
+        channel: ev._channel || emailToChannel[key] || '-',
         contactId: emailToContactId[key] || null,
         marketingConsent: ev.marketing_consent || false,
       }

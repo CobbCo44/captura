@@ -561,6 +561,7 @@ export default function ScanPage({ previewData } = {}) {
     }
     if (qrCode) {
       const result = await serverSubmit('vip', {
+        serial_id: serialData?.serial_id || null,
         brand_id: qrCode.brand_id,
         qr_code_id: qrCode.id,
         product_id: qrCode.product_id || null,
@@ -613,6 +614,7 @@ export default function ScanPage({ previewData } = {}) {
     if (activePromo && brandId) {
       const now = new Date().toISOString()
       const result = await serverSubmit('promo', {
+        serial_id: serialData?.serial_id || null,
         promo_id: activePromo.id,
         brand_id: brandId,
         qr_code_id: qrCode?.id || null,
@@ -681,6 +683,7 @@ export default function ScanPage({ previewData } = {}) {
     const warBrandId = qrCode?.brand_id || brand?.id || serialData?.brand_id
     if (warBrandId) {
       const result = await serverSubmit('warranty', {
+        serial_id: serialData?.serial_id || null,
         brand_id: warBrandId,
         product_id: qrCode?.product_id || product?.id || null,
         qr_code_id: qrCode?.id || null,
@@ -727,6 +730,7 @@ export default function ScanPage({ previewData } = {}) {
     if (event && evtBrandId) {
       const now = new Date().toISOString()
       const result = await serverSubmit('event', {
+        serial_id: serialData?.serial_id || null,
         event_id: event.id,
         brand_id: evtBrandId,
         qr_code_id: qrCode?.id || null,

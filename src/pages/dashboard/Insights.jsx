@@ -77,19 +77,31 @@ export default function Insights({ brand }) {
 
     const { data: serialScans } = await scansQuery
 
-    if (!serials || serials.length === 0) {
-      setChannelStats([])
-      return
-    }
+    // Sign-ups (loyalty, promo, warranty, event entries) saved with their channel
+    const entryTables = [
+      ['vip_members', 'joined_at'], ['promo_entries', 'entered_at'],
+      ['warranty_registrations', 'registered_at'], ['event_entries', 'entered_at'],
+    ]
+    const entryResults = await Promise.all(entryTables.map(([table, dateCol]) => {
+      let q = supabase.from(table).select('channel_id, channels:channel_id(name)')
+        .eq('brand_id', brand.id).not('channel_id', 'is', null)
+      if (since) q = q.gte(dateCol, since)
+      return q
+    }))
 
     // Build serial_id -> channel_name map
     const serialChannelMap = {}
     const channelData = {}
-    for (const s of serials) {
+    const bucket = (name) => (channelData[name] ||= { scans: 0, claims: 0, total: 0, signups: 0 })
+    for (const res of entryResults) {
+      for (const row of res.data || []) {
+        if (row.channels?.name) bucket(row.channels.name).signups++
+      }
+    }
+    for (const s of serials || []) {
       const channelName = s.batches?.channels?.name || 'Unknown'
       serialChannelMap[s.id] = channelName
-      if (!channelData[channelName]) channelData[channelName] = { scans: 0, claims: 0, total: 0 }
-      channelData[channelName].total++
+      bucket(channelName).total++
       if (s.status === 'claimed') {
         if (!since || (s.claimed_at && new Date(s.claimed_at) >= new Date(since))) {
           channelData[channelName].claims++
@@ -106,8 +118,8 @@ export default function Insights({ brand }) {
     }
 
     const result = Object.entries(channelData)
-      .map(([name, d]) => ({ name, scans: d.scans, claims: d.claims, total: d.total }))
-      .sort((a, b) => b.scans - a.scans)
+      .map(([name, d]) => ({ name, ...d }))
+      .sort((a, b) => (b.scans + b.signups) - (a.scans + a.signups))
 
     setChannelStats(result)
   }
@@ -328,14 +340,14 @@ export default function Insights({ brand }) {
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>By Channel</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 4 }}>
-              Scans and claims grouped by retail channel
+              Scans, sign-ups and claims for each retail channel. Sign-ups are loyalty, promo, warranty and event entries.
             </p>
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['Channel', 'Scans', 'Claims', 'Total Serials', 'Claim Rate'].map(h => (
+                  {['Channel', 'Scans', 'Sign-ups', 'Claims', 'Total Serials', 'Claim Rate'].map(h => (
                     <th key={h} style={{
                       padding: '12px 20px', textAlign: 'left',
                       fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
@@ -349,6 +361,7 @@ export default function Insights({ brand }) {
                   <tr key={ch.name} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '12px 20px', fontWeight: 500, fontSize: '0.9rem' }}>{ch.name}</td>
                     <td style={{ padding: '12px 20px', fontSize: '0.9rem' }}>{ch.scans}</td>
+                    <td style={{ padding: '12px 20px', fontSize: '0.9rem' }}>{ch.signups}</td>
                     <td style={{ padding: '12px 20px', fontSize: '0.9rem' }}>{ch.claims}</td>
                     <td style={{ padding: '12px 20px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>{ch.total}</td>
                     <td style={{ padding: '12px 20px', fontSize: '0.9rem' }}>
@@ -356,7 +369,7 @@ export default function Insights({ brand }) {
                         padding: '3px 10px', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600,
                         background: 'rgba(34, 197, 94, 0.1)', color: 'var(--success)',
                       }}>
-                        {ch.total > 0 ? `${Math.round((ch.claims / ch.total) * 100)}%` : '0%'}
+                        {ch.total > 0 ? `${Math.round((ch.claims / ch.total) * 100)}%` : '-'}
                       </span>
                     </td>
                   </tr>

@@ -138,6 +138,34 @@ export default async (req) => {
         return new Response(JSON.stringify({ error: 'Unknown submission type' }), { status: 400, headers })
     }
 
+    // --- Retail channel ---
+    // Worked out here, never trusted from the browser: a serialized label's
+    // channel comes from its batch; otherwise from the QR code that was scanned.
+    const serialId = insertData.serial_id || null
+    delete insertData.serial_id
+    delete insertData.channel_id
+    let channelId = null
+    if (serialId) {
+      const { data: serialRow } = await supabase
+        .from('serials')
+        .select('id, batches!inner(brand_id, channel_id)')
+        .eq('id', serialId)
+        .maybeSingle()
+      if (serialRow && serialRow.batches?.brand_id === data.brand_id) {
+        insertData.serial_id = serialRow.id
+        channelId = serialRow.batches.channel_id || null
+      }
+    }
+    if (!channelId && insertData.qr_code_id) {
+      const { data: qrRow } = await supabase
+        .from('qr_codes')
+        .select('brand_id, channel_id')
+        .eq('id', insertData.qr_code_id)
+        .maybeSingle()
+      if (qrRow && qrRow.brand_id === data.brand_id) channelId = qrRow.channel_id || null
+    }
+    insertData.channel_id = channelId
+
     const { data: inserted, error: insertError } = await supabase
       .from(table)
       .insert(insertData)

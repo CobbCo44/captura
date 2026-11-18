@@ -91,6 +91,7 @@ export default function Login() {
   )
   const [agreed, setAgreed] = useState(false)
   const [confirmSent, setConfirmSent] = useState(false)
+  const [resendState, setResendState] = useState('idle') // idle | sending | sent | error
 
   const switchMode = (next) => {
     setMode(next)
@@ -188,6 +189,21 @@ export default function Login() {
 
   const isSignup = mode === 'signup'
 
+  async function resendConfirmation() {
+    if (!supabase || resendState === 'sending') return
+    setResendState('sending')
+    const { error: resendError } = await supabase.auth.resend({ type: 'signup', email })
+    setResendState(resendError ? 'error' : 'sent')
+  }
+
+  // One-tap link to the user's inbox for the common providers
+  const emailDomain = email.split('@')[1]?.toLowerCase() || ''
+  const inboxLink = emailDomain === 'gmail.com' || emailDomain === 'googlemail.com' ? { label: 'Open Gmail', url: 'https://mail.google.com/' }
+    : ['outlook.com', 'hotmail.com', 'live.com', 'msn.com'].includes(emailDomain) ? { label: 'Open Outlook', url: 'https://outlook.live.com/mail/' }
+    : ['yahoo.com', 'ymail.com'].includes(emailDomain) ? { label: 'Open Yahoo Mail', url: 'https://mail.yahoo.com/' }
+    : ['icloud.com', 'me.com', 'mac.com'].includes(emailDomain) ? { label: 'Open iCloud Mail', url: 'https://www.icloud.com/mail' }
+    : null
+
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -199,7 +215,7 @@ export default function Login() {
             <img src="/images/meetcaptura-logo.png" alt="MeetCaptura" style={{ height: 48, marginBottom: 8, filter: 'invert(1)' }} />
           </Link>
           <p style={{ color: 'var(--text-muted)' }}>
-            {mode === 'reset' ? 'Set your new password' : isSignup ? 'Create your account' : 'Welcome back'}
+            {mode === 'reset' ? 'Set your new password' : confirmSent ? 'One last step' : isSignup ? 'Create your account' : 'Welcome back'}
           </p>
         </div>
 
@@ -251,17 +267,64 @@ export default function Login() {
             </button>
           </form>
         ) : confirmSent ? (
-          <div className="card" style={{ textAlign: 'center', padding: '36px 28px' }}>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 12 }}>Check your email</h2>
-            <p style={{ color: 'var(--text-muted)', lineHeight: 1.7, fontSize: '0.95rem' }}>
-              We sent a confirmation link to <strong style={{ color: 'var(--text)' }}>{email}</strong>.
-              Tap it, then log in and your dashboard will be ready.
+          <div className="card" style={{ textAlign: 'center', padding: '40px 32px 32px' }}>
+            <div style={{
+              width: 64, height: 64, borderRadius: '50%', margin: '0 auto 20px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(34, 197, 94, 0.12)', border: '1px solid rgba(34, 197, 94, 0.3)',
+            }}>
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="M3 7l9 6 9-6" />
+              </svg>
+            </div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: '0 0 8px' }}>Confirm your email</h2>
+            <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, fontSize: '0.95rem', margin: '0 0 24px' }}>
+              We sent a link to<br />
+              <strong style={{ color: 'var(--text)', fontSize: '1rem' }}>{email}</strong>
             </p>
-            <button
-              className="btn btn-secondary"
-              style={{ marginTop: 24 }}
-              onClick={() => { setConfirmSent(false); switchMode('login') }}
-            >Back to log in</button>
+
+            <ol style={{
+              textAlign: 'left', margin: '0 0 24px', padding: '16px 18px 16px 36px', borderRadius: 12,
+              background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)',
+              color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.9,
+            }}>
+              <li>Open the email we just sent you</li>
+              <li>Tap the <strong style={{ color: 'var(--text)' }}>confirm</strong> link inside</li>
+              <li>You'll land in your dashboard, ready to set up</li>
+            </ol>
+
+            {inboxLink && (
+              <a href={inboxLink.url} target="_blank" rel="noopener noreferrer" className="btn btn-primary"
+                style={{ display: 'block', width: '100%', padding: '14px', marginBottom: 10, textDecoration: 'none', boxSizing: 'border-box' }}>
+                {inboxLink.label}
+              </a>
+            )}
+            <button className={inboxLink ? 'btn btn-secondary' : 'btn btn-primary'}
+              style={{ width: '100%', padding: '13px' }}
+              onClick={resendConfirmation}
+              disabled={resendState === 'sending' || resendState === 'sent'}>
+              {resendState === 'sending' ? 'Sending...' : resendState === 'sent' ? 'Sent again. Check your inbox' : 'Resend email'}
+            </button>
+            {resendState === 'error' && (
+              <div style={{ color: 'var(--danger)', fontSize: '0.82rem', marginTop: 10 }}>
+                Couldn't resend right now. Wait a minute and try again.
+              </div>
+            )}
+
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', lineHeight: 1.6, margin: '20px 0 0' }}>
+              Can't find it? Check your spam or promotions folder.<br />
+              Wrong email?{' '}
+              <span onClick={() => { setConfirmSent(false); setResendState('idle') }}
+                style={{ color: 'var(--text)', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }}>
+                Go back and fix it
+              </span>
+              {' '}·{' '}
+              <span onClick={() => { setConfirmSent(false); setResendState('idle'); switchMode('login') }}
+                style={{ color: 'var(--text)', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }}>
+                Log in
+              </span>
+            </p>
           </div>
         ) : (
         <form onSubmit={isSignup ? handleSignup : handleLogin} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

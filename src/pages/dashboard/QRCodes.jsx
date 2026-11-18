@@ -1036,13 +1036,19 @@ export default function QRCodes({ brand }) {
         {!isStorefront && <button className="btn btn-primary" onClick={openCreate}>+ Create QR Code</button>}
       </div>
 
+      {isStorefront && (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 20, alignItems: 'start', marginBottom: 28 }}>
       {/* Storefront Primary QR */}
       {brand?.business_type === 'storefront' && (
-        <div className="card" style={{ marginBottom: 28 }}>
-          <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <div className="card" style={{ padding: 24 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ fontSize: '1.15rem', fontWeight: 700 }}>Counter QR</div>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '4px 10px', borderRadius: 20, background: 'rgba(34,197,94,0.12)', color: '#22C55E' }}>Earns loyalty points</span>
+            </div>
             <div style={{
-              background: '#0A0A10', borderRadius: 12, padding: 20,
-              display: 'flex', justifyContent: 'center', flexShrink: 0,
+              background: '#0A0A10', borderRadius: 12, padding: 28,
+              display: 'flex', justifyContent: 'center',
             }}>
               <BrandedQR
                 url={`${scanUrl}/store/${brand.id}`}
@@ -1050,23 +1056,23 @@ export default function QRCodes({ brand }) {
                 bgColor={storeQR.bgColor}
                 logoSrc={storeQR.logoFile || storeQR.logoUrl || brand.logo_url || null}
                 logoScale={storeQR.logoScale}
-                size={160}
+                size={210}
                 ctaText={storeQR.ctaText}
               />
             </div>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 6 }}>
-                Counter QR Code
-              </div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 4 }}>{brand.name}</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 12, wordBreak: 'break-all' }}>
-                {scanUrl}/store/{brand.id}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{scanUrl}/store/{brand.id}</span>
+                <button type="button" onClick={() => navigator.clipboard?.writeText(`${scanUrl}/store/${brand.id}`)}
+                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: '0.72rem', padding: '3px 8px', cursor: 'pointer', flexShrink: 0 }}>
+                  Copy link
+                </button>
               </div>
 
               {!editingStoreQR ? (
                 <>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.5 }}>
-                    This QR earns loyalty points. Put it on your counter, table tents, window, or register.
+                    Customers scan this to join your loyalty program and earn points. Put it on your counter, table tents, window or register.
                   </p>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
@@ -1185,11 +1191,15 @@ export default function QRCodes({ brand }) {
 
       {/* Storefront Label QR (no loyalty) */}
       {brand?.business_type === 'storefront' && (
-        <div className="card" style={{ marginBottom: 28 }}>
-          <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <div className="card" style={{ padding: 24 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ fontSize: '1.15rem', fontWeight: 700 }}>Label QR</div>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '4px 10px', borderRadius: 20, background: 'rgba(255,255,255,0.06)', color: 'var(--text-muted)' }}>No points</span>
+            </div>
             <div style={{
-              background: '#0A0A10', borderRadius: 12, padding: 20,
-              display: 'flex', justifyContent: 'center', flexShrink: 0,
+              background: '#0A0A10', borderRadius: 12, padding: 28,
+              display: 'flex', justifyContent: 'center',
             }}>
               <BrandedQR
                 url={`${scanUrl}/store/${brand.id}?label=1`}
@@ -1197,23 +1207,23 @@ export default function QRCodes({ brand }) {
                 bgColor={labelQR.bgColor}
                 logoSrc={labelQR.logoFile || labelQR.logoUrl || brand.logo_url || null}
                 logoScale={labelQR.logoScale}
-                size={160}
+                size={210}
                 ctaText={labelQR.ctaText}
               />
             </div>
-            <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={{ fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: 6 }}>
-                Label QR Code
-              </div>
-              <div style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: 4 }}>{brand.name}</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 12, wordBreak: 'break-all' }}>
-                {scanUrl}/store/{brand.id}?label=1
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{scanUrl}/store/{brand.id}?label=1</span>
+                <button type="button" onClick={() => navigator.clipboard?.writeText(`${scanUrl}/store/${brand.id}?label=1`)}
+                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: '0.72rem', padding: '3px 8px', cursor: 'pointer', flexShrink: 0 }}>
+                  Copy link
+                </button>
               </div>
 
               {!editingLabelQR ? (
                 <>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.5 }}>
-                    Put this on cups, bags, packaging, or labels. Same scan page but no loyalty points awarded. Customers earn points only from the Counter QR above.
+                    For cups, bags, packaging and labels. Opens the same scan page but doesn't award points, so points only come from in-store visits.
                   </p>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
@@ -1328,6 +1338,8 @@ export default function QRCodes({ brand }) {
             </div>
           </div>
         </div>
+      )}
+      </div>
       )}
 
       {!isStorefront && (<>

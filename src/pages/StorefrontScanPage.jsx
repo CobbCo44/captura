@@ -208,6 +208,7 @@ export default function StorefrontScanPage({ preview } = {}) {
           country: geo.country || null,
           device: /mobile/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
           user_agent: navigator.userAgent,
+          source: isLabelQR ? 'label' : 'counter',
         })
       } catch (e) {}
     }

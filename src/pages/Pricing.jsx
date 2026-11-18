@@ -63,6 +63,7 @@ const storefrontTiers = [
     features: [
       'Your own scan page with menu, hours and locations',
       'Digital punch card: customers earn points and rewards',
+      'Live map of where your QR codes and labels get scanned',
       'Automatic welcome and "your reward is ready" emails',
       '1 location',
       'Unlimited scans',

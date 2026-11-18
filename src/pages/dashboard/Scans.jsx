@@ -11,10 +11,18 @@ const tabStyle = (active) => ({
   transition: 'all 0.15s',
 })
 
+// Which storefront QR a scan came from
+const SOURCES = {
+  counter: { label: 'Counter QR', color: '#22C55E' },
+  label: { label: 'Label QR', color: '#3B82F6' },
+}
+const sourceOf = (s) => SOURCES[s.source] || { label: 'Earlier scan', color: '#A1A1AA' }
+
 export default function Scans({ brand }) {
   const [scans, setScans] = useState([])
   const [vipMembers, setVipMembers] = useState([])
   const [tab, setTab] = useState('map')
+  const [sourceFilter, setSourceFilter] = useState('all') // storefronts: all | counter | label
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -36,7 +44,11 @@ export default function Scans({ brand }) {
     setLoading(false)
   }
 
-  const mapPoints = scans.filter(s => s.latitude && s.longitude)
+  const isStorefront = brand?.business_type === 'storefront'
+  const visibleScans = isStorefront && sourceFilter !== 'all' ? scans.filter(s => s.source === sourceFilter) : scans
+  const mapPoints = visibleScans.filter(s => s.latitude && s.longitude)
+  const counterCount = scans.filter(s => s.source === 'counter').length
+  const labelCount = scans.filter(s => s.source === 'label').length
 
   // SKU breakdown with promo entry conversion
   const promoByProduct = {}
@@ -61,7 +73,7 @@ export default function Scans({ brand }) {
 
   // City breakdown
   const cityMap = {}
-  scans.forEach(s => { if (s.city) cityMap[s.city] = (cityMap[s.city] || 0) + 1 })
+  visibleScans.forEach(s => { if (s.city) cityMap[s.city] = (cityMap[s.city] || 0) + 1 })
   const cityData = Object.entries(cityMap).sort((a, b) => b[1] - a[1])
 
   if (loading) {
@@ -74,24 +86,49 @@ export default function Scans({ brand }) {
         <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Scan Activity</h1>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => setTab('map')} style={tabStyle(tab === 'map')}>Map</button>
-          <button onClick={() => setTab('sku')} style={tabStyle(tab === 'sku')}>By SKU</button>
+          {!isStorefront && <button onClick={() => setTab('sku')} style={tabStyle(tab === 'sku')}>By SKU</button>}
           <button onClick={() => setTab('feed')} style={tabStyle(tab === 'feed')}>Live Feed</button>
         </div>
       </div>
 
       {/* Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 24 }}>
-        {[
+        {(isStorefront ? [
+          { label: 'Total Scans', value: scans.length, color: '#FAFAFA' },
+          { label: 'Counter QR scans', value: counterCount, color: SOURCES.counter.color },
+          { label: 'Label QR scans', value: labelCount, color: SOURCES.label.color },
+          { label: 'Cities', value: Object.keys(cityMap).length, color: '#A1A1AA' },
+        ] : [
           { label: 'Total Scans', value: scans.length, color: '#FAFAFA' },
           { label: 'Unique Cities', value: Object.keys(cityMap).length, color: '#A1A1AA' },
           { label: 'Products Scanned', value: Object.keys(skuMap).length, color: '#D4D4D8' },
-        ].map(s => (
+        ]).map(s => (
           <div key={s.label} className="card" style={{ padding: '16px 20px' }}>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>{s.label}</div>
             <div style={{ fontSize: '1.6rem', fontWeight: 800, color: s.color }}>{s.value}</div>
           </div>
         ))}
       </div>
+
+      {isStorefront && scans.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          {[['all', 'All scans'], ['counter', 'Counter QR'], ['label', 'Label QR']].map(([key, text]) => (
+            <button key={key} onClick={() => setSourceFilter(key)} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '7px 14px', borderRadius: 999, fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer',
+              background: sourceFilter === key ? 'rgba(255,255,255,0.1)' : 'transparent',
+              color: sourceFilter === key ? 'var(--text)' : 'var(--text-muted)',
+              border: `1px solid ${sourceFilter === key ? 'rgba(255,255,255,0.25)' : 'var(--border)'}`,
+            }}>
+              {key !== 'all' && <span style={{ width: 9, height: 9, borderRadius: '50%', background: SOURCES[key].color }} />}
+              {text}
+            </button>
+          ))}
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginLeft: 6 }}>
+            Label QR scans show where your cups, bags and packaging end up.
+          </span>
+        </div>
+      )}
 
       {scans.length === 0 ? (
         <div className="card" style={{ textAlign: 'center', padding: 60 }}>
@@ -130,7 +167,7 @@ export default function Scans({ brand }) {
                       key={s.id || i}
                       center={[s.latitude, s.longitude]}
                       radius={6}
-                      fillColor="#EF4444"
+                      fillColor={isStorefront ? sourceOf(s).color : '#EF4444'}
                       fillOpacity={0.9}
                       color="#FFFFFF"
                       weight={2}
@@ -138,7 +175,7 @@ export default function Scans({ brand }) {
                     >
                       <Popup>
                         <div style={{ color: '#09090B', fontSize: '0.85rem' }}>
-                          <strong>{s.products?.name || 'Product'}</strong><br />
+                          <strong>{isStorefront ? sourceOf(s).label : (s.products?.name || 'Product')}</strong><br />
                           {s.city || 'Unknown'}<br />
                           <span style={{ color: '#71717A', fontSize: '0.75rem' }}>
                             {new Date(s.scanned_at).toLocaleString()}
@@ -228,7 +265,7 @@ export default function Scans({ brand }) {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                    {['Product', 'Location', 'Device', 'Time'].map(h => (
+                    {[isStorefront ? 'QR' : 'Product', 'Location', 'Device', 'Time'].map(h => (
                       <th key={h} style={{
                         padding: '14px 16px', textAlign: 'left',
                         fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)',
@@ -238,10 +275,15 @@ export default function Scans({ brand }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {scans.map(s => (
+                  {visibleScans.map(s => (
                     <tr key={s.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '12px 16px', fontWeight: 500, fontSize: '0.9rem' }}>
-                        {s.products?.name || 'Unknown'}
+                        {isStorefront ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: sourceOf(s).color }} />
+                            {sourceOf(s).label}
+                          </span>
+                        ) : (s.products?.name || 'Unknown')}
                       </td>
                       <td style={{ padding: '12px 16px', fontSize: '0.85rem' }}>
                         <div>{s.city || 'Unknown'}</div>

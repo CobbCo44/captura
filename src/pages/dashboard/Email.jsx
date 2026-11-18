@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { buildEmailHtml, buildBroadcastBody, fillBroadcastText, isHttpUrl } from '../../lib/emailTemplates'
 import { hasGrowthFeatures } from '../../lib/billingAccess'
+import PlanLock from '../../components/PlanLock'
 
 const EMPTY_BROADCAST = { subject: '', message: '', imageUrl: '', buttonText: '', buttonUrl: '' }
 
@@ -266,19 +266,6 @@ export default function Email({ brand }) {
 
   // Tier enforcement: founding brands get everything; others need Growth or Pro.
   const hasGrowth = hasGrowthFeatures(brand)
-  const lockedNotice = (feature) => (
-    <div className="card" style={{ padding: '18px', textAlign: 'center' }}>
-      <div style={{ fontSize: '1.4rem', marginBottom: 8 }}>🔒</div>
-      <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: 4 }}>{feature} is a Growth feature</div>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', lineHeight: 1.6, marginBottom: 12 }}>
-        Upgrade to Growth to turn it on. Your data and members are untouched either way.
-      </p>
-      <Link to="/dashboard/billing" className="btn btn-primary" style={{ display: 'inline-block', padding: '10px 24px', fontSize: '0.85rem' }}>
-        Upgrade to Growth
-      </Link>
-    </div>
-  )
-
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
@@ -344,7 +331,7 @@ export default function Email({ brand }) {
                       {isSelected ? '▲' : '✎'}
                     </span>
                     {flow.key === 'winback' && !hasGrowth ? (
-                      <span style={{ fontSize: '0.9rem' }} title="Growth feature">🔒</span>
+                      <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 8px', borderRadius: 20, border: '1px solid var(--border)', color: 'var(--text-muted)' }} title="On the Growth plan">Growth</span>
                     ) : (
                     <div
                       onClick={e => { e.stopPropagation(); setAutopilot(prev => ({ ...prev, [flow.key]: !prev[flow.key] })) }}
@@ -411,7 +398,7 @@ export default function Email({ brand }) {
         </div>
 
         {/* Blast */}
-        {!hasGrowth ? lockedNotice('Announcements') : (
+        {!hasGrowth ? <PlanLock feature="emailMarketing" description="Send up to 4 email campaigns a month to your loyalty members, with your own photo and a button." /> : (
         <div className="card">
           <h3 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: 4 }}>Send a Blast</h3>
           <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 14, lineHeight: 1.5 }}>

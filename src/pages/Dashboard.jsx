@@ -3,7 +3,7 @@ import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-d
 import { supabase, getAllBrands } from '../lib/supabase'
 import { createBrandForUser } from '../lib/createBrand'
 import { INDUSTRIES } from '../lib/industries'
-import { hasActivePlan } from '../lib/billingAccess'
+import { hasActivePlan, canUseFeature, STOREFRONT_FEATURES } from '../lib/billingAccess'
 import Products from './dashboard/Products'
 import ScanPageTiles from './dashboard/ScanPageTiles'
 import Billing from './dashboard/Billing'
@@ -40,6 +40,9 @@ const productNavItems = [
   { path: 'billing', label: 'Billing', icon: '💳' },
   { path: 'settings', label: 'Settings', icon: '⚙' },
 ]
+
+// Sidebar items that need a higher storefront plan
+const NAV_FEATURES = { promos: 'promos', insights: 'insights' }
 
 const storefrontNavItems = [
   { path: '', label: 'Overview', icon: '◎' },
@@ -485,6 +488,12 @@ export default function Dashboard() {
             >
               <span style={{ fontSize: '1rem' }}>{item.icon}</span>
               {item.label}
+              {NAV_FEATURES[item.path] && !canUseFeature(brand, NAV_FEATURES[item.path]) && (
+                <span style={{
+                  marginLeft: 'auto', fontSize: '0.62rem', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase',
+                  padding: '2px 7px', borderRadius: 20, border: '1px solid var(--border)', color: 'var(--text-muted)',
+                }}>{STOREFRONT_FEATURES[NAV_FEATURES[item.path]].tier}</span>
+              )}
             </NavLink>
           ))}
         </nav>

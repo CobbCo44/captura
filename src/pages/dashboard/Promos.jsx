@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
+import { canUseFeature, locationLimit } from '../../lib/billingAccess'
+import PlanLock from '../../components/PlanLock'
 
 export default function Promos({ brand }) {
   const [promos, setPromos] = useState([])
@@ -220,6 +222,16 @@ export default function Promos({ brand }) {
     link.href = URL.createObjectURL(blob)
     link.click()
     URL.revokeObjectURL(link.href)
+  }
+
+  if (!canUseFeature(brand, 'promos')) {
+    return (
+      <div>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Promos</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: 4, marginBottom: 28 }}>Giveaways that turn scans into new customers.</p>
+        <PlanLock feature="promos" description="Run giveaways customers enter by scanning your QR code. Every entry adds a new contact to your list." />
+      </div>
+    )
   }
 
   return (

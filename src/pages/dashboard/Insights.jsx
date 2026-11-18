@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { canUseFeature, locationLimit } from '../../lib/billingAccess'
+import PlanLock from '../../components/PlanLock'
 
 function renderBold(text) {
   const parts = text.split(/\*\*(.*?)\*\*/g)
@@ -206,7 +208,7 @@ export default function Insights({ brand }) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify({ brandName: brand.name, summary }),
+        body: JSON.stringify({ brand_id: brand.id, brandName: brand.name, summary }),
       })
 
       if (!res.ok) {
@@ -257,6 +259,16 @@ export default function Insights({ brand }) {
   const conversionRate = stats && stats.total_scans > 0
     ? `${Math.round((stats.promo_entries / stats.total_scans) * 100)}%`
     : '0%'
+
+  if (!canUseFeature(brand, 'insights')) {
+    return (
+      <div>
+        <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Insights</h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: 4, marginBottom: 28 }}>Reports on who your customers are and what brings them back.</p>
+        <PlanLock feature="insights" description="Get detailed reports on your scans, customers and what brings them back, plus AI summaries you can act on." />
+      </div>
+    )
+  }
 
   return (
     <div>

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { canUseFeature } from '../../src/lib/billingAccess.js'
 
 export default async (req) => {
   if (req.method !== 'POST') {
@@ -22,6 +23,8 @@ export default async (req) => {
     })
   }
 
+  const body = await req.json().catch(() => ({}))
+
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
   const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -36,10 +39,18 @@ export default async (req) => {
         headers: { 'Content-Type': 'application/json' },
       })
     }
+    // Plan check against the caller's own brand
+    const { data: planBrand } = await userClient.from('brands').select('*').eq('id', body.brand_id || '').eq('user_id', user.id).maybeSingle()
+    if (!planBrand || !canUseFeature(planBrand, 'insights')) {
+      return new Response(JSON.stringify({ error: 'Insights and reports are included in the Pro plan.' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
   }
 
   try {
-    const { brandName, summary } = await req.json()
+    const { brandName, summary } = body
 
     const prompt = `You are an analytics expert for Captura, a consumer engagement platform where brands use QR codes on products to track engagement.
 

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { canUseFeature, locationLimit } from '../../lib/billingAccess'
+import PlanLock from '../../components/PlanLock'
 
 export default function Consumers({ brand }) {
   const isStorefront = brand?.business_type === 'storefront'
@@ -262,10 +264,14 @@ export default function Consumers({ brand }) {
               : 'All consumers from loyalty signups, promo entries, events, warranty registrations, and serialized QR scans'}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-secondary" onClick={() => exportCSV(true)}>Export Contactable</button>
-          <button className="btn btn-primary" onClick={() => exportCSV(false)}>Export All</button>
-        </div>
+        {canUseFeature(brand, 'customerExport') ? (
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn btn-secondary" onClick={() => exportCSV(true)}>Export Contactable</button>
+            <button className="btn btn-primary" onClick={() => exportCSV(false)}>Export All</button>
+          </div>
+        ) : (
+          <PlanLock feature="customerExport" compact />
+        )}
       </div>
 
       {/* Stats */}

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { canUseFeature } from '../../src/lib/billingAccess.js'
 
 export default async (req) => {
   const url = new URL(req.url)
@@ -34,6 +35,13 @@ export default async (req) => {
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (supabaseUrl && supabaseServiceKey && brandId) {
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
+    const { data: planBrand } = await supabase.from('brands').select('*').eq('id', brandId).maybeSingle()
+    if (planBrand && !canUseFeature(planBrand, 'shopify')) {
+      return new Response(JSON.stringify({ error: 'Shopify is included in the Pro plan.' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
     await supabase.from('brands').update({
       shopify_nonce: nonce,
     }).eq('id', brandId)

@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
+import { canUseFeature, locationLimit } from '../../lib/billingAccess'
+import PlanLock from '../../components/PlanLock'
 
 function parseCSV(text) {
   const lines = text.split(/\r?\n/).filter(l => l.trim())
@@ -736,11 +738,16 @@ export default function Menu({ brand }) {
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Locations</label>
-              <button type="button" className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
-                onClick={openLocationCreate}>
-                + Add Location
-              </button>
+              {locations.length < locationLimit(brand) && (
+                <button type="button" className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
+                  onClick={openLocationCreate}>
+                  + Add Location
+                </button>
+              )}
             </div>
+            {locations.length >= locationLimit(brand) && !canUseFeature(brand, 'multiLocation') && (
+              <div style={{ marginBottom: 14 }}><PlanLock feature="multiLocation" compact /></div>
+            )}
             <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 16, marginTop: -8 }}>
               Add your store locations. Customers will see these when they tap Locations on the scan page.
             </p>

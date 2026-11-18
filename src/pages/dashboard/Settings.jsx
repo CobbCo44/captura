@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { INDUSTRIES } from '../../lib/industries'
+import { canUseFeature } from '../../lib/billingAccess'
+import PlanLock from '../../components/PlanLock'
 
 export default function Settings({ brand, onBrandUpdate }) {
   const [form, setForm] = useState({ name: '', industry: '', businessType: 'product', logoFile: null, logoPreview: null, existingLogo: null })
@@ -188,20 +190,24 @@ export default function Settings({ brand, onBrandUpdate }) {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
         <div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Brand Settings</h1>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>Settings</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: 4 }}>
-            Manage your brand profile
+            Your business profile and connected apps
           </p>
         </div>
         {saved && <span style={{ color: 'var(--success)', fontWeight: 600 }}>Saved!</span>}
       </div>
 
-      <div style={{ maxWidth: 480 }}>
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div style={{ maxWidth: 1120, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 20, alignItems: 'start' }}>
+        <form onSubmit={handleSave} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 22, padding: 24 }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>Business profile</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: 2 }}>How your business appears on your scan page and emails.</div>
+          </div>
           {/* Brand Logo */}
-          <div className="card">
+          <div>
             <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 10 }}>
-              Brand Logo
+              Logo
             </label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               {currentLogo ? (
@@ -236,9 +242,9 @@ export default function Settings({ brand, onBrandUpdate }) {
           </div>
 
           {/* Brand Name */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 6 }}>Brand Name</label>
+              <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 6 }}>Business name</label>
               <input className="input" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
             </div>
             <div>
@@ -250,20 +256,29 @@ export default function Settings({ brand, onBrandUpdate }) {
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 600, marginBottom: 6 }}>Business Type</label>
-              <select className="input" value={form.businessType} onChange={e => setForm({ ...form, businessType: e.target.value })}>
+              <select className="input" value={form.businessType} onChange={e => setForm({ ...form, businessType: e.target.value })}
+                disabled={!!brand?.subscription_status} style={brand?.subscription_status ? { opacity: 0.6 } : undefined}>
                 <option value="product">Product Brand</option>
                 <option value="storefront">Storefront</option>
               </select>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 6, lineHeight: 1.4 }}>
-                Product Brand: for companies selling physical products. Storefront: for restaurants, shops, salons, and other local businesses.
+                {brand?.subscription_status
+                  ? 'Your plan is tied to your business type. Email support@meetcaptura.com to change it.'
+                  : 'Product Brand: for companies selling physical products. Storefront: for restaurants, shops, salons, and other local businesses.'}
               </p>
             </div>
           </div>
 
+          <button type="submit" className="btn btn-primary" disabled={saving} style={{ alignSelf: 'flex-start', padding: '12px 28px' }}>
+            {saving ? 'Saving...' : 'Save Settings'}
+          </button>
+        </form>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Shopify Integration */}
-          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Shopify Integration</label>
+              <label style={{ fontSize: '1.05rem', fontWeight: 700 }}>Shopify</label>
               {shopifyStatus === 'connected' && (
                 <span style={{
                   padding: '4px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600,
@@ -298,6 +313,8 @@ export default function Settings({ brand, onBrandUpdate }) {
                   {shopifySaving ? 'Disconnecting...' : 'Disconnect Shopify'}
                 </button>
               </div>
+            ) : !canUseFeature(brand, 'shopify') ? (
+              <PlanLock feature="shopify" compact />
             ) : (
               <>
                 <div>
@@ -334,14 +351,10 @@ export default function Settings({ brand, onBrandUpdate }) {
             )}
           </div>
 
-          <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Saving...' : 'Save Settings'}
-          </button>
-        </form>
 
         {/* Channels Section - Product brands only */}
-        {(brand?.business_type || 'product') === 'product' && <div style={{ marginTop: 32 }}>
-          <div className="card">
+        {(brand?.business_type || 'product') === 'product' && <div>
+          <div className="card" style={{ padding: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Channels</label>
               <button type="button" className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '8px 16px' }}
@@ -439,6 +452,7 @@ export default function Settings({ brand, onBrandUpdate }) {
             )}
           </div>
         </div>}
+        </div>
       </div>
     </div>
   )

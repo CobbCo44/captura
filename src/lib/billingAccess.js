@@ -24,3 +24,29 @@ export function hasGrowthFeatures(brand) {
   if (isFoundingBrand(brand)) return true
   return hasActivePlan(brand) && ['growth', 'pro'].includes(brand?.tier)
 }
+
+// Which plan each storefront feature needs. Product brands aren't gated here yet.
+const TIER_RANK = { starter: 1, growth: 2, pro: 3 }
+export const STOREFRONT_FEATURES = {
+  promos: { tier: 'growth', name: 'Giveaways and promos' },
+  customerExport: { tier: 'growth', name: 'Downloading your customer list' },
+  emailMarketing: { tier: 'growth', name: 'Email marketing' },
+  winback: { tier: 'growth', name: '"We miss you" emails' },
+  insights: { tier: 'pro', name: 'Insights and reports' },
+  shopify: { tier: 'pro', name: 'Shopify' },
+  multiLocation: { tier: 'pro', name: 'More than one location' },
+}
+
+export function canUseFeature(brand, feature) {
+  if (!brand || brand.id === 'demo') return true
+  if (brand.business_type !== 'storefront') return true
+  if (isFoundingBrand(brand)) return true
+  if (!hasActivePlan(brand)) return false
+  const needed = STOREFRONT_FEATURES[feature]?.tier || 'starter'
+  return (TIER_RANK[brand.tier] || 0) >= TIER_RANK[needed]
+}
+
+// Storefront locations included in the plan (Pro: up to 5)
+export function locationLimit(brand) {
+  return canUseFeature(brand, 'multiLocation') ? 5 : 1
+}

@@ -171,24 +171,56 @@ export default function Dashboard() {
   const checkoutSuccess = new URLSearchParams(location.search).get('checkout') === 'success'
   const [confirmingPlan, setConfirmingPlan] = useState(null) // null | 'waiting' | 'timeout'
 
-  // Back from Stripe checkout: wait for the webhook to record the plan, then open the dashboard
+  // Ask the server to read the brand's subscription from Stripe and record it,
+  // so access doesn't depend on the webhook arriving first
+  const syncPlanFromStripe = async (brandId) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      await fetch('/.netlify/functions/sync-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+        body: JSON.stringify({ brand_id: brandId }),
+      })
+    } catch { /* fall back to the webhook */ }
+  }
+
+  const applyBrandIfActive = (data) => {
+    if (!data || !hasActivePlan(data)) return false
+    setBrand(data)
+    setBrands(prev => prev.map(b => (b.id === data.id ? data : b)))
+    return true
+  }
+
+  // Already a Stripe customer but no plan recorded (e.g. came back later): check once, quietly
+  useEffect(() => {
+    if (!needsPlan || checkoutSuccess || !brand?.stripe_customer_id) return
+    let cancelled = false
+    ;(async () => {
+      await syncPlanFromStripe(brand.id)
+      const { data } = await supabase.from('brands').select('*').eq('id', brand.id).single()
+      if (!cancelled) applyBrandIfActive(data)
+    })()
+    return () => { cancelled = true }
+  }, [needsPlan, checkoutSuccess, brand?.id, brand?.stripe_customer_id])
+
+  // Back from Stripe checkout: confirm the plan with Stripe, then open the dashboard
   useEffect(() => {
     if (!needsPlan || !checkoutSuccess) return
     let cancelled = false
     let tries = 0
     setConfirmingPlan('waiting')
     const poll = async () => {
+      await syncPlanFromStripe(brand.id)
+      if (cancelled) return
       const { data } = await supabase.from('brands').select('*').eq('id', brand.id).single()
       if (cancelled) return
-      if (data && hasActivePlan(data)) {
-        setBrand(data)
-        setBrands(prev => prev.map(b => (b.id === data.id ? data : b)))
+      if (applyBrandIfActive(data)) {
         setConfirmingPlan(null)
         return
       }
       tries += 1
-      if (tries >= 20) { setConfirmingPlan('timeout'); return }
-      setTimeout(poll, 2000)
+      if (tries >= 15) { setConfirmingPlan('timeout'); return }
+      setTimeout(poll, 2500)
     }
     poll()
     return () => { cancelled = true }

@@ -4,7 +4,7 @@
  * else are rejected. Handles the full subscription lifecycle.
  */
 
-import { getStripe, getSupabase, tierFromLookupKey } from './lib/stripe-billing.js'
+import { getStripe, getSupabase, brandUpdateFromSubscription } from './lib/stripe-billing.js'
 
 export default async (req) => {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
@@ -40,19 +40,7 @@ export default async (req) => {
       case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const sub = event.data.object
-        const update = {
-          stripe_subscription_id: sub.id,
-          subscription_status: sub.status === 'trialing' ? 'trialing'
-            : sub.status === 'active' ? 'active'
-            : (sub.status === 'past_due' || sub.status === 'unpaid') ? 'past_due'
-            : (sub.status === 'canceled' || sub.status === 'incomplete_expired') ? 'canceled'
-            : sub.status,
-          trial_ends_at: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
-          billing_updated_at: new Date().toISOString(),
-        }
-        const lookupKey = sub.items?.data?.[0]?.price?.lookup_key
-        const tier = tierFromLookupKey(lookupKey) || sub.metadata?.tier
-        if (tier) update.tier = tier
+        const update = brandUpdateFromSubscription(sub)
         const brandId = sub.metadata?.brand_id
         if (brandId) {
           await supabase.from('brands').update(update).eq('id', brandId)

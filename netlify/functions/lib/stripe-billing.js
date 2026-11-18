@@ -91,3 +91,24 @@ export function tierFromLookupKey(lookupKey) {
   }
   return null
 }
+
+/**
+ * The billing columns a Stripe subscription maps to on brands.
+ * Used by the webhook and by sync-subscription so both write the same thing.
+ */
+export function brandUpdateFromSubscription(sub) {
+  const update = {
+    stripe_subscription_id: sub.id,
+    subscription_status: sub.status === 'trialing' ? 'trialing'
+      : sub.status === 'active' ? 'active'
+      : (sub.status === 'past_due' || sub.status === 'unpaid') ? 'past_due'
+      : (sub.status === 'canceled' || sub.status === 'incomplete_expired') ? 'canceled'
+      : sub.status,
+    trial_ends_at: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
+    billing_updated_at: new Date().toISOString(),
+  }
+  const lookupKey = sub.items?.data?.[0]?.price?.lookup_key
+  const tier = tierFromLookupKey(lookupKey) || sub.metadata?.tier
+  if (tier) update.tier = tier
+  return update
+}

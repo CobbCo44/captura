@@ -164,6 +164,7 @@ export default function QRCodes({ brand }) {
     fgColor: '#18181B', bgColor: '#FFFFFF', logoFile: null, logoUrl: null, logoScale: 0.25, ctaText: '',
   })
   const [editingLabelQR, setEditingLabelQR] = useState(false)
+  const [labelLinkCopied, setLabelLinkCopied] = useState(false)
   const [savingLabelQR, setSavingLabelQR] = useState(false)
 
   // Load saved store QR settings from brand row
@@ -1061,12 +1062,8 @@ export default function QRCodes({ brand }) {
               />
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{scanUrl}/store/{brand.id}</span>
-                <button type="button" onClick={() => navigator.clipboard?.writeText(`${scanUrl}/store/${brand.id}`)}
-                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: '0.72rem', padding: '3px 8px', cursor: 'pointer', flexShrink: 0 }}>
-                  Copy link
-                </button>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
+                Meant to be scanned in person, so customers can only earn points by visiting.
               </div>
 
               {!editingStoreQR ? (
@@ -1212,12 +1209,15 @@ export default function QRCodes({ brand }) {
               />
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{scanUrl}/store/{brand.id}?label=1</span>
-                <button type="button" onClick={() => navigator.clipboard?.writeText(`${scanUrl}/store/${brand.id}?label=1`)}
-                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)', fontSize: '0.72rem', padding: '3px 8px', cursor: 'pointer', flexShrink: 0 }}>
-                  Copy link
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+                <button type="button"
+                  onClick={async () => {
+                    try { await navigator.clipboard.writeText(`${scanUrl}/store/${brand.id}?label=1`); setLabelLinkCopied(true); setTimeout(() => setLabelLinkCopied(false), 2000) } catch { /* clipboard blocked */ }
+                  }}
+                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontSize: '0.8rem', padding: '6px 12px', cursor: 'pointer' }}>
+                  {labelLinkCopied ? 'Link copied' : 'Copy link for Instagram or your website'}
                 </button>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Safe to share online. It never awards points.</span>
               </div>
 
               {!editingLabelQR ? (

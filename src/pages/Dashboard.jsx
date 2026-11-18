@@ -509,7 +509,7 @@ function PlanActivating({ state, brandName }) {
   const timedOut = state === 'timeout'
   const steps = [
     { label: 'Card saved', sub: 'Nothing is charged for 14 days', status: 'done' },
-    { label: `Activating ${brandName}'s plan`, sub: timedOut ? 'Stripe is taking longer than usual' : 'Confirming with Stripe', status: timedOut ? 'slow' : 'active' },
+    { label: `Activating your plan for ${brandName}`, sub: timedOut ? 'Stripe is taking longer than usual' : 'Confirming with Stripe', status: timedOut ? 'slow' : 'active' },
     { label: 'Opening your dashboard', sub: 'Your loyalty program, scan page and emails', status: 'pending' },
   ]
   const mark = (status) => {

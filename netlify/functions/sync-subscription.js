@@ -53,7 +53,7 @@ export default async (req) => {
     const { error } = await supabase.from('brands').update(update).eq('id', brand.id)
     if (error) throw error
 
-    return new Response(JSON.stringify({ synced: true, subscription_status: update.subscription_status, tier: update.tier || brand.tier }), { status: 200, headers })
+    return new Response(JSON.stringify({ synced: true, subscription_status: update.subscription_status, tier: update.tier || brand.tier, cancel_at: update.cancel_at }), { status: 200, headers })
   } catch (err) {
     console.error('sync-subscription:', err.message)
     return new Response(JSON.stringify({ error: 'Could not check your plan with Stripe.' }), { status: 500, headers })

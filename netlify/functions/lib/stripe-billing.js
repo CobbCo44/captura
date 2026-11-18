@@ -105,10 +105,19 @@ export function brandUpdateFromSubscription(sub) {
       : (sub.status === 'canceled' || sub.status === 'incomplete_expired') ? 'canceled'
       : sub.status,
     trial_ends_at: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
+    cancel_at: scheduledCancelAt(sub),
     billing_updated_at: new Date().toISOString(),
   }
   const lookupKey = sub.items?.data?.[0]?.price?.lookup_key
   const tier = tierFromLookupKey(lookupKey) || sub.metadata?.tier
   if (tier) update.tier = tier
   return update
+}
+
+// When a subscription is set to end (owner canceled in the portal), or null
+function scheduledCancelAt(sub) {
+  if (['canceled', 'incomplete_expired'].includes(sub.status)) return null
+  const periodEnd = sub.current_period_end ?? sub.items?.data?.[0]?.current_period_end
+  const at = sub.cancel_at ?? (sub.cancel_at_period_end ? periodEnd : null)
+  return at ? new Date(at * 1000).toISOString() : null
 }

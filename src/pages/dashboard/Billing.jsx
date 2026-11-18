@@ -88,6 +88,24 @@ export default function Billing({ brand, onboarding = false }) {
     ? Math.max(0, Math.ceil((new Date(brand.trial_ends_at) - new Date()) / 86400000))
     : null
   const currentPlan = plans.find(p => p.tier === (brand?.tier || 'starter'))
+  const cancelsAt = brand?.cancel_at && status !== 'canceled' ? brand.cancel_at : null
+
+  // Plan details come from Stripe; refresh them when the page opens in case a webhook was missed
+  useEffect(() => {
+    if (onboarding || !brand?.stripe_subscription_id) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await callBilling('sync-subscription', { brand_id: brand.id })
+        if (cancelled || !data?.synced) return
+        const changed = data.subscription_status !== brand.subscription_status
+          || (data.tier && data.tier !== brand.tier)
+          || (data.cancel_at || null) !== (brand.cancel_at ? new Date(brand.cancel_at).toISOString() : null)
+        if (changed) window.location.reload()
+      } catch { /* keep what we have */ }
+    })()
+    return () => { cancelled = true }
+  }, [brand?.id])
 
   // The success note shows once; drop ?checkout=success so a refresh doesn't repeat it
   useEffect(() => {
@@ -202,6 +220,11 @@ export default function Billing({ brand, onboarding = false }) {
               <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: `${statusInfo.color}1A`, color: statusInfo.color }}>
                 {statusInfo.text}
               </span>
+              {cancelsAt && (
+                <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'rgba(245,158,11,0.12)', color: '#F59E0B' }}>
+                  Cancels {formatDate(cancelsAt)}
+                </span>
+              )}
             </div>
           </div>
           <div>
@@ -216,10 +239,10 @@ export default function Billing({ brand, onboarding = false }) {
           </div>
           <div>
             <div style={{ fontSize: '0.72rem', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>
-              {status === 'trialing' ? 'Then' : 'Billing'}
+              {cancelsAt ? 'Then' : status === 'trialing' ? 'Then' : 'Billing'}
             </div>
             <div style={{ fontSize: '1rem', fontWeight: 600 }}>
-              {status === 'trialing' && currentPlan ? `$${currentPlan.price}/mo` : status === 'past_due' ? 'Payment failed' : 'Monthly'}
+              {cancelsAt ? 'Plan ends, no charge' : status === 'trialing' && currentPlan ? `$${currentPlan.price}/mo` : status === 'past_due' ? 'Payment failed' : 'Monthly'}
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -227,6 +250,11 @@ export default function Billing({ brand, onboarding = false }) {
               {working === 'portal' ? 'Opening...' : 'Manage or cancel'}
             </button>
           </div>
+          {cancelsAt && (
+            <p style={{ gridColumn: '1 / -1', color: 'var(--text-muted)', fontSize: '0.88rem', margin: 0 }}>
+              Your plan ends on {formatDate(cancelsAt)} and you won't be charged. Changed your mind? Open "Manage or cancel" and choose "Don't cancel subscription."
+            </p>
+          )}
           {status === 'past_due' && (
             <p style={{ gridColumn: '1 / -1', color: 'var(--danger)', fontSize: '0.88rem', margin: 0 }}>
               Your last payment didn't go through. Update your card under "Manage or cancel" to keep everything running.

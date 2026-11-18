@@ -27,20 +27,29 @@ export default async (req) => {
     if (auth.error) return new Response(JSON.stringify({ error: auth.error }), { status: 401, headers })
     const { brand } = auth
 
-    if (!brand.stripe_customer_id) {
-      return new Response(JSON.stringify({ synced: false, reason: 'no_customer' }), { status: 200, headers })
+    let sub = null
+    if (brand.stripe_customer_id) {
+      // Most recent subscription for this customer, in any state
+      const { data: subs } = await stripe.subscriptions.list({
+        customer: brand.stripe_customer_id,
+        status: 'all',
+        limit: 1,
+      })
+      sub = subs[0] || null
     }
-
-    // Most recent subscription for this customer, in any state
-    const { data: subs } = await stripe.subscriptions.list({
-      customer: brand.stripe_customer_id,
-      status: 'all',
-      limit: 1,
-    })
-    const sub = subs[0]
+    if (!sub) {
+      // Customer link missing (e.g. it failed to save): find the subscription
+      // by the brand_id checkout stamps into its metadata
+      const { data: found } = await stripe.subscriptions.search({
+        query: `metadata['brand_id']:'${brand.id}'`,
+        limit: 10,
+      })
+      sub = (found || []).sort((a, b) => b.created - a.created)[0] || null
+    }
     if (!sub) return new Response(JSON.stringify({ synced: false, reason: 'no_subscription' }), { status: 200, headers })
 
     const update = brandUpdateFromSubscription(sub)
+    if (!brand.stripe_customer_id && sub.customer) update.stripe_customer_id = sub.customer
     const { error } = await supabase.from('brands').update(update).eq('id', brand.id)
     if (error) throw error
 

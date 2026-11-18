@@ -191,9 +191,9 @@ export default function Dashboard() {
     return true
   }
 
-  // Already a Stripe customer but no plan recorded (e.g. came back later): check once, quietly
+  // On the plan picker, check Stripe once quietly in case a plan exists but wasn't recorded
   useEffect(() => {
-    if (!needsPlan || checkoutSuccess || !brand?.stripe_customer_id) return
+    if (!needsPlan || checkoutSuccess) return
     let cancelled = false
     ;(async () => {
       await syncPlanFromStripe(brand.id)
@@ -201,7 +201,7 @@ export default function Dashboard() {
       if (!cancelled) applyBrandIfActive(data)
     })()
     return () => { cancelled = true }
-  }, [needsPlan, checkoutSuccess, brand?.id, brand?.stripe_customer_id])
+  }, [needsPlan, checkoutSuccess, brand?.id])
 
   // Back from Stripe checkout: confirm the plan with Stripe, then open the dashboard
   useEffect(() => {

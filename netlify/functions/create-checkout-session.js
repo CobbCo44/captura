@@ -39,7 +39,8 @@ export default async (req) => {
         metadata: { brand_id: brand.id },
       })
       customerId = customer.id
-      await supabase.from('brands').update({ stripe_customer_id: customerId }).eq('id', brand.id)
+      const { error: linkError } = await supabase.from('brands').update({ stripe_customer_id: customerId }).eq('id', brand.id)
+      if (linkError) console.error('create-checkout-session: could not save stripe_customer_id:', linkError.message)
     }
 
     const price = await ensurePrice(stripe, plan)

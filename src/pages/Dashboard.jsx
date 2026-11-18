@@ -219,21 +219,8 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {confirmingPlan === 'waiting' ? (
-            <div className="card" style={{ textAlign: 'center', padding: '48px 28px', maxWidth: 480, margin: '0 auto' }}>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 8 }}>Setting up your plan</h2>
-              <p style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
-                Your free trial has started. We're confirming it with Stripe, which usually takes a few seconds.
-              </p>
-            </div>
-          ) : confirmingPlan === 'timeout' ? (
-            <div className="card" style={{ textAlign: 'center', padding: '48px 28px', maxWidth: 480, margin: '0 auto' }}>
-              <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 8 }}>Almost there</h2>
-              <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 20 }}>
-                Stripe is taking longer than usual to confirm your trial. Refresh in a minute and your dashboard will open.
-              </p>
-              <button className="btn btn-primary" onClick={() => window.location.reload()} style={{ padding: '12px 28px' }}>Refresh</button>
-            </div>
+          {confirmingPlan ? (
+            <PlanActivating state={confirmingPlan} brandName={brand.name} />
           ) : (
             <>
               <div style={{ textAlign: 'center', maxWidth: 820, margin: '0 auto 40px' }}>
@@ -512,6 +499,74 @@ export default function Dashboard() {
           .sidebar { transform: translateX(-100%); }
           .main-content { margin-left: 0 !important; padding: 60px 16px 32px !important; }
         }
+      `}</style>
+    </div>
+  )
+}
+
+// Shown after Stripe checkout while the webhook records the new plan
+function PlanActivating({ state, brandName }) {
+  const timedOut = state === 'timeout'
+  const steps = [
+    { label: 'Card saved', sub: 'Nothing is charged for 14 days', status: 'done' },
+    { label: `Activating ${brandName}'s plan`, sub: timedOut ? 'Stripe is taking longer than usual' : 'Confirming with Stripe', status: timedOut ? 'slow' : 'active' },
+    { label: 'Opening your dashboard', sub: 'Your loyalty program, scan page and emails', status: 'pending' },
+  ]
+  const mark = (status) => {
+    if (status === 'done') {
+      return (
+        <span style={{ width: 28, height: 28, borderRadius: '50%', background: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
+        </span>
+      )
+    }
+    if (status === 'active') {
+      return <span className="plan-spin" style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid rgba(34,197,94,0.2)', borderTopColor: '#22C55E', flexShrink: 0, boxSizing: 'border-box' }} />
+    }
+    if (status === 'slow') {
+      return <span style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid #F59E0B', flexShrink: 0, boxSizing: 'border-box' }} />
+    }
+    return <span style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid var(--border)', flexShrink: 0, boxSizing: 'border-box' }} />
+  }
+
+  return (
+    <div style={{ minHeight: '62vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: '100%', maxWidth: 520, textAlign: 'center' }}>
+        <div style={{ position: 'relative', width: 88, height: 88, margin: '0 auto 28px' }}>
+          {!timedOut && <span className="plan-spin" style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '3px solid rgba(34,197,94,0.15)', borderTopColor: '#22C55E', boxSizing: 'border-box' }} />}
+          <span style={{
+            position: 'absolute', inset: 10, borderRadius: '50%',
+            background: timedOut ? 'rgba(245,158,11,0.12)' : 'rgba(34,197,94,0.12)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.9rem',
+          }} aria-hidden="true">{timedOut ? '⏳' : '🎉'}</span>
+        </div>
+        <h1 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.4rem)', fontWeight: 800, lineHeight: 1.15, margin: '0 0 12px' }}>
+          {timedOut ? 'Almost there' : 'Your free trial is starting'}
+        </h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', lineHeight: 1.6, margin: '0 auto 32px', maxWidth: 420 }}>
+          {timedOut
+            ? 'Your trial is saved. Stripe is just slow to confirm it. Refresh in a minute and your dashboard will open.'
+            : 'Hang tight for a few seconds while we get everything ready.'}
+        </p>
+        <div className="card" style={{ textAlign: 'left', padding: '8px 22px' }}>
+          {steps.map((step, i) => (
+            <div key={step.label} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 0', borderTop: i ? '1px solid var(--border)' : 'none', opacity: step.status === 'pending' ? 0.55 : 1 }}>
+              {mark(step.status)}
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{step.label}</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: 2 }}>{step.sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {timedOut && (
+          <button className="btn btn-primary" onClick={() => window.location.reload()} style={{ marginTop: 24, padding: '13px 32px' }}>Refresh</button>
+        )}
+      </div>
+      <style>{`
+        .plan-spin { animation: plan-spin 0.9s linear infinite; display: inline-block; }
+        @keyframes plan-spin { to { transform: rotate(360deg); } }
+        @media (prefers-reduced-motion: reduce) { .plan-spin { animation-duration: 2.5s; } }
       `}</style>
     </div>
   )

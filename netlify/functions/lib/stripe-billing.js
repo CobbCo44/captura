@@ -34,14 +34,25 @@ export const PLANS = {
  * Find the Stripe price for a plan by lookup_key, creating the product
  * and price on first use. Idempotent — no dashboard setup needed.
  */
+// Stripe product tax code for "Software as a service (SaaS), business use".
+// Required by Stripe Managed Payments, which handles sales tax for us.
+export const SAAS_TAX_CODE = 'txcd_10103001'
+
 export async function ensurePrice(stripe, plan) {
-  const existing = await stripe.prices.list({ lookup_keys: [plan.lookup_key], limit: 1 })
+  const existing = await stripe.prices.list({ lookup_keys: [plan.lookup_key], limit: 1, expand: ['data.product'] })
   const current = existing.data[0]
+  // Products created before the tax code was set get it now
+  const currentProduct = current?.product
+  if (currentProduct && typeof currentProduct === 'object' && !currentProduct.tax_code) {
+    await stripe.products.update(currentProduct.id, { tax_code: SAAS_TAX_CODE })
+  }
   if (current && current.unit_amount === plan.amount) return current
   // No price yet, or the catalog amount changed: create a price at the
   // current amount and move the lookup_key onto it. Existing subscribers
   // keep their old price (rate lock); new checkouts get the new one.
-  const productId = current ? current.product : (await stripe.products.create({ name: plan.name })).id
+  const productId = currentProduct
+    ? (typeof currentProduct === 'object' ? currentProduct.id : currentProduct)
+    : (await stripe.products.create({ name: plan.name, tax_code: SAAS_TAX_CODE })).id
   return stripe.prices.create({
     product: productId,
     unit_amount: plan.amount,

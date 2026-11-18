@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { supabase } from '../lib/supabase'
+import PromoImage from '../components/PromoImage'
 import { getKit } from '../lib/kits'
 import { loadTileConfig, resolveTileOrder } from '../lib/tiles'
 
@@ -1317,7 +1318,7 @@ export default function ScanPage({ previewData } = {}) {
           display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 13,
         }}>
           {hasPromoImage && (
-            <div style={{ position: 'absolute', inset: 0, backgroundImage: `url(${activePromo.image_url})`, backgroundSize: 'cover', backgroundPosition: activePromo.image_position || 'center' }} />
+            <PromoImage url={activePromo.image_url} position={activePromo.image_position} />
           )}
           <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.82) 100%)' }} />
 

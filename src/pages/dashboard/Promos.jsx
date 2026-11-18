@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
-import { canUseFeature, locationLimit } from '../../lib/billingAccess'
+import PromoImage, { FIT_WHOLE } from '../../components/PromoImage'
+import { loadTileConfig } from '../../lib/tiles'
+import { canUseFeature } from '../../lib/billingAccess'
 import PlanLock from '../../components/PlanLock'
 
 export default function Promos({ brand }) {
@@ -57,28 +59,65 @@ export default function Promos({ brand }) {
     setShowModal(true)
   }
 
-  // Parse "center 30%" to just the Y percentage number
-  const getYPct = (pos) => {
-    if (!pos || pos === 'center') return 50
-    const match = pos.match(/(\d+)%/)
-    return match ? parseInt(match[1]) : 50
+  // Parse a saved position ("center 30%", "40% 30%", "center") into x/y percentages
+  const getXY = (pos) => {
+    if (!pos || pos === 'center' || pos === FIT_WHOLE) return { x: 50, y: 50 }
+    const pcts = [...pos.matchAll(/(\d+)%/g)].map(m => parseInt(m[1]))
+    if (pcts.length >= 2) return { x: pcts[0], y: pcts[1] }
+    return { x: 50, y: pcts[0] ?? 50 }
   }
+
+  // The promo tile on a phone is as wide as the screen and two grid rows tall; the
+  // row height depends on how many other tiles the scan page shows. Mirror that here.
+  const [previewAspect, setPreviewAspect] = useState('362 / 475')
+  useEffect(() => {
+    if (!showModal || !brand?.id || brand.id === 'demo') return
+    if (brand.business_type !== 'storefront') { setPreviewAspect('4 / 2.1'); return }
+    let cancelled = false
+    const count = (q) => q.then(r => r.count || 0, () => 0)
+    ;(async () => {
+      // Same rules as the scan page: a tile only shows when it has content
+      const [order, rewards, items, images, hours, locations, winners] = await Promise.all([
+        loadTileConfig(brand.id, 'counter'),
+        count(supabase.from('loyalty_rewards').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id).eq('active', true)),
+        count(supabase.from('menu_items').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id).eq('active', true)),
+        count(supabase.from('menu_images').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id)),
+        count(supabase.from('store_hours').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id).is('location_id', null)),
+        count(supabase.from('store_locations').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id)),
+        count(supabase.from('promos').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id).not('winner_name', 'is', null)),
+      ])
+      if (cancelled || !order) return
+      const hasContent = {
+        winner: winners > 0, loyalty: rewards > 0, menu: items + images > 0, hours: hours > 0, locations: locations > 0,
+        follow: ['social_instagram', 'social_tiktok', 'social_twitter', 'social_facebook', 'social_website'].some(k => brand[k]),
+      }
+      const enabled = (key) => order.find(o => o.key === key)?.enabled !== false
+      const others = order.filter(o => o.enabled !== false && o.key !== 'promo' && o.key !== 'video' && (o.custom || hasContent[o.key])).length
+      const videoRows = brand.store_video_url && enabled('video') ? 2 : 0
+      const rows = 2 + videoRows + Math.ceil(others / 2)
+      const reserved = 46 + (hours > 0 ? 36 : 0) + 50 + 30 + (rows - 1) * 9
+      const rowH = Math.max(60, Math.floor((844 - reserved) / rows))
+      setPreviewAspect(`362 / ${2 * rowH + 9}`)
+    })()
+    return () => { cancelled = true }
+  }, [showModal, brand?.id])
 
   const handleDragStart = useCallback((e) => {
     e.preventDefault()
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY
+    if (form.imagePosition === FIT_WHOLE) return
+    const point = e.touches ? e.touches[0] : e
     setDragging(true)
-    setDragStart({ y: clientY, startPct: getYPct(form.imagePosition) })
+    setDragStart({ x: point.clientX, y: point.clientY, start: getXY(form.imagePosition) })
   }, [form.imagePosition])
 
   const handleDragMove = useCallback((e) => {
     if (!dragging || !previewRef.current) return
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY
+    const point = e.touches ? e.touches[0] : e
     const rect = previewRef.current.getBoundingClientRect()
-    const delta = clientY - dragStart.y
-    const pctDelta = (delta / rect.height) * 100
-    const newPct = Math.max(0, Math.min(100, dragStart.startPct + pctDelta))
-    setForm(f => ({ ...f, imagePosition: `center ${Math.round(newPct)}%` }))
+    // Dragging the image right reveals more of its left side, so position moves the other way
+    const x = Math.max(0, Math.min(100, dragStart.start.x - ((point.clientX - dragStart.x) / rect.width) * 100))
+    const y = Math.max(0, Math.min(100, dragStart.start.y - ((point.clientY - dragStart.y) / rect.height) * 100))
+    setForm(f => ({ ...f, imagePosition: `${Math.round(x)}% ${Math.round(y)}%` }))
   }, [dragging, dragStart])
 
   const handleDragEnd = useCallback(() => {
@@ -372,6 +411,23 @@ export default function Promos({ brand }) {
                       }}
                       style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }} />
                     {hasImage && (
+                      <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                        {[['cover', 'Fill tile'], [FIT_WHOLE, 'Show whole image']].map(([mode, text]) => {
+                          const active = mode === FIT_WHOLE ? form.imagePosition === FIT_WHOLE : form.imagePosition !== FIT_WHOLE
+                          return (
+                            <button key={mode} type="button"
+                              onClick={() => setForm({ ...form, imagePosition: mode === FIT_WHOLE ? FIT_WHOLE : 'center' })}
+                              style={{
+                                padding: '6px 12px', borderRadius: 999, fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
+                                background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                color: active ? 'var(--text)' : 'var(--text-muted)',
+                                border: `1px solid ${active ? 'rgba(255,255,255,0.25)' : 'var(--border)'}`,
+                              }}>{text}</button>
+                          )
+                        })}
+                      </div>
+                    )}
+                    {hasImage && (
                       <button type="button" onClick={() => setForm({ ...form, image: null, existingImage: '', imagePosition: 'center' })}
                         style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.8rem', cursor: 'pointer', marginTop: 6, padding: 0 }}>
                         Remove image
@@ -409,7 +465,7 @@ export default function Promos({ brand }) {
                 {hasImage && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <label style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      Preview — drag image to reposition
+                      {form.imagePosition === FIT_WHOLE ? 'Phone preview' : 'Phone preview: drag the image to reposition'}
                     </label>
                     <div
                       ref={previewRef}
@@ -421,18 +477,13 @@ export default function Promos({ brand }) {
                       onTouchEnd={handleDragEnd}
                       onMouseLeave={handleDragEnd}
                       style={{
-                        width: '100%', aspectRatio: '4 / 2.1', borderRadius: 12,
+                        width: '100%', maxWidth: 280, alignSelf: 'center', aspectRatio: previewAspect, borderRadius: 12,
                         position: 'relative', overflow: 'hidden',
-                        cursor: dragging ? 'grabbing' : 'grab', userSelect: 'none',
+                        cursor: form.imagePosition === FIT_WHOLE ? 'default' : dragging ? 'grabbing' : 'grab', userSelect: 'none',
                         border: '1px solid var(--border)',
                       }}
                     >
-                      <div style={{
-                        position: 'absolute', inset: 0,
-                        backgroundImage: `url(${previewImageUrl})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: form.imagePosition || 'center',
-                      }} />
+                      <PromoImage url={previewImageUrl} position={form.imagePosition} />
                       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.82) 100%)' }} />
 
                       <div style={{ position: 'absolute', top: 10, left: 10, zIndex: 1 }}>
@@ -461,7 +512,7 @@ export default function Promos({ brand }) {
                       </div>
                     </div>
                     <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', margin: 0, textAlign: 'center' }}>
-                      This is how the promo tile looks on the scan page
+                      Matches the promo tile on a phone (exact height varies a little by phone)
                     </p>
                   </div>
                 )}

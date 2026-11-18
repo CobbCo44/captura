@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
-import { canUseFeature, locationLimit } from '../../lib/billingAccess'
+import { canUseFeature } from '../../lib/billingAccess'
 import PlanLock from '../../components/PlanLock'
 
 export default function Consumers({ brand }) {

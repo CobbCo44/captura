@@ -63,6 +63,8 @@ export default async (req) => {
     return new Response(JSON.stringify({ url: session.url }), { status: 200, headers })
   } catch (err) {
     console.error('create-checkout-session:', err.message)
-    return new Response(JSON.stringify({ error: 'Could not start checkout. Try again in a moment.' }), { status: 500, headers })
+    // Stripe's own message (e.g. account not activated) tells the owner what to fix
+    const detail = err?.type?.startsWith('Stripe') && err.message ? ` Stripe says: ${err.message}` : ' Try again in a moment.'
+    return new Response(JSON.stringify({ error: `Could not start checkout.${detail}` }), { status: 500, headers })
   }
 }

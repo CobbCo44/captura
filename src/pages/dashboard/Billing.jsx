@@ -83,6 +83,25 @@ export default function Billing({ brand, onboarding = false }) {
     }
   }
 
+  const changePlan = async (plan) => {
+    const onTrial = status === 'trialing'
+    const ok = window.confirm(onTrial
+      ? `Switch to ${plan.name} ($${plan.price}/mo)? You stay on your free trial, and ${plan.name} pricing starts when it ends.`
+      : `Switch to ${plan.name} ($${plan.price}/mo)? Stripe adjusts your next bill for the rest of this month.`)
+    if (!ok) return
+    setWorking(plan.tier)
+    setError('')
+    try {
+      const data = await callBilling('change-plan', { brand_id: brand.id, tier: plan.tier })
+      if (data.error) { setError(data.error); return }
+      window.location.assign('/dashboard/billing')
+    } catch {
+      setError('Could not reach billing. Check your connection and try again.')
+    } finally {
+      setWorking(null)
+    }
+  }
+
   const openPortal = async () => {
     setWorking('portal')
     setError('')
@@ -185,11 +204,11 @@ export default function Billing({ brand, onboarding = false }) {
               </ul>
               <button
                 className={plan.highlight ? 'btn btn-primary' : 'btn btn-secondary'}
-                onClick={() => isCurrent ? openPortal() : startCheckout(plan.tier)}
+                onClick={() => isCurrent ? openPortal() : hasSubscription ? changePlan(plan) : startCheckout(plan.tier)}
                 disabled={working !== null}
                 style={{ padding: '12px', width: '100%' }}
               >
-                {working === plan.tier ? 'Starting...' : isCurrent ? 'Current plan' : hasSubscription ? 'Switch plan' : 'Start 14-day trial'}
+                {working === plan.tier ? (hasSubscription ? 'Switching...' : 'Starting...') : isCurrent ? 'Current plan' : hasSubscription ? 'Switch plan' : 'Start 14-day trial'}
               </button>
             </div>
           )

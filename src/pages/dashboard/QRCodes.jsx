@@ -1020,16 +1020,20 @@ export default function QRCodes({ brand }) {
   // Preview logo: use new file preview, existing URL, or null
   const previewLogo = form.logoRawFile ? form.logoFile : (form.existingLogoUrl || null)
 
+  const isStorefront = brand?.business_type === 'storefront'
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
         <div>
           <h1 style={{ fontSize: '1.8rem', fontWeight: 700 }}>QR Codes</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: 4 }}>
-            Branded QR codes with your logo in the center
+            {isStorefront
+              ? 'Your counter QR for loyalty and your label QR. Event QR codes live on the Events page.'
+              : 'Branded QR codes with your logo in the center'}
           </p>
         </div>
-        <button className="btn btn-primary" onClick={openCreate}>+ Create QR Code</button>
+        {!isStorefront && <button className="btn btn-primary" onClick={openCreate}>+ Create QR Code</button>}
       </div>
 
       {/* Storefront Primary QR */}
@@ -1326,6 +1330,7 @@ export default function QRCodes({ brand }) {
         </div>
       )}
 
+      {!isStorefront && (<>
       {loading ? (
         <div style={{ color: 'var(--text-muted)', padding: 40, textAlign: 'center' }}>Loading...</div>
       ) : qrCodes.length === 0 ? (
@@ -1410,6 +1415,7 @@ export default function QRCodes({ brand }) {
           ))}
         </div>
       )}
+      </>)}
 
       {/* ========== SERIALIZED BATCHES SECTION ========== */}
       {/* Batch Generation Modal */}
@@ -1526,7 +1532,7 @@ export default function QRCodes({ brand }) {
       )}
 
       {/* Serialized Batches Table */}
-      {!loading && batches.length > 0 && (
+      {!isStorefront && !loading && batches.length > 0 && (
         <div style={{ marginTop: 32 }}>
           <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 16 }}>Serialized Batches</h2>
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

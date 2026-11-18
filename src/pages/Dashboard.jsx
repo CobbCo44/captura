@@ -49,7 +49,6 @@ const storefrontNavItems = [
   { path: 'brand', label: 'Brand', icon: '◆' },
   { path: 'scan-page', label: 'Scan Page', icon: '▧' },
   { path: 'menu', label: 'Menu / Services', icon: '▤' },
-  { path: 'products', label: 'Products', icon: '▦' },
   { path: 'qr-codes', label: 'QR Codes', icon: '⊞' },
   { path: 'promos', label: 'Promos', icon: '🎁' },
   { path: 'events', label: 'Events', icon: '🎪' },

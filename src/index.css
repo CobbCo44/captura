@@ -113,3 +113,6 @@ input, textarea, select {
   border-radius: var(--radius);
   padding: 24px;
 }
+
+/* Scans map: deepen the dark basemap so scan dots stand out (dots aren't in the tile pane) */
+.scan-map .leaflet-tile-pane { filter: brightness(0.62) contrast(1.15) saturate(0.7); }

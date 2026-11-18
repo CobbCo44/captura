@@ -31,7 +31,7 @@ function FitToScans({ points }) {
 // Which storefront QR a scan came from
 const SOURCES = {
   counter: { label: 'Counter QR', color: '#22C55E' },
-  label: { label: 'Label QR', color: '#3B82F6' },
+  label: { label: 'Label QR', color: '#F97316' },
 }
 const sourceOf = (s) => SOURCES[s.source] || { label: 'Earlier scan', color: '#A1A1AA' }
 
@@ -167,6 +167,7 @@ export default function Scans({ brand }) {
                   maxBounds={[[-85, -180], [85, 180]]}
                   maxBoundsViscosity={1.0}
                   worldCopyJump={false}
+                  className="scan-map"
                   style={{ height: '100%', width: '100%', background: '#09090B' }}
                   zoomControl={true}
                 >
@@ -192,26 +193,22 @@ export default function Scans({ brand }) {
                     </>
                   )}
                   <FitToScans points={mapPoints} />
-                  {/* Untagged scans first (small, faded), then counter and label scans on top with a glow */}
+                  {/* Untagged scans first (small, faded), then counter and label scans on top */}
                   {[...mapPoints]
                     .sort((a, b) => (SOURCES[a.source] ? 1 : 0) - (SOURCES[b.source] ? 1 : 0))
                     .map((s, i) => {
                       const tagged = isStorefront && SOURCES[s.source]
                       const color = isStorefront ? sourceOf(s).color : '#EF4444'
-                      return [
-                        tagged && (
-                          <CircleMarker key={`glow-${s.id || i}`} center={[s.latitude, s.longitude]} radius={16}
-                            stroke={false} fillColor={color} fillOpacity={0.18} interactive={false} />
-                        ),
+                      return (
                         <CircleMarker
                           key={s.id || i}
                           center={[s.latitude, s.longitude]}
-                          radius={tagged || !isStorefront ? 7 : 4}
+                          radius={tagged || !isStorefront ? 7.5 : 4}
                           fillColor={color}
-                          fillOpacity={tagged || !isStorefront ? 1 : 0.45}
-                          color={tagged || !isStorefront ? '#FFFFFF' : color}
-                          weight={tagged || !isStorefront ? 2 : 0}
-                          opacity={1}
+                          fillOpacity={tagged || !isStorefront ? 0.95 : 0.4}
+                          color="#09090B"
+                          weight={tagged || !isStorefront ? 1.5 : 0}
+                          opacity={0.9}
                         >
                           <Popup>
                             <div style={{ color: '#09090B', fontSize: '0.85rem' }}>
@@ -222,8 +219,8 @@ export default function Scans({ brand }) {
                               </span>
                             </div>
                           </Popup>
-                        </CircleMarker>,
-                      ]
+                        </CircleMarker>
+                      )
                     })}
                 </MapContainer>
               </div>

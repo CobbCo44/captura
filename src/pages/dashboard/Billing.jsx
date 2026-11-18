@@ -2,34 +2,64 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 
+// Plain-language plan copy: written for shop owners, not for us
 const STOREFRONT_PLANS = [
   {
     tier: 'starter', name: 'Starter', price: 99,
-    desc: 'The loyalty loop, running itself.',
-    features: ['Scan page with menu and prices', 'Hours and locations', 'Loyalty program with rewards', 'Welcome and reward alert emails', '1 location'],
+    desc: 'Turn first-time customers into regulars.',
+    features: [
+      'Your own scan page with menu, hours and locations',
+      'Digital punch card: customers earn points and rewards',
+      'Automatic welcome and "your reward is ready" emails',
+      '1 location',
+    ],
   },
   {
     tier: 'growth', name: 'Growth', price: 199, highlight: true,
-    desc: 'Everything in Starter plus Autopilot at full power.',
-    features: ['Everything in Starter', 'Win-Back emails', 'Announcements (4 per month)', 'Customers-brought-back dashboard', 'Consumer data export'],
+    desc: 'Bring customers back automatically.',
+    features: [
+      'Everything in Starter',
+      'Email marketing: 4 campaigns a month, with photos',
+      'Automatic "we miss you" emails when regulars stop coming',
+      'See how many customers came back',
+      'Giveaways and promos',
+      'Download your customer list',
+    ],
   },
   {
     tier: 'pro', name: 'Pro', price: 499,
-    desc: 'For multi-location businesses and chains.',
-    features: ['Everything in Growth', 'Up to 5 locations', '$89 per additional location', 'Insights dashboard', 'Shopify integration'],
+    desc: 'For businesses with more than one location.',
+    features: [
+      'Everything in Growth',
+      'Up to 5 locations ($89/mo for each extra)',
+      'Detailed insights and reports',
+      'Connect your Shopify store',
+      'Priority setup and support',
+    ],
   },
 ]
 
 const PRODUCT_PLANS = [
   {
     tier: 'starter', name: 'Starter', price: 299,
-    desc: 'For brands launching their first consumer capture program.',
-    features: ['Core dashboard', 'Up to 5 products', '3 QR codes', 'Scan analytics + map', 'VIP member capture'],
+    desc: 'Start collecting customer info from your products.',
+    features: [
+      'Up to 5 products and 3 QR codes',
+      'See where and when people scan',
+      'Collect customer emails and phone numbers',
+      'Download your customer list',
+    ],
   },
   {
     tier: 'growth', name: 'Growth', price: 499, highlight: true,
-    desc: 'For brands scaling engagement across product lines.',
-    features: ['Everything in Starter', 'Unlimited products', 'Unlimited QR codes', 'Serialization', 'Shopify integration'],
+    desc: 'For brands with a full product line.',
+    features: [
+      'Everything in Starter',
+      'Unlimited products and QR codes',
+      'A unique QR code on every item you make',
+      'Warranty registration and reorder links',
+      'Connect your Shopify store',
+    ],
   },
 ]
 
@@ -40,6 +70,8 @@ const STATUS_LABELS = {
   canceled: { text: 'Canceled', color: '#71717A' },
 }
 
+const formatDate = (iso) => new Date(iso).toLocaleDateString(undefined, { month: 'long', day: 'numeric' })
+
 export default function Billing({ brand, onboarding = false }) {
   const [searchParams] = useSearchParams()
   const isStorefront = brand?.business_type === 'storefront'
@@ -47,6 +79,7 @@ export default function Billing({ brand, onboarding = false }) {
   const [working, setWorking] = useState(null) // tier being started, or 'portal'
   const [error, setError] = useState('')
   const [notConfigured, setNotConfigured] = useState(false)
+  const [justStarted] = useState(searchParams.get('checkout') === 'success')
 
   const checkoutResult = searchParams.get('checkout')
   const status = brand?.subscription_status || null
@@ -54,6 +87,14 @@ export default function Billing({ brand, onboarding = false }) {
   const trialDaysLeft = brand?.trial_ends_at
     ? Math.max(0, Math.ceil((new Date(brand.trial_ends_at) - new Date()) / 86400000))
     : null
+  const currentPlan = plans.find(p => p.tier === (brand?.tier || 'starter'))
+
+  // The success note shows once; drop ?checkout=success so a refresh doesn't repeat it
+  useEffect(() => {
+    if (checkoutResult && !onboarding && status) {
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+  }, [checkoutResult, onboarding, status])
 
   const callBilling = async (fn, body) => {
     const { data: { session } } = await supabase.auth.getSession()
@@ -119,112 +160,143 @@ export default function Billing({ brand, onboarding = false }) {
 
   const hasSubscription = !!brand?.stripe_subscription_id && status && status !== 'canceled'
 
+  const notice = (style, children) => (
+    <div style={{ padding: '12px 16px', borderRadius: 10, marginBottom: 20, fontSize: '0.9rem', lineHeight: 1.5, ...style }}>{children}</div>
+  )
+
   return (
-    <div style={{ maxWidth: onboarding ? 'none' : 860 }}>
+    <div style={{ maxWidth: onboarding ? 'none' : 1120 }}>
       {!onboarding && (
-        <>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: 8 }}>Billing</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 24, lineHeight: 1.6 }}>
-            Every plan starts with a 14-day free trial. Card required to start, nothing charged until day 15, cancel anytime from this page.
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: '1.8rem', fontWeight: 700, margin: '0 0 6px' }}>Billing</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', margin: 0 }}>
+            Your plan, your trial, and your payment details.
           </p>
-        </>
+        </div>
       )}
 
-      {checkoutResult === 'success' && (
-        <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 20, background: 'rgba(34,197,94,0.1)', color: '#22C55E', fontSize: '0.9rem' }}>
-          You're in! Your 14-day free trial has started. This page will show your plan as soon as Stripe confirms it (usually seconds).
-        </div>
+      {justStarted && !onboarding && status === 'trialing' && notice(
+        { background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.25)', color: 'var(--text)' },
+        <><strong style={{ color: '#22C55E' }}>You're all set.</strong> Your free trial is active and nothing is charged until it ends.</>
       )}
-      {checkoutResult === 'canceled' && (
-        <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 20, background: 'rgba(250,250,250,0.06)', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-          Checkout canceled. No worries — pick a plan whenever you're ready.
-        </div>
+      {checkoutResult === 'canceled' && notice(
+        { background: 'rgba(250,250,250,0.05)', color: 'var(--text-muted)' },
+        'Checkout canceled. Pick a plan whenever you\'re ready.'
       )}
-      {notConfigured && (
-        <div style={{ padding: '14px 16px', borderRadius: 8, marginBottom: 20, background: 'rgba(250,250,250,0.06)', color: 'var(--text)', fontSize: '0.9rem', lineHeight: 1.6 }}>
-          Billing isn't live yet — you're on the <strong>founding plan</strong>: every feature unlocked, on the house.
-          When billing launches, founding accounts keep their rate locked for twelve months.
-        </div>
+      {notConfigured && notice(
+        { background: 'rgba(250,250,250,0.05)', color: 'var(--text)' },
+        'Billing isn\'t available right now. Try again in a few minutes.'
       )}
-      {error && (
-        <div style={{ padding: '12px 16px', borderRadius: 8, marginBottom: 20, background: 'rgba(239,68,68,0.1)', color: 'var(--danger)', fontSize: '0.9rem' }}>{error}</div>
-      )}
+      {error && notice({ background: 'rgba(239,68,68,0.1)', color: 'var(--danger)' }, error)}
 
-      {/* Current plan */}
+      {/* Current plan summary */}
       {statusInfo && !onboarding && (
-        <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 28, flexWrap: 'wrap' }}>
+        <div className="card" style={{
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', alignItems: 'center',
+          gap: 20, marginBottom: 32, padding: '20px 24px',
+        }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{ fontWeight: 700, fontSize: '1.1rem', textTransform: 'capitalize' }}>{brand?.tier || 'starter'}</span>
+            <div style={{ fontSize: '0.72rem', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>Your plan</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, fontSize: '1.3rem' }}>{currentPlan?.name || brand?.tier}</span>
               <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: `${statusInfo.color}1A`, color: statusInfo.color }}>
-                {statusInfo.text}{status === 'trialing' && trialDaysLeft !== null ? ` · ${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} left` : ''}
+                {statusInfo.text}
               </span>
             </div>
-            {status === 'past_due' && (
-              <p style={{ color: 'var(--danger)', fontSize: '0.85rem', marginTop: 6 }}>
-                Your last payment didn't go through. Update your card to keep Autopilot running.
-              </p>
-            )}
           </div>
-          <button className="btn btn-secondary" onClick={openPortal} disabled={working === 'portal'} style={{ padding: '10px 20px' }}>
-            {working === 'portal' ? 'Opening...' : 'Manage billing'}
-          </button>
+          <div>
+            <div style={{ fontSize: '0.72rem', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>
+              {status === 'trialing' ? 'Trial ends' : 'Price'}
+            </div>
+            <div style={{ fontSize: '1rem', fontWeight: 600 }}>
+              {status === 'trialing' && brand?.trial_ends_at
+                ? <>{formatDate(brand.trial_ends_at)} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({trialDaysLeft} day{trialDaysLeft === 1 ? '' : 's'} left)</span></>
+                : currentPlan ? `$${currentPlan.price}/mo` : '—'}
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: '0.72rem', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>
+              {status === 'trialing' ? 'Then' : 'Billing'}
+            </div>
+            <div style={{ fontSize: '1rem', fontWeight: 600 }}>
+              {status === 'trialing' && currentPlan ? `$${currentPlan.price}/mo` : status === 'past_due' ? 'Payment failed' : 'Monthly'}
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button className="btn btn-secondary" onClick={openPortal} disabled={working === 'portal'} style={{ padding: '11px 20px', whiteSpace: 'nowrap' }}>
+              {working === 'portal' ? 'Opening...' : 'Manage or cancel'}
+            </button>
+          </div>
+          {status === 'past_due' && (
+            <p style={{ gridColumn: '1 / -1', color: 'var(--danger)', fontSize: '0.88rem', margin: 0 }}>
+              Your last payment didn't go through. Update your card under "Manage or cancel" to keep everything running.
+            </p>
+          )}
+        </div>
+      )}
+
+      {!onboarding && (
+        <div style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 14 }}>
+          {hasSubscription ? 'Change plan' : 'Plans'}
         </div>
       )}
 
       {/* Plans */}
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(230px, 1fr))`, gap: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(260px, 1fr))`, gap: 16, alignItems: 'stretch' }}>
         {plans.map(plan => {
           const isCurrent = hasSubscription && (brand?.tier || 'starter') === plan.tier
+          const badge = isCurrent ? 'Your plan' : (!hasSubscription && plan.highlight ? 'Most popular' : null)
+          const emphasized = isCurrent || (!hasSubscription && plan.highlight)
           return (
             <div key={plan.tier} className="card" style={{
-              display: 'flex', flexDirection: 'column', gap: 12,
-              border: plan.highlight ? '1px solid var(--text)' : undefined,
+              display: 'flex', flexDirection: 'column', padding: '24px',
+              border: emphasized ? `1px solid ${isCurrent ? '#22C55E' : 'var(--text)'}` : undefined,
               position: 'relative',
             }}>
-              {plan.highlight && (
+              {badge && (
                 <span style={{
-                  position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)',
+                  position: 'absolute', top: -10, left: 24,
                   fontSize: '0.65rem', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase',
-                  background: 'var(--text)', color: 'var(--bg)', padding: '3px 12px', borderRadius: 20,
-                }}>Most popular</span>
+                  background: isCurrent ? '#22C55E' : 'var(--text)', color: isCurrent ? '#0A0A0A' : 'var(--bg)', padding: '3px 10px', borderRadius: 20,
+                }}>{badge}</span>
               )}
-              <div style={{ fontSize: '0.8rem', fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{plan.name}</div>
-              <div>
-                <span style={{ fontSize: '2rem', fontWeight: 800 }}>${plan.price}</span>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>/mo</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+                <span style={{ fontSize: '1.15rem', fontWeight: 700 }}>{plan.name}</span>
+                <span>
+                  <span style={{ fontSize: '1.6rem', fontWeight: 800 }}>${plan.price}</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>/mo</span>
+                </span>
               </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.5 }}>{plan.desc}</p>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.5, margin: '0 0 18px' }}>{plan.desc}</p>
+              <ul style={{
+                listStyle: 'none', padding: '18px 0 0', margin: '0 0 22px', borderTop: '1px solid var(--border)',
+                display: 'flex', flexDirection: 'column', gap: 10, flex: 1,
+              }}>
                 {plan.features.map((f, i) => (
-                  <li key={i} style={{ fontSize: '0.82rem', color: 'var(--text-muted)', display: 'flex', gap: 8 }}>
-                    <span style={{ color: '#22C55E' }}>✓</span>{f}
+                  <li key={i} style={{ fontSize: '0.9rem', color: 'var(--text)', display: 'flex', gap: 10, lineHeight: 1.45 }}>
+                    <span style={{ color: '#22C55E', fontWeight: 700, flexShrink: 0 }}>✓</span>{f}
                   </li>
                 ))}
               </ul>
               <button
-                className={plan.highlight ? 'btn btn-primary' : 'btn btn-secondary'}
+                className={emphasized && !isCurrent ? 'btn btn-primary' : 'btn btn-secondary'}
                 onClick={() => isCurrent ? openPortal() : hasSubscription ? changePlan(plan) : startCheckout(plan.tier)}
-                disabled={working !== null}
-                style={{ padding: '12px', width: '100%' }}
+                disabled={working !== null || isCurrent}
+                style={{ padding: '12px', width: '100%', opacity: isCurrent ? 0.6 : 1 }}
               >
-                {working === plan.tier ? (hasSubscription ? 'Switching...' : 'Starting...') : isCurrent ? 'Current plan' : hasSubscription ? 'Switch plan' : 'Start 14-day trial'}
+                {working === plan.tier
+                  ? (hasSubscription ? 'Switching...' : 'Starting...')
+                  : isCurrent ? 'Current plan' : hasSubscription ? `Switch to ${plan.name}` : 'Start 14-day free trial'}
               </button>
             </div>
           )
         })}
       </div>
 
-      {onboarding ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 28, textAlign: 'center' }}>
-          Secure checkout by Stripe. Your card details never touch our servers.
-        </p>
-      ) : (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 20, lineHeight: 1.6 }}>
-          Payments are handled by Stripe — your card details never touch our servers.
-          {isStorefront && ' Founding storefronts: no setup fee, and your monthly rate is locked for twelve months.'}
-        </p>
-      )}
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 24, textAlign: onboarding ? 'center' : 'left' }}>
+        Secure payments by Stripe. Your card details never touch our servers.
+        {!onboarding && hasSubscription && ' Cancel anytime from "Manage or cancel."'}
+      </p>
     </div>
   )
 }

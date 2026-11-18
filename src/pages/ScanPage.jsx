@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { supabase } from '../lib/supabase'
 import PromoImage from '../components/PromoImage'
+import { gtinVariants } from '../lib/gs1'
 import { getKit } from '../lib/kits'
 import { loadTileConfig, resolveTileOrder } from '../lib/tiles'
 
@@ -240,7 +241,7 @@ export default function ScanPage({ previewData } = {}) {
         prod = data
       } else {
         // Static GTIN lookup (no serial, or bogus serial)
-        const { data } = await supabase.from('products').select('*').eq('gtin', lookupGtin).limit(1).single()
+        const { data } = await supabase.from('products').select('*').in('gtin', gtinVariants(lookupGtin)).limit(1).maybeSingle()
         prod = data
       }
 

@@ -93,6 +93,14 @@ export function parseGS1DigitalLink(input) {
  * these only for demos/tests or when a brand explicitly delegates code
  * generation. Captura never invents GTINs — those are licensed from GS1.
  */
+// Products may be saved with a 12-digit UPC, 13-digit EAN or 8-digit GTIN, but
+// scan links always carry the 14-digit form. Return every stored form that
+// means the same GTIN so lookups match however the brand typed it.
+export function gtinVariants(raw) {
+  const g14 = String(raw || '').replace(/\D/g, '').padStart(14, '0')
+  return [14, 13, 12, 8].filter(n => /^0*$/.test(g14.slice(0, 14 - n))).map(n => g14.slice(14 - n))
+}
+
 export function buildGS1DigitalLink(domain, gtin, opts = {}) {
   const g14 = String(gtin).replace(/\D/g, "").padStart(14, "0")
   if (g14.length !== 14) throw new Error("invalid GTIN")

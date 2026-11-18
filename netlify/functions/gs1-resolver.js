@@ -24,6 +24,14 @@
 
 import { createClient } from '@supabase/supabase-js'
 
+// Products may be saved with a 12-digit UPC, 13-digit EAN or 8-digit GTIN, but
+// scan links always carry the 14-digit form. Return every stored form that
+// means the same GTIN so lookups match however the brand typed it.
+function gtinVariants(raw) {
+  const g14 = String(raw || '').replace(/\D/g, '').padStart(14, '0')
+  return [14, 13, 12, 8].filter(n => /^0*$/.test(g14.slice(0, 14 - n))).map(n => g14.slice(14 - n))
+}
+
 // ---------- helpers ----------
 
 const BOT_PATTERN =
@@ -81,8 +89,9 @@ async function lookupProduct(supabase, gtin, serial) {
   const { data: prod } = await supabase
     .from('products')
     .select('name, description, gtin, brand_id')
-    .eq('gtin', gtin)
-    .single()
+    .in('gtin', gtinVariants(gtin))
+    .limit(1)
+    .maybeSingle()
   if (!prod) return null
 
   const { data: br } = await supabase

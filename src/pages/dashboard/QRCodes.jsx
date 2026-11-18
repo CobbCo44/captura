@@ -1371,7 +1371,7 @@ export default function QRCodes({ brand }) {
                 </div>
               )}
               <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 12 }}>
-                {qr.scan_count} scan{qr.scan_count !== 1 ? 's' : ''} &middot; {qr.short_id}
+                {qr.scan_count || 0} scan{qr.scan_count === 1 ? '' : 's'} &middot; {qr.short_id}
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 <button className="btn btn-primary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px' }}
@@ -1533,7 +1533,7 @@ export default function QRCodes({ brand }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['Date', 'Product', 'Qty', 'Channel', 'PO Ref', 'Claimed', ''].map((h, idx) => (
+                  {['Date', 'Product', 'Qty', 'Channel', 'PO Ref', 'Notes', 'Claimed', ''].map((h, idx) => (
                     <th key={idx} style={{
                       padding: '12px 16px', textAlign: 'left',
                       fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)',
@@ -1560,6 +1560,12 @@ export default function QRCodes({ brand }) {
                       </td>
                       <td style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>
                         {b.po_reference || '-'}
+                      </td>
+                      <td title={b.notes || ''} style={{
+                        padding: '12px 16px', color: 'var(--text-muted)', maxWidth: 280,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {b.notes || '-'}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
                         <span style={{
@@ -1604,11 +1610,16 @@ export default function QRCodes({ brand }) {
                     </tr>
                     {expandedBatchId === b.id && (
                       <tr>
-                        <td colSpan={7} style={{ padding: 0, background: 'var(--bg)' }}>
+                        <td colSpan={8} style={{ padding: 0, background: 'var(--bg)' }}>
                           {serialsLoading ? (
                             <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Loading serials...</div>
                           ) : (
                             <div style={{ padding: '12px 16px' }}>
+                              {b.notes && (
+                                <div style={{ fontSize: '0.85rem', marginBottom: 12, whiteSpace: 'pre-wrap' }}>
+                                  <span style={{ color: 'var(--text-muted)' }}>Notes: </span>{b.notes}
+                                </div>
+                              )}
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                   {batchSerials.length} serials &middot; {batchSerials.filter(s => s.status === 'claimed').length} claimed
@@ -1704,8 +1715,13 @@ export default function QRCodes({ brand }) {
             </div>
 
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: 20 }}>
-              {batchQrModal.products?.name} &middot; {batchQrModal.quantity} codes &middot; {batchQrModal.channels?.name || 'Unknown channel'}{batchQrModal.po_reference ? ` &middot; PO: ${batchQrModal.po_reference}` : ''}
+              {batchQrModal.products?.name} &middot; {batchQrModal.quantity} codes &middot; {batchQrModal.channels?.name || 'Unknown channel'}{batchQrModal.po_reference ? ` · PO: ${batchQrModal.po_reference}` : ''}
             </p>
+            {batchQrModal.notes && (
+              <p style={{ fontSize: '0.85rem', marginTop: -12, marginBottom: 20, whiteSpace: 'pre-wrap' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Notes: </span>{batchQrModal.notes}
+              </p>
+            )}
 
             <div style={{ marginBottom: 16 }}>
               <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6 }}>

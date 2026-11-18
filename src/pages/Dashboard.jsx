@@ -536,69 +536,71 @@ export default function Dashboard() {
   )
 }
 
-// Shown after Stripe checkout while the webhook records the new plan
+// Shown after Stripe checkout while the new plan is confirmed with Stripe
 function PlanActivating({ state, brandName }) {
   const timedOut = state === 'timeout'
+  const accent = timedOut ? '#F59E0B' : '#22C55E'
   const steps = [
-    { label: 'Card saved', sub: 'Nothing is charged for 14 days', status: 'done' },
-    { label: `Activating your plan for ${brandName}`, sub: timedOut ? 'Stripe is taking longer than usual' : 'Confirming with Stripe', status: timedOut ? 'slow' : 'active' },
-    { label: 'Opening your dashboard', sub: 'Your loyalty program, scan page and emails', status: 'pending' },
+    { label: 'Card saved, nothing charged for 14 days', status: 'done' },
+    { label: timedOut ? 'Waiting on Stripe to confirm your trial' : 'Activating your plan', status: timedOut ? 'slow' : 'active' },
+    { label: 'Opening your dashboard', status: 'pending' },
   ]
-  const mark = (status) => {
+  const icon = (status) => {
     if (status === 'done') {
       return (
-        <span style={{ width: 28, height: 28, borderRadius: '50%', background: '#22C55E', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0A0A0A" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12" /></svg>
-        </span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="11" fill="#22C55E" />
+          <polyline points="7 12.5 10.5 16 17 9" stroke="#0A0A0A" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       )
     }
-    if (status === 'active') {
-      return <span className="plan-spin" style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid rgba(34,197,94,0.2)', borderTopColor: '#22C55E', flexShrink: 0, boxSizing: 'border-box' }} />
-    }
-    if (status === 'slow') {
-      return <span style={{ width: 28, height: 28, borderRadius: '50%', border: '3px solid #F59E0B', flexShrink: 0, boxSizing: 'border-box' }} />
-    }
-    return <span style={{ width: 28, height: 28, borderRadius: '50%', border: '2px solid var(--border)', flexShrink: 0, boxSizing: 'border-box' }} />
+    if (status === 'active') return <span className="pa-spin" style={{ width: 18, height: 18, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.12)', borderTopColor: accent, boxSizing: 'border-box', display: 'inline-block' }} />
+    if (status === 'slow') return <span style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${accent}`, boxSizing: 'border-box', display: 'inline-block' }} />
+    return <span style={{ width: 18, height: 18, borderRadius: '50%', border: '1.5px solid rgba(255,255,255,0.18)', boxSizing: 'border-box', display: 'inline-block' }} />
   }
 
   return (
-    <div style={{ minHeight: '62vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ width: '100%', maxWidth: 520, textAlign: 'center' }}>
-        <div style={{ position: 'relative', width: 88, height: 88, margin: '0 auto 28px' }}>
-          {!timedOut && <span className="plan-spin" style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '3px solid rgba(34,197,94,0.15)', borderTopColor: '#22C55E', boxSizing: 'border-box' }} />}
-          <span style={{
-            position: 'absolute', inset: 10, borderRadius: '50%',
-            background: timedOut ? 'rgba(245,158,11,0.12)' : 'rgba(34,197,94,0.12)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.9rem',
-          }} aria-hidden="true">{timedOut ? '⏳' : '🎉'}</span>
+    <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ width: '100%', maxWidth: 440 }}>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderRadius: 999,
+          border: '1px solid var(--border)', fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 22,
+        }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: accent }} />
+          {timedOut ? 'Waiting on Stripe' : '14-day free trial'}
         </div>
-        <h1 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.4rem)', fontWeight: 800, lineHeight: 1.15, margin: '0 0 12px' }}>
-          {timedOut ? 'Almost there' : 'Your free trial is starting'}
+        <h1 style={{ fontSize: 'clamp(1.7rem, 3.5vw, 2.1rem)', fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.2, margin: '0 0 10px' }}>
+          {timedOut ? 'Still confirming your trial' : `Setting up ${brandName}`}
         </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', lineHeight: 1.6, margin: '0 auto 32px', maxWidth: 420 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.98rem', lineHeight: 1.6, margin: '0 0 28px' }}>
           {timedOut
-            ? 'Your trial is saved. Stripe is just slow to confirm it. Refresh in a minute and your dashboard will open.'
-            : 'Hang tight for a few seconds while we get everything ready.'}
+            ? 'Your trial is saved. Stripe is slower than usual, so refresh in a minute to open your dashboard.'
+            : 'This only takes a moment.'}
         </p>
-        <div className="card" style={{ textAlign: 'left', padding: '8px 22px' }}>
-          {steps.map((step, i) => (
-            <div key={step.label} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 0', borderTop: i ? '1px solid var(--border)' : 'none', opacity: step.status === 'pending' ? 0.55 : 1 }}>
-              {mark(step.status)}
-              <div>
-                <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{step.label}</div>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: 2 }}>{step.sub}</div>
-              </div>
+
+        <div style={{ height: 3, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden', marginBottom: 28 }}>
+          <div className={timedOut ? undefined : 'pa-bar'} style={{ height: '100%', width: timedOut ? '66%' : '40%', borderRadius: 3, background: accent }} />
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {steps.map(step => (
+            <div key={step.label} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: '0.93rem', color: step.status === 'pending' ? 'var(--text-muted)' : 'var(--text)' }}>
+              {icon(step.status)}
+              {step.label}
             </div>
           ))}
         </div>
+
         {timedOut && (
-          <button className="btn btn-primary" onClick={() => window.location.reload()} style={{ marginTop: 24, padding: '13px 32px' }}>Refresh</button>
+          <button className="btn btn-primary" onClick={() => window.location.reload()} style={{ marginTop: 32, padding: '12px 28px' }}>Refresh</button>
         )}
       </div>
       <style>{`
-        .plan-spin { animation: plan-spin 0.9s linear infinite; display: inline-block; }
-        @keyframes plan-spin { to { transform: rotate(360deg); } }
-        @media (prefers-reduced-motion: reduce) { .plan-spin { animation-duration: 2.5s; } }
+        .pa-spin { animation: pa-spin 0.8s linear infinite; }
+        .pa-bar { animation: pa-bar 1.4s ease-in-out infinite; }
+        @keyframes pa-spin { to { transform: rotate(360deg); } }
+        @keyframes pa-bar { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+        @media (prefers-reduced-motion: reduce) { .pa-spin, .pa-bar { animation-duration: 3s; } }
       `}</style>
     </div>
   )

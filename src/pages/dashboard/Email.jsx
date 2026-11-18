@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { buildEmailHtml, buildBroadcastBody, fillBroadcastText, isHttpUrl } from '../../lib/emailTemplates'
+import { hasGrowthFeatures } from '../../lib/billingAccess'
 
 const EMPTY_BROADCAST = { subject: '', message: '', imageUrl: '', buttonText: '', buttonUrl: '' }
 
@@ -263,10 +264,8 @@ export default function Email({ brand }) {
     }),
   }) : ''
 
-  // Tier enforcement: only for brands that have entered billing.
-  // No subscription_status = founding free ride, everything unlocked.
-  const billingActive = !!brand?.subscription_status
-  const hasGrowth = !billingActive || ['growth', 'pro'].includes(brand?.tier)
+  // Tier enforcement: founding brands get everything; others need Growth or Pro.
+  const hasGrowth = hasGrowthFeatures(brand)
   const lockedNotice = (feature) => (
     <div className="card" style={{ padding: '18px', textAlign: 'center' }}>
       <div style={{ fontSize: '1.4rem', marginBottom: 8 }}>🔒</div>

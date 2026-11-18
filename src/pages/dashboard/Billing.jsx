@@ -40,7 +40,7 @@ const STATUS_LABELS = {
   canceled: { text: 'Canceled', color: '#71717A' },
 }
 
-export default function Billing({ brand }) {
+export default function Billing({ brand, onboarding = false }) {
   const [searchParams] = useSearchParams()
   const isStorefront = brand?.business_type === 'storefront'
   const plans = isStorefront ? STOREFRONT_PLANS : PRODUCT_PLANS
@@ -102,9 +102,15 @@ export default function Billing({ brand }) {
 
   return (
     <div style={{ maxWidth: 860 }}>
-      <h1 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: 8 }}>Billing</h1>
+      <h1 style={{ fontSize: '1.8rem', fontWeight: 700, marginBottom: 8 }}>
+        {!onboarding ? 'Billing' : status === 'canceled' ? 'Pick a plan to reactivate' : 'Choose your plan'}
+      </h1>
       <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 24, lineHeight: 1.6 }}>
-        Every plan starts with a 14-day free trial. Card required to start, nothing charged until day 15, cancel anytime from this page.
+        {onboarding && status === 'canceled'
+          ? `Your plan for ${brand?.name || 'this account'} was canceled. Pick a plan to turn everything back on.`
+          : onboarding
+          ? `Start ${brand?.name || 'your account'} with a 14-day free trial. Card required to start, nothing charged until day 15, cancel anytime.`
+          : 'Every plan starts with a 14-day free trial. Card required to start, nothing charged until day 15, cancel anytime from this page.'}
       </p>
 
       {checkoutResult === 'success' && (

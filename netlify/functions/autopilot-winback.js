@@ -16,6 +16,7 @@
  */
 
 import { getSupabase, sendAutopilotEmail, logAutopilotEmail } from './lib/autopilot-email.js'
+import { hasGrowthFeatures } from '../../src/lib/billingAccess.js'
 
 // Netlify Scheduled Function config
 export const config = {
@@ -32,7 +33,7 @@ export default async () => {
   // 1. Get all storefront brands with winback enabled
   const { data: brands, error: brandsErr } = await supabase
     .from('brands')
-    .select('id, name, logo_url, logo_dark_url, accent_hex, business_type, autopilot_winback, winback_days, autopilot_winback_subject, autopilot_winback_message, subscription_status, tier')
+    .select('id, name, logo_url, logo_dark_url, accent_hex, business_type, autopilot_winback, winback_days, autopilot_winback_subject, autopilot_winback_message, subscription_status, tier, created_at')
     .eq('business_type', 'storefront')
     .eq('autopilot_winback', true)
 
@@ -43,8 +44,8 @@ export default async () => {
 
   for (const brand of brands) {
     // Tier enforcement: billed accounts need Growth+ for Win-Back.
-    // No subscription_status = founding free ride, not gated.
-    if (brand.subscription_status && !['growth', 'pro'].includes(brand.tier)) continue
+    // Founding brands are not gated; everyone else needs a live Growth or Pro plan.
+    if (!hasGrowthFeatures(brand)) continue
     try {
       await processWinbackForBrand(supabase, brand)
     } catch (err) {

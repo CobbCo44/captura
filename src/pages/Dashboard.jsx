@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { Routes, Route, NavLink, useNavigate } from 'react-router-dom'
+import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase, getAllBrands } from '../lib/supabase'
 import { createBrandForUser } from '../lib/createBrand'
 import { INDUSTRIES } from '../lib/industries'
+import { hasActivePlan } from '../lib/billingAccess'
 import Products from './dashboard/Products'
 import ScanPageTiles from './dashboard/ScanPageTiles'
 import Billing from './dashboard/Billing'
@@ -164,10 +165,79 @@ export default function Dashboard() {
     navigate('/')
   }
 
+  // New accounts pick a plan before reaching the dashboard (founding brands skip this)
+  const location = useLocation()
+  const needsPlan = !!supabase && !!brand && brand.id !== 'demo' && !hasActivePlan(brand)
+  const checkoutSuccess = new URLSearchParams(location.search).get('checkout') === 'success'
+  const [confirmingPlan, setConfirmingPlan] = useState(null) // null | 'waiting' | 'timeout'
+
+  // Back from Stripe checkout: wait for the webhook to record the plan, then open the dashboard
+  useEffect(() => {
+    if (!needsPlan || !checkoutSuccess) return
+    let cancelled = false
+    let tries = 0
+    setConfirmingPlan('waiting')
+    const poll = async () => {
+      const { data } = await supabase.from('brands').select('*').eq('id', brand.id).single()
+      if (cancelled) return
+      if (data && hasActivePlan(data)) {
+        setBrand(data)
+        setBrands(prev => prev.map(b => (b.id === data.id ? data : b)))
+        setConfirmingPlan(null)
+        return
+      }
+      tries += 1
+      if (tries >= 20) { setConfirmingPlan('timeout'); return }
+      setTimeout(poll, 2000)
+    }
+    poll()
+    return () => { cancelled = true }
+  }, [needsPlan, checkoutSuccess, brand?.id])
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: 'var(--text-muted)' }}>Loading...</div>
+      </div>
+    )
+  }
+
+  if (needsPlan) {
+    return (
+      <div style={{ minHeight: '100vh', padding: '40px 24px 64px' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 40, flexWrap: 'wrap' }}>
+            <img src="/images/meetcaptura-logo.png" alt="MeetCaptura" style={{ height: 36, filter: 'invert(1)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {brands.length > 1 && (
+                <select className="input" value={brand.id} style={{ width: 'auto', padding: '8px 12px' }}
+                  onChange={e => { const b = brands.find(x => x.id === e.target.value); if (b) switchBrand(b) }}>
+                  {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+              )}
+              <button className="btn btn-secondary" onClick={handleLogout} style={{ padding: '8px 16px', fontSize: '0.85rem' }}>Log out</button>
+            </div>
+          </div>
+
+          {confirmingPlan === 'waiting' ? (
+            <div className="card" style={{ textAlign: 'center', padding: '48px 28px', maxWidth: 480, margin: '0 auto' }}>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 8 }}>Setting up your plan</h2>
+              <p style={{ color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                Your free trial has started. We're confirming it with Stripe, which usually takes a few seconds.
+              </p>
+            </div>
+          ) : confirmingPlan === 'timeout' ? (
+            <div className="card" style={{ textAlign: 'center', padding: '48px 28px', maxWidth: 480, margin: '0 auto' }}>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: 8 }}>Almost there</h2>
+              <p style={{ color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: 20 }}>
+                Stripe is taking longer than usual to confirm your trial. Refresh in a minute and your dashboard will open.
+              </p>
+              <button className="btn btn-primary" onClick={() => window.location.reload()} style={{ padding: '12px 28px' }}>Refresh</button>
+            </div>
+          ) : (
+            <Billing brand={brand} onboarding />
+          )}
+        </div>
       </div>
     )
   }

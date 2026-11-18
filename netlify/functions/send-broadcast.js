@@ -16,6 +16,7 @@
 import { getSupabase, sendAutopilotEmail, sendViaResend, buildEmailHtml } from './lib/autopilot-email.js'
 import { authBrandOwner } from './lib/stripe-billing.js'
 import { buildBroadcastBody, fillBroadcastText, isHttpUrl } from '../../src/lib/emailTemplates.js'
+import { hasGrowthFeatures } from '../../src/lib/billingAccess.js'
 
 export default async (req) => {
   if (req.method === 'OPTIONS') {
@@ -66,8 +67,8 @@ export default async (req) => {
     }
 
     // Tier enforcement: billed accounts need Growth+ to send blasts.
-    // No subscription_status = founding free ride, not gated.
-    if (brand.subscription_status && !['growth', 'pro'].includes(brand.tier)) {
+    // Founding brands are not gated; everyone else needs a live Growth or Pro plan.
+    if (!hasGrowthFeatures(brand)) {
       return new Response(JSON.stringify({ error: 'Announcements are a Growth feature. Upgrade on the Billing page to send blasts.' }), { status: 200, headers })
     }
 

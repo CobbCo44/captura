@@ -46,6 +46,32 @@ export default function ScanPageTiles({ brand }) {
       .then(({ data }) => setPreviewPromo(data?.[0] || null))
   }, [brand?.id, isStorefront])
 
+  // Storefront tiles only appear to customers when they have content.
+  const [hasContent, setHasContent] = useState(null)
+  useEffect(() => {
+    if (!brand?.id || !isStorefront) return
+    const count = (q) => q.then(r => r.count || 0, () => 0)
+    Promise.all([
+      count(supabase.from('promos').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id).eq('active', true)),
+      count(supabase.from('promos').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id).not('winner_name', 'is', null)),
+      count(supabase.from('loyalty_rewards').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id).eq('active', true)),
+      count(supabase.from('menu_items').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id).eq('active', true)),
+      count(supabase.from('menu_images').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id)),
+      count(supabase.from('store_hours').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id).is('location_id', null)),
+      count(supabase.from('store_locations').select('id', { count: 'exact', head: true }).eq('brand_id', brand.id)),
+    ]).then(([promos, winners, rewards, items, images, hours, locations]) => setHasContent({
+      promo: promos > 0,
+      video: !!brand.store_video_url,
+      winner: winners > 0,
+      loyalty: rewards > 0,
+      menu: items + images > 0,
+      hours: hours > 0,
+      locations: locations > 0,
+      follow: ['social_instagram', 'social_tiktok', 'social_twitter', 'social_facebook', 'social_youtube', 'social_website'].some(k => brand[k]),
+    }))
+  }, [brand?.id, isStorefront])
+  const showsToCustomers = (entry) => entry.custom || !hasContent || hasContent[entry.key] !== false
+
   useEffect(() => {
     if (!brand?.id) return
     async function load() {
@@ -97,6 +123,14 @@ export default function ScanPageTiles({ brand }) {
   }
 
   const save = async () => {
+    if (context === 'counter') {
+      const visible = order.filter(o => o.enabled && showsToCustomers(o))
+      const pos = visible.findIndex(o => o.key === 'loyalty')
+      if (pos >= 3) {
+        setMessage({ type: 'error', text: 'Keep Loyalty in the first three tiles customers see on the Counter QR. Move it up, then save.' })
+        return
+      }
+    }
     setSaving(true)
     setMessage(null)
     const payload = order.map(o => ({ tile_key: o.key, enabled: o.enabled }))
@@ -234,7 +268,7 @@ export default function ScanPageTiles({ brand }) {
 
           {context === 'counter' && (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 16 }}>
-              The Loyalty tile is pinned to the top three spots on the Counter QR — it drives repeat visits.
+              Keep Loyalty in the first three tiles customers see on the Counter QR; it drives repeat visits. Tiles with nothing in them yet are hidden from customers and don't count.
             </p>
           )}
 
@@ -258,6 +292,11 @@ export default function ScanPageTiles({ brand }) {
                     {tileName(entry)}
                     {entry.custom && <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', border: '1px solid var(--line, #27272A)', borderRadius: 4, padding: '1px 6px' }}>CUSTOM</span>}
                     {isBig(entry) && <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>large tile</span>}
+                    {entry.enabled && !showsToCustomers(entry) && (
+                      <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', border: '1px dashed var(--line, #27272A)', borderRadius: 4, padding: '1px 6px' }}>
+                        Hidden: nothing to show yet
+                      </span>
+                    )}
                   </div>
                   {entry.custom && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.custom.url}</div>}
                 </div>

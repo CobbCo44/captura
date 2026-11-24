@@ -576,7 +576,7 @@ export default function StorefrontScanPage({ preview } = {}) {
             key: 'winner',
             type: 'winner',
             label: `${winnerPromo.winner_name}${winnerPromo.winner_city ? ' \u00B7 ' + winnerPromo.winner_city : ''}`,
-            sub: 'Won the last drop',
+            sub: winnerPromo.title ? `Won ${winnerPromo.title}` : 'Our latest winner',
           }
         }
 

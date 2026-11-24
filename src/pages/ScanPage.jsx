@@ -981,7 +981,7 @@ export default function ScanPage({ previewData } = {}) {
     utilDefs.warranty = { key: 'warranty', type: 'warranty', label: 'Warranty', sub: 'Register', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>', action: () => setShowWarranty(true) }
   }
   if (activePromo?.winner_name) {
-    utilDefs.winner = { key: 'winner', type: 'winner', winnerName: `${activePromo.winner_name}${activePromo.winner_city ? ' \u00B7 ' + activePromo.winner_city : ''}`, sub: 'Won the last drop' }
+    utilDefs.winner = { key: 'winner', type: 'winner', winnerName: `${activePromo.winner_name}${activePromo.winner_city ? ' \u00B7 ' + activePromo.winner_city : ''}`, sub: activePromo.title ? `Won ${activePromo.title}` : 'Our latest winner' }
   }
   const loyaltyHasReward = loyaltyState?.returning && loyaltyRewards.some(r => (loyaltyState.balance || 0) >= r.points_required)
   if (BRAND_LOYALTY && product?.loyalty_enabled) {

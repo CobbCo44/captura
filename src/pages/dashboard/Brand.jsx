@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { supabase } from '../../lib/supabase'
 import { inkFor } from '../../lib/contrast'
-import { KITS } from '../../lib/kits'
+import { KITS, KIT_FONTS_URL, getKit } from '../../lib/kits'
 import ScanPage from '../ScanPage'
 
 const LINK_FIELDS = [
@@ -313,32 +313,38 @@ export default function Brand({ brand, onBrandUpdate }) {
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <label style={{ fontSize: '0.9rem', fontWeight: 600 }}>Kit</label>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: -8 }}>
-              Sets the scan page background and card tones.
+              The look of your scan page: background, tiles, corners and heading font.
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              {KITS.map(k => {
-                const isCustom = k.id === 'custom'
-                const swatches = isCustom && form.kit === 'custom'
-                  ? [form.kit_bg, form.kit_card, form.kit_border]
-                  : [k.bg, k.card, k.border]
+            <link href={KIT_FONTS_URL} rel="stylesheet" />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: 10 }}>
+              {KITS.filter(k => !k.storefrontOnly || brand?.business_type === 'storefront').map(k => {
+                const look = k.id === 'custom' ? getKit('custom', form) : k
+                const selected = form.kit === k.id
+                const accent = form.accent_hex || '#FAFAFA'
                 return (
-                  <div key={k.id} onClick={() => setForm({ ...form, kit: k.id })} style={{
-                    padding: 14, borderRadius: 10, cursor: 'pointer',
-                    border: form.kit === k.id ? '2px solid #FAFAFA' : '1px solid var(--border)',
-                    background: form.kit === k.id ? 'rgba(255,255,255,0.04)' : 'var(--bg)',
-                    transition: 'all 0.15s',
+                  <button type="button" key={k.id} onClick={() => setForm({ ...form, kit: k.id })} style={{
+                    padding: 0, borderRadius: 12, cursor: 'pointer', overflow: 'hidden', textAlign: 'left', font: 'inherit',
+                    border: selected ? '2px solid #FAFAFA' : '1px solid var(--border)', background: 'var(--bg)',
                   }}>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 4 }}>{k.name}</div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: 10 }}>{k.desc}</div>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      {swatches.map((c, i) => (
+                    <div style={{ background: look.bg, padding: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                      {[0, 1].map(i => (
                         <div key={i} style={{
-                          flex: 1, height: 24, borderRadius: 4, background: c,
-                          border: '1px solid rgba(255,255,255,0.08)',
-                        }} />
+                          background: look.card, border: `1px solid ${look.border}`, borderRadius: Math.round(look.radius / 2),
+                          padding: 8, height: 58, display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+                        }}>
+                          <div style={{ width: 14, height: 14, borderRadius: Math.max(3, Math.round(look.radius / 4)), background: accent, opacity: 0.9 }} />
+                          <div style={{
+                            fontFamily: `'${look.font}', Inter, sans-serif`, fontWeight: look.weight, textTransform: look.transform,
+                            letterSpacing: look.tracking, color: look.text, fontSize: 13, lineHeight: 1,
+                          }}>{i === 0 ? 'Menu' : 'Hours'}</div>
+                        </div>
                       ))}
                     </div>
-                  </div>
+                    <div style={{ padding: '9px 12px' }}>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text)' }}>{k.name}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{k.desc}</div>
+                    </div>
+                  </button>
                 )
               })}
             </div>

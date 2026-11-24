@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { supabase } from '../lib/supabase'
 import PromoImage from '../components/PromoImage'
-import { getKit } from '../lib/kits'
+import { getKit, KIT_FONTS_URL } from '../lib/kits'
 import { loadTileConfig, resolveTileOrder } from '../lib/tiles'
 
 export default function StorefrontScanPage({ preview } = {}) {
@@ -474,11 +474,37 @@ export default function StorefrontScanPage({ preview } = {}) {
     '--accent-ink': accentInk,
     '--surface': kit.bg,
     '--tile': kit.card,
-    '--ink': '#fff',
-    '--ink2': 'rgba(255,255,255,0.56)',
-    '--line': kit.id === 'custom' ? kit.border : 'rgba(255,255,255,0.11)',
-    '--r': '14px',
+    '--ink': kit.text,
+    '--ink2': kit.muted,
+    '--line': kit.border,
+    '--r': `${kit.radius}px`,
   }
+  // Icons use the brand color unless it would vanish against the kit
+  const accentLum = (() => {
+    const h = accentBg.replace('#', '')
+    return (parseInt(h.slice(0, 2), 16) * 299 + parseInt(h.slice(2, 4), 16) * 587 + parseInt(h.slice(4, 6), 16) * 114) / 1000
+  })()
+  const iconColor = (kit.light ? accentLum > 170 : accentLum < 50) ? kit.text : accentBg
+  const headingFont = `'${kit.font}', 'Inter', system-ui, sans-serif`
+  const headingStyle = { fontFamily: headingFont, fontWeight: kit.weight, textTransform: kit.transform, letterSpacing: kit.tracking }
+
+  // Live open/closed status from today's hours
+  const toMinutes = (str) => { if (!str) return null; const [hh, mm] = str.split(':').map(Number); return hh * 60 + (mm || 0) }
+  const openStatus = (() => {
+    const th = defaultHours.find(h => h.day_of_week === today)
+    if (!th) return null
+    if (th.closed) return { open: false, label: 'Closed today', sub: 'See this week' }
+    const open = toMinutes(th.open_time), close0 = toMinutes(th.close_time)
+    if (open == null || close0 == null) return { open: true, label: 'Open today', sub: 'See hours' }
+    const close = close0 <= open ? close0 + 1440 : close0
+    const now = new Date(); let mins = now.getHours() * 60 + now.getMinutes()
+    if (mins < open && close > 1440 && mins + 1440 < close) mins += 1440
+    if (mins >= open && mins < close) {
+      return { open: true, closingSoon: close - mins <= 60, label: 'Open now', sub: `Until ${formatTime(th.close_time)}` }
+    }
+    if (mins < open) return { open: false, label: `Opens ${formatTime(th.open_time)}`, sub: 'Later today' }
+    return { open: false, label: 'Closed now', sub: `Today ${formatTime(th.open_time)} - ${formatTime(th.close_time)}` }
+  })()
 
   // Socials
   const socials = brand ? [
@@ -491,7 +517,7 @@ export default function StorefrontScanPage({ preview } = {}) {
 
   return (
     <div style={{
-      minHeight: '100vh', maxWidth: 480, margin: '0 auto', background: kit.bg, color: '#fff',
+      minHeight: '100vh', maxWidth: 480, margin: '0 auto', background: kit.bg, color: kit.text,
       fontFamily: "'Inter', system-ui, sans-serif", fontSize: 14, lineHeight: 1.5,
       ...(brand?.kit_bg_image ? { backgroundImage: `url(${brand.kit_bg_image})`, backgroundSize: '390px 844px', backgroundPosition: 'top center', backgroundRepeat: 'no-repeat' } : {}),
       ...t,
@@ -502,7 +528,11 @@ export default function StorefrontScanPage({ preview } = {}) {
         @keyframes loyaltyPulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 12px rgba(34,197,94,0.25)}}
         @keyframes loyaltyDot{0%,100%{opacity:1}50%{opacity:.4}}
         @keyframes proofPulse{0%,100%{opacity:1}50%{opacity:.85}}
+        .cap-tile{transition:transform .14s ease, border-color .2s ease}
+        .cap-tile:active{transform:scale(.97)}
+        @media (prefers-reduced-motion: reduce){.cap-tile{transition:none}.cap-tile:active{transform:none}}
       `}</style>
+      {kit.font !== 'Inter' && <link href={KIT_FONTS_URL} rel="stylesheet" />}
 
       {/* Google Font for header */}
       {!hasLogo && (
@@ -540,21 +570,23 @@ export default function StorefrontScanPage({ preview } = {}) {
       {/* 2. HOURS BAR */}
       {todayHours && (
         <div onClick={() => setShowHours(true)} style={{
-          padding: '8px 14px', background: 'rgba(255,255,255,0.03)',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          padding: '9px 14px', background: 'var(--tile)',
+          borderBottom: '1px solid var(--line)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           fontSize: '0.8rem', cursor: 'pointer',
         }}>
-          <span style={{ color: 'rgba(255,255,255,0.5)' }}>Today</span>
-          <span style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-            {todayHours.closed ? (
-              <span style={{ color: '#ef4444' }}>Closed</span>
-            ) : (
-              <span>{todayHours.open_time && todayHours.close_time
-                ? `${formatTime(todayHours.open_time)} - ${formatTime(todayHours.close_time)}`
-                : 'Open'}</span>
-            )}
-            <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)' }}>▶</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
+            <span style={{
+              width: 8, height: 8, borderRadius: '50%',
+              background: openStatus?.open ? (openStatus.closingSoon ? '#F59E0B' : '#22C55E') : '#EF4444',
+              boxShadow: openStatus?.open ? '0 0 0 3px rgba(34,197,94,0.18)' : 'none',
+            }} />
+            {openStatus ? openStatus.label : 'Today'}
+          </span>
+          <span style={{ color: 'var(--ink2)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            {todayHours.closed ? 'Closed today' : todayHours.open_time && todayHours.close_time
+              ? `${formatTime(todayHours.open_time)} - ${formatTime(todayHours.close_time)}` : 'Open'}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M9 6l6 6-6 6" /></svg>
           </span>
         </div>
       )}
@@ -575,7 +607,8 @@ export default function StorefrontScanPage({ preview } = {}) {
           utilDefs.winner = {
             key: 'winner',
             type: 'winner',
-            label: `${winnerPromo.winner_name}${winnerPromo.winner_city ? ' \u00B7 ' + winnerPromo.winner_city : ''}`,
+            label: winnerPromo.winner_name,
+            eyebrow: winnerPromo.winner_city ? `Winner · ${winnerPromo.winner_city.split(',')[0]}` : 'Latest winner',
             sub: winnerPromo.title ? `Won ${winnerPromo.title}` : 'Our latest winner',
           }
         }
@@ -585,9 +618,16 @@ export default function StorefrontScanPage({ preview } = {}) {
           utilDefs.loyalty = {
             key: 'loyalty',
             label: redemptionProof ? 'Reward Redeemed' : thresholdCelebration ? (thresholdCelebration.justEarned ? `You earned ${thresholdCelebration.name}!` : `${thresholdCelebration.name} ready`) : loyaltyState?.returning ? `${loyaltyState.balance} Points` : 'Loyalty',
-            sub: redemptionProof ? 'Show at counter' : thresholdCelebration ? 'Redeem at counter' : storeLoyaltyHasReward ? 'You have a reward ready!' : loyaltyState?.returning ? 'View rewards' : 'Earn points',
+            sub: redemptionProof ? 'Show at counter' : thresholdCelebration ? 'Redeem at counter' : storeLoyaltyHasReward ? 'You have a reward ready!' : loyaltyState?.returning ? 'View rewards' : `Earn a ${loyaltyRewards[0].name}`,
+            progress: (() => {
+              if (!loyaltyState?.returning || redemptionProof || thresholdCelebration) return null
+              const bal = loyaltyState.balance || 0
+              const next = loyaltyRewards.find(r => r.points_required > bal) || loyaltyRewards[loyaltyRewards.length - 1]
+              if (!next) return null
+              return { value: Math.min(1, bal / next.points_required), text: bal >= next.points_required ? 'Reward ready' : `${next.points_required - bal} to ${next.name}` }
+            })(),
             icon: (
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
               </svg>
             ),
@@ -600,9 +640,9 @@ export default function StorefrontScanPage({ preview } = {}) {
           utilDefs.menu = {
             key: 'menu',
             label: 'Menu',
-            sub: 'View menu',
+            sub: menuCategories.length ? menuCategories.slice(0, 3).join(' · ') : 'View menu',
             icon: (
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M4 6h16M4 12h16M4 18h12"/>
               </svg>
             ),
@@ -614,12 +654,11 @@ export default function StorefrontScanPage({ preview } = {}) {
           const th = defaultHours.find(h => h.day_of_week === today)
           utilDefs.hours = {
             key: 'hours',
-            label: th?.closed ? 'Closed Today' : 'Hours',
-            sub: th && !th.closed && th.open_time && th.close_time
-              ? `${formatTime(th.open_time)} - ${formatTime(th.close_time)}`
-              : 'View hours',
+            label: openStatus?.label || 'Hours',
+            sub: openStatus?.sub || 'View hours',
+            status: openStatus ? (openStatus.open ? (openStatus.closingSoon ? 'soon' : 'open') : 'closed') : null,
             icon: (
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
               </svg>
             ),
@@ -631,9 +670,9 @@ export default function StorefrontScanPage({ preview } = {}) {
           utilDefs.locations = {
             key: 'locations',
             label: locations.length === 1 ? locations[0].name : `${locations.length} Locations`,
-            sub: locations.length === 1 ? (locations[0].address ? 'Get directions' : 'View details') : 'View all',
+            sub: locations.length === 1 ? (locations[0].address ? locations[0].address.split(',')[0] : 'View details') : 'View all',
             icon: (
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
               </svg>
             ),
@@ -646,8 +685,9 @@ export default function StorefrontScanPage({ preview } = {}) {
             key: 'follow',
             label: 'Follow Us',
             sub: socials.map(s => s.label).slice(0, 3).join(', '),
+            socials: socials.slice(0, 5),
             icon: (
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
               </svg>
             ),
@@ -667,7 +707,7 @@ export default function StorefrontScanPage({ preview } = {}) {
               sub: entry.custom.description || 'Open link',
               image: entry.custom.image_url,
               icon: (
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                   <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/>
                   <path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/>
                 </svg>
@@ -680,14 +720,31 @@ export default function StorefrontScanPage({ preview } = {}) {
         }
 
         const tileCount = displayTiles.length
-        const utilRows = Math.ceil(tileCount / 2) || 0
+        const sizeOf = {}
+        let utilRows = 0
+        if (displayTiles.some(t => t.key === 'loyalty')) { sizeOf.loyalty = { hero: true }; utilRows += 1 }
+        const rest = displayTiles.filter(t => t.key !== 'loyalty')
+        for (let i = 0, group = 0; i < rest.length;) {
+          const left = rest.length - i
+          if (left >= 3) {
+            sizeOf[rest[i].key] = { tall: true, right: group % 2 === 1 }
+            sizeOf[rest[i + 1].key] = {}
+            sizeOf[rest[i + 2].key] = {}
+            i += 3; group += 1; utilRows += 2
+          } else if (left === 2) {
+            sizeOf[rest[i].key] = {}; sizeOf[rest[i + 1].key] = {}
+            i += 2; utilRows += 1
+          } else {
+            sizeOf[rest[i].key] = { wide: true }
+            i += 1; utilRows += 1
+          }
+        }
         const totalRows = bigRows + utilRows
 
         // Available height: viewport minus header(46) + hours bar(~36) + footer(~50) + grid padding(30) + gaps
         const reservedPx = 46 + (todayHours ? 36 : 0) + 50 + 30 + (totalRows - 1) * 9
         const rowH = totalRows > 0 ? Math.max(60, Math.floor((844 - reservedPx) / totalRows)) : 84
 
-        const span = tileCount === 1 ? 4 : 2
 
         const promoTile = hasPromo ? (
           <div key="promo" onClick={() => { setShowPromo(true); setPromoSubmitted(false) }} style={{
@@ -700,14 +757,14 @@ export default function StorefrontScanPage({ preview } = {}) {
               <PromoImage url={activePromo.image_url} position={activePromo.image_position} />
             )}
             <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, transparent 30%, rgba(0,0,0,0.8) 100%)' }} />
-            <div style={{ position: 'relative', zIndex: 1 }}>
+            <div style={{ position: 'relative', zIndex: 1, color: '#fff' }}>
               <div style={{
                 display: 'inline-block', padding: '3px 10px', borderRadius: 20,
                 fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px',
                 ...btnStyle, marginBottom: 6,
               }}>Enter to Win</div>
-              <div style={{ fontWeight: 700, fontSize: '1.1rem', lineHeight: 1.2 }}>{activePromo.title}</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--ink2)', marginTop: 2 }}>
+              <div style={{ ...headingStyle, fontSize: kit.transform === 'uppercase' ? '1.35rem' : '1.25rem', lineHeight: 1.15 }}>{activePromo.title}</div>
+              <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.75)', marginTop: 3 }}>
                 {activePromo.description || (activePromo.prize ? `Prize: ${activePromo.prize}` : '')}
               </div>
             </div>
@@ -729,58 +786,137 @@ export default function StorefrontScanPage({ preview } = {}) {
           </div>
         ) : null
 
+        const compact = rowH < 104
+        const chipR = Math.max(6, kit.radius - 8)
+        const iconChip = (icon, big) => (
+          <div style={{
+            width: big ? 42 : 32, height: big ? 42 : 32, borderRadius: chipR, flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: iconColor,
+            background: `color-mix(in srgb, ${iconColor} ${kit.light ? 12 : 16}%, transparent)`,
+          }}>{icon}</div>
+        )
+        const STATUS = { open: ['#22C55E', 'Open'], soon: ['#F59E0B', 'Closing soon'], closed: ['#EF4444', 'Closed'] }
+        const trophy = (
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/>
+            <path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/>
+            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/>
+            <path d="M18 2H6v7a6 6 0 0012 0V2z"/>
+          </svg>
+        )
+
+        const outlined = kit.light || kit.id === 'field'
         const renderUtil = (tile) => {
-          if (tile.type === 'winner') {
+          const size = sizeOf[tile.key] || {}
+          const isWinner = tile.type === 'winner'
+          const icon = isWinner ? trophy : tile.icon
+          const tappable = !!tile.action
+          const arrow = (color) => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg>
+          )
+
+          // Loyalty: solid brand color, full width
+          if (size.hero) {
             return (
-              <div key={tile.key} style={{
-                gridColumn: `span ${span}`, gridRow: 'span 1',
-                background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
-                display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px',
+              <div key={tile.key} className="cap-tile" onClick={tile.action} style={{
+                gridColumn: 'span 4', gridRow: 'span 1', minWidth: 0,
+                background: accentBg, color: accentInk, borderRadius: 'var(--r)',
+                position: 'relative', overflow: 'hidden', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 14, padding: '0 18px',
+                boxShadow: `0 14px 30px -18px ${accentBg}`,
+                animation: tile.badge ? 'loyaltyPulse 2s ease-in-out infinite' : undefined,
               }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={accentBg} strokeWidth="1.8" style={{ flexShrink: 0 }}>
-                  <path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/>
-                  <path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/>
-                  <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/>
-                  <path d="M18 2H6v7a6 6 0 0012 0V2z"/>
-                </svg>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '0.85rem', lineHeight: 1.2 }}>{tile.label}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--ink2)', marginTop: 1 }}>{tile.sub}</div>
+                <div aria-hidden="true" style={{
+                  position: 'absolute', right: -50, top: -60, width: 190, height: 190, borderRadius: '50%',
+                  background: `color-mix(in srgb, ${accentInk} 9%, transparent)`, pointerEvents: 'none',
+                }} />
+                <div style={{
+                  width: 46, height: 46, borderRadius: Math.max(8, kit.radius - 6), flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: `color-mix(in srgb, ${accentInk} 14%, transparent)`, color: accentInk, position: 'relative',
+                }}>{icon}</div>
+                <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+                  <div style={{ ...headingStyle, fontSize: kit.transform === 'uppercase' ? '1.45rem' : '1.3rem', lineHeight: 1.1 }}>{tile.label}</div>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.78, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {tile.progress ? tile.progress.text : tile.sub}
+                  </div>
+                  {tile.progress && (
+                    <div style={{ height: 5, borderRadius: 999, marginTop: 7, background: `color-mix(in srgb, ${accentInk} 22%, transparent)`, overflow: 'hidden' }}>
+                      <div style={{ width: `${Math.round(tile.progress.value * 100)}%`, height: '100%', background: accentInk, borderRadius: 999 }} />
+                    </div>
+                  )}
                 </div>
+                <div style={{
+                  position: 'relative', flexShrink: 0, padding: '8px 14px', borderRadius: 999, fontSize: '0.78rem', fontWeight: 700,
+                  background: accentInk, color: accentBg,
+                }}>{loyaltyState?.returning ? 'View' : 'Join'}</div>
               </div>
             )
           }
+
+          const tall = size.tall && !compact
           return (
-            <div key={tile.key} onClick={tile.action} style={{
-              gridColumn: `span ${span}`, gridRow: 'span 1',
-              background: tile.badge ? `linear-gradient(135deg, var(--tile), rgba(34,197,94,0.12))` : 'var(--tile)',
-              border: tile.badge ? '1px solid var(--accent)' : '1px solid var(--line)', borderRadius: 'var(--r)',
-              display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px',
-              cursor: tile.action ? 'pointer' : 'default',
-              position: 'relative', overflow: 'hidden',
-              animation: tile.badge ? 'loyaltyPulse 2s ease-in-out infinite' : undefined,
+            <div key={tile.key} className={tappable ? 'cap-tile' : undefined} onClick={tile.action} style={{
+              gridColumn: size.wide ? 'span 4' : size.tall && size.right ? '3 / span 2' : 'span 2',
+              gridRow: size.tall ? 'span 2' : 'span 1', minWidth: 0,
+              background: tile.badge ? `linear-gradient(160deg, color-mix(in srgb, ${iconColor} 14%, var(--tile)), var(--tile))` : 'var(--tile)',
+              border: `1px solid ${tile.badge ? iconColor : outlined ? 'var(--line)' : 'transparent'}`,
+              borderRadius: 'var(--r)', position: 'relative', overflow: 'hidden',
+              cursor: tappable ? 'pointer' : 'default',
+              display: 'flex', flexDirection: compact ? 'row' : 'column', justifyContent: compact ? 'flex-start' : 'space-between',
+              alignItems: compact ? 'center' : 'stretch', gap: compact ? 10 : 6, padding: compact ? '0 12px' : tall ? 18 : '12px 13px',
+              boxShadow: kit.light ? '0 1px 2px rgba(0,0,0,0.04), 0 6px 18px -10px rgba(0,0,0,0.15)' : kit.glow ? '0 12px 30px -16px rgba(0,0,0,0.8)' : 'none',
             }}>
-              {tile.badge && (
-                <span style={{
-                  position: 'absolute', top: 8, right: 8, width: 8, height: 8,
-                  borderRadius: '50%', background: 'var(--accent)',
-                  boxShadow: `0 0 6px ${accentBg}`,
-                  animation: 'loyaltyDot 1.5s ease-in-out infinite',
+              {!kit.light && (
+                <div aria-hidden="true" style={{
+                  position: 'absolute', right: -40, top: -40, width: tall ? 190 : 130, height: tall ? 190 : 130, borderRadius: '50%', pointerEvents: 'none',
+                  background: `radial-gradient(circle, color-mix(in srgb, ${iconColor} ${kit.glow ? 30 : 16}%, transparent), transparent 70%)`,
                 }} />
               )}
-              {tile.image
-                ? <img src={tile.image} alt="" style={{ width: 28, height: 28, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
-                : tile.icon}
-              <div>
-                <div style={{ fontWeight: 600, fontSize: '0.85rem', color: tile.badge ? 'var(--accent)' : undefined }}>{tile.label}</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--ink2)' }}>{tile.sub}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
+                {tile.image
+                  ? <img src={tile.image} alt="" style={{ width: tall ? 42 : 32, height: tall ? 42 : 32, borderRadius: chipR, objectFit: 'cover', flexShrink: 0 }} />
+                  : iconChip(icon, tall)}
+                {!compact && tile.status && (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: '0.62rem', fontWeight: 700,
+                    letterSpacing: '0.04em', textTransform: 'uppercase', color: STATUS[tile.status][0],
+                  }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS[tile.status][0] }} />
+                    {STATUS[tile.status][1]}
+                  </span>
+                )}
+                {!compact && !tile.status && tappable && arrow('var(--ink2)')}
+              </div>
+              <div style={{ position: 'relative', minWidth: 0 }}>
+                {isWinner && !compact && (
+                  <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: iconColor, marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tile.eyebrow}</div>
+                )}
+                <div style={{
+                  ...headingStyle, lineHeight: 1.1,
+                  fontSize: tall ? (kit.transform === 'uppercase' ? '1.75rem' : '1.55rem') : (kit.transform === 'uppercase' ? '1.2rem' : '1.08rem'),
+                  color: 'var(--ink)', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                }}>{tile.label}</div>
+                {tile.socials && !compact ? (
+                  <div style={{ display: 'flex', gap: 11, marginTop: tall ? 8 : 5, color: 'var(--ink2)' }}>
+                    {tile.socials.map(sc => (
+                      <span key={sc.key} aria-label={sc.label} style={{ display: 'block', width: tall ? 20 : 16, height: tall ? 20 : 16 }}
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(sc.svg) }} />
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{
+                    fontSize: tall ? '0.85rem' : '0.74rem', color: 'var(--ink2)', marginTop: tall ? 4 : 2,
+                    ...(tall ? { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }),
+                  }}>{tile.sub}</div>
+                )}
               </div>
             </div>
           )
         }
 
         return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridAutoRows: rowH, gap: 9, padding: '14px 14px 16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridAutoRows: rowH, gridAutoFlow: 'row dense', gap: 9, padding: '14px 14px 16px' }}>
         {order.map(entry => {
           if (!entry.enabled) return null
           if (entry.key === 'promo') return promoTile
@@ -804,7 +940,7 @@ export default function StorefrontScanPage({ preview } = {}) {
               {socials.map(sc => (
                 <a key={sc.key} href={brand[sc.key]} target="_blank" rel="noopener noreferrer"
                   aria-label={sc.label}
-                  style={{ width: 20, height: 20, color: 'rgba(255,255,255,0.45)' }}>
+                  style={{ width: 20, height: 20, color: 'var(--ink2)' }}>
                   <span style={{ display: 'block', width: 20, height: 20 }}
                     dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(sc.svg) }} />
                 </a>
@@ -816,15 +952,15 @@ export default function StorefrontScanPage({ preview } = {}) {
           <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginBottom: 8 }}>
             {((locations.length === 1 && locations[0].phone) || (!locations.length && brand?.store_phone)) && (
               <a href={`tel:${locations.length === 1 ? locations[0].phone : brand.store_phone}`}
-                style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', textDecoration: 'none' }}>Call Us</a>
+                style={{ color: 'var(--ink2)', fontSize: '0.75rem', textDecoration: 'none' }}>Call Us</a>
             )}
             {brand?.store_email && (
               <a href={`mailto:${brand.store_email}`}
-                style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', textDecoration: 'none' }}>Email Us</a>
+                style={{ color: 'var(--ink2)', fontSize: '0.75rem', textDecoration: 'none' }}>Email Us</a>
             )}
           </div>
         )}
-        <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)' }}>
+        <div style={{ fontSize: '0.6rem', color: 'var(--ink2)', opacity: 0.5 }}>
           Powered by MeetCaptura
         </div>
       </div>

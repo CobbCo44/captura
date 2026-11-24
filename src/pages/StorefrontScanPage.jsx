@@ -3,7 +3,7 @@ import { useParams, useSearchParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { supabase } from '../lib/supabase'
 import PromoImage from '../components/PromoImage'
-import { getKit, KIT_FONTS_URL } from '../lib/kits'
+import { getKit, KIT_FONTS_URL, logoHeight, headerBarHeight } from '../lib/kits'
 import { loadTileConfig, resolveTileOrder } from '../lib/tiles'
 
 export default function StorefrontScanPage({ preview } = {}) {
@@ -545,16 +545,16 @@ export default function StorefrontScanPage({ preview } = {}) {
         padding: hasLogo ? '0 14px' : '14px 14px',
         display: 'flex', alignItems: 'center',
         position: 'sticky', top: 0, zIndex: 6,
-        minHeight: 46,
+        minHeight: hasLogo ? headerBarHeight(brand?.logo_size) : 46,
         justifyContent: brand?.logo_align === 'center' ? 'center' : brand?.logo_align === 'right' ? 'flex-end' : 'flex-start',
       }}>
         {useLogoHeader ? (
           <img src={storeHeaderLogo} alt={brand.name} style={{
-            height: Math.round(46 * (brand?.logo_size || 70) / 100), objectFit: 'contain',
+            height: logoHeight(brand?.logo_size), objectFit: 'contain',
           }} />
         ) : hasLogo ? (
           <img src={brand.logo_dark_url || brand.logo_url} alt={brand.name} style={{
-            height: Math.round(46 * (brand?.logo_size || 70) / 100), objectFit: 'contain',
+            height: logoHeight(brand?.logo_size), objectFit: 'contain',
           }} />
         ) : (
           <div style={{
@@ -742,7 +742,7 @@ export default function StorefrontScanPage({ preview } = {}) {
         const totalRows = bigRows + utilRows
 
         // Available height: viewport minus header(46) + hours bar(~36) + footer(~50) + grid padding(30) + gaps
-        const reservedPx = 46 + (todayHours ? 36 : 0) + 50 + 30 + (totalRows - 1) * 9
+        const reservedPx = (hasLogo ? headerBarHeight(brand?.logo_size) : 46) + (todayHours ? 36 : 0) + 50 + 30 + (totalRows - 1) * 9
         const rowH = totalRows > 0 ? Math.max(60, Math.floor((844 - reservedPx) / totalRows)) : 84
 
 
@@ -786,7 +786,8 @@ export default function StorefrontScanPage({ preview } = {}) {
           </div>
         ) : null
 
-        const compact = rowH < 104
+        const compact = rowH < 88
+        const snug = rowH < 106
         const chipR = Math.max(6, kit.radius - 8)
         const iconChip = (icon, big) => (
           <div style={{
@@ -864,7 +865,7 @@ export default function StorefrontScanPage({ preview } = {}) {
               borderRadius: 'var(--r)', position: 'relative', overflow: 'hidden',
               cursor: tappable ? 'pointer' : 'default',
               display: 'flex', flexDirection: compact ? 'row' : 'column', justifyContent: compact ? 'flex-start' : 'space-between',
-              alignItems: compact ? 'center' : 'stretch', gap: compact ? 10 : 6, padding: compact ? '0 12px' : tall ? 18 : '12px 13px',
+              alignItems: compact ? 'center' : 'stretch', gap: compact ? 10 : snug ? 3 : 6, padding: compact ? '0 12px' : tall ? 18 : snug ? '10px 12px' : '12px 13px',
               boxShadow: kit.light ? '0 1px 2px rgba(0,0,0,0.04), 0 6px 18px -10px rgba(0,0,0,0.15)' : kit.glow ? '0 12px 30px -16px rgba(0,0,0,0.8)' : 'none',
             }}>
               {!kit.light && (

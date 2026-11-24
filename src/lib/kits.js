@@ -64,3 +64,11 @@ export function getKit(id, brand) {
   }
   return KITS.find(k => k.id === id) || KITS.find(k => k.id === 'clean')
 }
+
+// Header logo height for the Logo Size slider (20-100). Sizes up to 70 keep
+// their old height; above that the logo and the header bar grow, to 80px tall.
+export function logoHeight(size) {
+  const s = Math.min(100, Math.max(20, Number(size) || 70))
+  return s <= 70 ? Math.round(46 * s / 100) : Math.round(32 + ((s - 70) / 30) * 48)
+}
+export const headerBarHeight = (size) => Math.max(46, logoHeight(size) + 14)

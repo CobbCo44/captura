@@ -7,7 +7,7 @@ import { gtinVariants } from '../lib/gs1'
 
 // Loyalty runs on storefronts only (see the loyalty load below)
 const BRAND_LOYALTY = false
-import { getKit, KIT_FONTS_URL } from '../lib/kits'
+import { getKit, KIT_FONTS_URL, logoHeight, headerBarHeight } from '../lib/kits'
 import { loadTileConfig, resolveTileOrder } from '../lib/tiles'
 
 /**
@@ -1281,12 +1281,12 @@ export default function ScanPage({ previewData } = {}) {
       {(brand?.logo_dark_url || brand?.logo_url) && (
         <div style={{
           background: 'var(--accent)', color: 'var(--accent-ink)',
-          height: 46, display: 'flex', alignItems: 'center',
+          height: headerBarHeight(brand?.logo_size), display: 'flex', alignItems: 'center',
           padding: '0 14px', position: 'sticky', top: 0, zIndex: 6,
           justifyContent: brand?.logo_align === 'center' ? 'center' : brand?.logo_align === 'right' ? 'flex-end' : 'flex-start',
         }}>
           <img src={brand.logo_dark_url || brand.logo_url} alt={brand.name} style={{
-            height: Math.round(46 * (brand?.logo_size || 70) / 100), objectFit: 'contain',
+            height: logoHeight(brand?.logo_size), objectFit: 'contain',
           }} />
         </div>
       )}

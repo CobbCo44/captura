@@ -39,7 +39,6 @@ export default function Brand({ brand, onBrandUpdate }) {
   const [saved, setSaved] = useState(false)
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [logoUploading, setLogoUploading] = useState(false)
-  const [logoDarkUploading, setLogoDarkUploading] = useState(false)
   const [headerLogoUploading, setHeaderLogoUploading] = useState(false)
 
   const isStorefront = brand?.business_type === 'storefront'
@@ -99,19 +98,21 @@ export default function Brand({ brand, onBrandUpdate }) {
     setForm(f => ({ ...f, accent_hex: hex, accent_ink_hex: inkFor(hex) }))
   }
 
-  const uploadLogo = async (file, variant) => {
+  // One logo. It's saved to both logo fields so every place that reads either
+  // (scan pages, emails, the sidebar) shows the same image.
+  const uploadLogo = async (file) => {
     if (!supabase || !brand?.id) return
-    const setter = variant === 'dark' ? setLogoDarkUploading : setLogoUploading
-    setter(true)
+    setLogoUploading(true)
     const ext = file.name.split('.').pop()
-    const path = `logos/${brand.id}/${variant === 'dark' ? 'dark' : 'light'}_${Date.now()}.${ext}`
+    const path = `logos/${brand.id}/logo_${Date.now()}.${ext}`
     const { error } = await supabase.storage.from('product-images').upload(path, file, { upsert: true })
-    if (error) { alert(error.message); setter(false); return }
+    if (error) { alert(error.message); setLogoUploading(false); return }
     const { data: { publicUrl } } = supabase.storage.from('product-images').getPublicUrl(path)
-    const key = variant === 'dark' ? 'logo_dark_url' : 'logo_url'
-    setForm(f => ({ ...f, [key]: publicUrl }))
-    setter(false)
+    setForm(f => ({ ...f, logo_url: publicUrl, logo_dark_url: publicUrl }))
+    setLogoUploading(false)
   }
+  // Brands that uploaded two logos before keep the one the scan page showed
+  const currentLogo = form.logo_dark_url || form.logo_url
 
   const uploadHeaderLogo = async (file) => {
     if (!supabase || !brand?.id) return
@@ -149,7 +150,8 @@ export default function Brand({ brand, onBrandUpdate }) {
     product: previewProduct,
     brand: {
       name: form.name,
-      logo_url: form.logo_url,
+      logo_url: currentLogo,
+      logo_dark_url: currentLogo,
       logo_align: form.logo_align,
       logo_size: form.logo_size,
       accent_hex: form.accent_hex,
@@ -199,16 +201,16 @@ export default function Brand({ brand, onBrandUpdate }) {
             <input className="input" placeholder="Brand Name" value={form.name}
               onChange={e => setForm({ ...form, name: e.target.value })} required />
 
-            {/* Logo light */}
+            {/* Logo */}
             <div>
               <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                Logo (light background)
+                Logo
               </label>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {form.logo_url ? (
-                  <img src={form.logo_url} alt="Logo" style={{
+                {currentLogo ? (
+                  <img src={currentLogo} alt="Logo" style={{
                     width: 56, height: 56, borderRadius: 8, objectFit: 'contain',
-                    background: '#fff', padding: 4, border: '1px solid var(--border)',
+                    background: 'var(--bg)', padding: 4, border: '1px solid var(--border)',
                   }} />
                 ) : (
                   <div style={{
@@ -218,49 +220,20 @@ export default function Brand({ brand, onBrandUpdate }) {
                   }}>None</div>
                 )}
                 <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '0.8rem', padding: '8px 14px' }}>
-                  {logoUploading ? 'Uploading...' : 'Upload'}
+                  {logoUploading ? 'Uploading...' : currentLogo ? 'Replace' : 'Upload'}
                   <input type="file" accept="image/*" style={{ display: 'none' }}
-                    onChange={e => e.target.files[0] && uploadLogo(e.target.files[0], 'light')} />
+                    onChange={e => e.target.files[0] && uploadLogo(e.target.files[0])} />
                 </label>
-                {form.logo_url && (
-                  <button type="button" onClick={() => setForm({ ...form, logo_url: '' })}
+                {currentLogo && (
+                  <button type="button" onClick={() => setForm({ ...form, logo_url: '', logo_dark_url: '' })}
                     style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '0.8rem' }}>
                     Remove
                   </button>
                 )}
               </div>
-            </div>
-
-            {/* Logo dark */}
-            <div>
-              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                Logo (dark background)
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {form.logo_dark_url ? (
-                  <img src={form.logo_dark_url} alt="Logo dark" style={{
-                    width: 56, height: 56, borderRadius: 8, objectFit: 'contain',
-                    background: '#09090B', padding: 4, border: '1px solid var(--border)',
-                  }} />
-                ) : (
-                  <div style={{
-                    width: 56, height: 56, borderRadius: 8, background: 'var(--bg)',
-                    border: '1px solid var(--border)', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', color: 'var(--text-muted)', fontSize: '0.7rem',
-                  }}>None</div>
-                )}
-                <label className="btn btn-secondary" style={{ cursor: 'pointer', fontSize: '0.8rem', padding: '8px 14px' }}>
-                  {logoDarkUploading ? 'Uploading...' : 'Upload'}
-                  <input type="file" accept="image/*" style={{ display: 'none' }}
-                    onChange={e => e.target.files[0] && uploadLogo(e.target.files[0], 'dark')} />
-                </label>
-                {form.logo_dark_url && (
-                  <button type="button" onClick={() => setForm({ ...form, logo_dark_url: '' })}
-                    style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '0.8rem' }}>
-                    Remove
-                  </button>
-                )}
-              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: '8px 0 0' }}>
+                A PNG with a transparent background looks best on your scan page.
+              </p>
             </div>
 
             {/* Logo alignment */}

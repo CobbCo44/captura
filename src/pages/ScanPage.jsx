@@ -7,7 +7,7 @@ import { gtinVariants } from '../lib/gs1'
 
 // Loyalty runs on storefronts only (see the loyalty load below)
 const BRAND_LOYALTY = false
-import { getKit } from '../lib/kits'
+import { getKit, KIT_FONTS_URL } from '../lib/kits'
 import { loadTileConfig, resolveTileOrder } from '../lib/tiles'
 
 /**
@@ -978,10 +978,10 @@ export default function ScanPage({ previewData } = {}) {
   const utilDefs = {}
   if (product?.reorder_url) utilDefs.reorder = { key: 'reorder', type: 'reorder', label: 'Reorder', sub: 'Buy again', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 014-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>', href: product.reorder_url }
   if (product?.warranty_enabled) {
-    utilDefs.warranty = { key: 'warranty', type: 'warranty', label: 'Warranty', sub: 'Register', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>', action: () => setShowWarranty(true) }
+    utilDefs.warranty = { key: 'warranty', type: 'warranty', label: 'Register your warranty', sub: product.warranty_duration ? `${product.warranty_duration} coverage · 30 seconds` : 'Takes 30 seconds', icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>', action: () => setShowWarranty(true) }
   }
   if (activePromo?.winner_name) {
-    utilDefs.winner = { key: 'winner', type: 'winner', winnerName: `${activePromo.winner_name}${activePromo.winner_city ? ' \u00B7 ' + activePromo.winner_city : ''}`, sub: activePromo.title ? `Won ${activePromo.title}` : 'Our latest winner' }
+    utilDefs.winner = { key: 'winner', type: 'winner', winnerName: activePromo.winner_name, eyebrow: activePromo.winner_city ? `Winner · ${activePromo.winner_city.split(',')[0]}` : 'Latest winner', sub: activePromo.title ? `Won ${activePromo.title}` : 'Our latest winner' }
   }
   const loyaltyHasReward = loyaltyState?.returning && loyaltyRewards.some(r => (loyaltyState.balance || 0) >= r.points_required)
   if (BRAND_LOYALTY && product?.loyalty_enabled) {
@@ -1021,11 +1021,18 @@ export default function ScanPage({ previewData } = {}) {
     '--accent-ink': accentInk,
     '--surface': kit.bg,
     '--tile': kit.card,
-    '--ink': '#fff',
-    '--ink2': 'rgba(255,255,255,0.56)',
-    '--line': kit.id === 'custom' ? kit.border : 'rgba(255,255,255,0.11)',
-    '--r': '14px',
+    '--ink': kit.text,
+    '--ink2': kit.muted,
+    '--line': kit.border,
+    '--r': `${kit.radius}px`,
   }
+  // Kit typography and an icon color that stays visible on the kit
+  const headingStyle = { fontFamily: `'${kit.font}', 'Inter', system-ui, sans-serif`, fontWeight: kit.weight, textTransform: kit.transform, letterSpacing: kit.tracking }
+  const accentLum = (() => {
+    const h = accentBg.replace('#', '')
+    return (parseInt(h.slice(0, 2), 16) * 299 + parseInt(h.slice(2, 4), 16) * 587 + parseInt(h.slice(4, 6), 16) * 114) / 1000
+  })()
+  const iconColor = (kit.light ? accentLum > 170 : accentLum < 50) ? kit.text : accentBg
 
   // Event scan page
   if (isEventQR) {
@@ -1267,7 +1274,8 @@ export default function ScanPage({ previewData } = {}) {
       ...(brand?.kit_bg_image ? { backgroundImage: `url(${brand.kit_bg_image})`, backgroundSize: '390px 844px', backgroundPosition: 'top center', backgroundRepeat: 'no-repeat' } : {}),
       ...t,
     }}>
-      <style>{`@keyframes captura-pulse{0%,100%{opacity:1}50%{opacity:.25}}@keyframes captura-slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes loyaltyPulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 12px rgba(34,197,94,0.25)}}@keyframes loyaltyDot{0%,100%{opacity:1}50%{opacity:.4}}@keyframes proofPulse{0%,100%{opacity:1}50%{opacity:.85}}`}</style>
+      <style>{`@keyframes captura-pulse{0%,100%{opacity:1}50%{opacity:.25}}@keyframes captura-slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes loyaltyPulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 12px rgba(34,197,94,0.25)}}@keyframes loyaltyDot{0%,100%{opacity:1}50%{opacity:.4}}@keyframes proofPulse{0%,100%{opacity:1}50%{opacity:.85}}.cap-tile{transition:transform .14s ease}.cap-tile:active{transform:scale(.97)}@media (prefers-reduced-motion: reduce){.cap-tile{transition:none}.cap-tile:active{transform:none}}`}</style>
+      {kit.font !== 'Inter' && <link href={KIT_FONTS_URL} rel="stylesheet" />}
 
       {/* 1. BRAND BAR */}
       {(brand?.logo_dark_url || brand?.logo_url) && (
@@ -1298,7 +1306,7 @@ export default function ScanPage({ previewData } = {}) {
             )}
           </div>
           <div>
-            <h2 style={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em', fontSize: 21, lineHeight: 1.1, margin: '0 0 3px', color: 'var(--ink)' }}>
+            <h2 style={{ ...headingStyle, fontSize: kit.transform === 'uppercase' ? 24 : 22, lineHeight: 1.1, margin: '0 0 3px', color: 'var(--ink)' }}>
               {product.name}
             </h2>
             {product.gtin && (() => {
@@ -1316,7 +1324,7 @@ export default function ScanPage({ previewData } = {}) {
       )}
 
       {/* 3. BENTO GRID */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridAutoRows: 84, gap: 9, padding: '2px 14px 16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gridAutoRows: 104, gridAutoFlow: 'row dense', gap: 9, padding: '2px 14px 16px' }}>
 
         {(() => {
         const promoTileEl = tileOn('promo') ? (
@@ -1324,7 +1332,7 @@ export default function ScanPage({ previewData } = {}) {
           gridColumn: 'span 4', gridRow: 'span 2',
           background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
           position: 'relative', overflow: 'hidden', cursor: 'pointer',
-          display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 13,
+          display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 15,
         }}>
           {hasPromoImage && (
             <PromoImage url={activePromo.image_url} position={activePromo.image_position} />
@@ -1344,8 +1352,8 @@ export default function ScanPage({ previewData } = {}) {
           </span>
 
           <h3 style={{
-            fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em',
-            fontSize: 20, lineHeight: 1.08, margin: '8px 0 2px', color: '#fff',
+            ...headingStyle,
+            fontSize: kit.transform === 'uppercase' ? 24 : 21, lineHeight: 1.08, margin: '8px 0 2px', color: '#fff',
             position: 'relative', zIndex: 1,
           }}>
             {promoConfig.h}
@@ -1374,7 +1382,7 @@ export default function ScanPage({ previewData } = {}) {
             background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
             overflow: 'hidden',
           }}>
-            <div style={{ position: 'relative', width: '100%', paddingBottom: '56.25%' }}>
+            <div style={{ position: 'relative', width: '100%', height: '100%' }}>
               {videoPlaying ? (
                 <iframe
                   src={`https://www.youtube.com/embed/${getYouTubeId(product.content_url)}?playsinline=1&autoplay=1`}
@@ -1408,58 +1416,105 @@ export default function ScanPage({ previewData } = {}) {
           </div>
         ) : null
 
+        // Warranty is the hero: full width, brand color. The rest alternate one tall + two short.
+        const sizeOf = {}
+        if (utilTiles.some(t => t.key === 'warranty')) sizeOf.warranty = { hero: true }
+        const rest = utilTiles.filter(t => t.key !== 'warranty')
+        for (let i = 0, group = 0; i < rest.length;) {
+          const left = rest.length - i
+          if (left >= 3) {
+            sizeOf[rest[i].key] = { tall: true, right: group % 2 === 1 }; sizeOf[rest[i + 1].key] = {}; sizeOf[rest[i + 2].key] = {}
+            i += 3; group += 1
+          } else if (left === 2) { sizeOf[rest[i].key] = {}; sizeOf[rest[i + 1].key] = {}; i += 2 }
+          else { sizeOf[rest[i].key] = { wide: true }; i += 1 }
+        }
+        const outlined = kit.light || kit.id === 'field'
+        const chipR = Math.max(6, kit.radius - 8)
+        const svgIcon = (icon, size) => typeof icon === 'string'
+          ? <span style={{ width: size, height: size, display: 'block' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(icon) }} />
+          : icon
+        const trophy = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 010-5H6"/><path d="M18 9h1.5a2.5 2.5 0 000-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/><path d="M18 2H6v7a6 6 0 0012 0V2z"/></svg>'
+        const open = (tile) => tile.href ? (window.location.href = tile.href) : tile.action?.()
+
         const renderUtil = (tile, i) => {
-          const spanClass = utilTiles.length === 1 ? 4 : 2
-          if (tile.type === 'winner') {
+          const size = sizeOf[tile.key] || {}
+          if (size.hero) {
             return (
-              <div key={i} style={{
-                gridColumn: `span ${spanClass}`,
-                background: 'var(--tile)', border: '1px solid var(--line)', borderRadius: 'var(--r)',
-                position: 'relative', overflow: 'hidden',
-                display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '10px 11px',
+              <div key={i} className="cap-tile" onClick={() => open(tile)} style={{
+                gridColumn: 'span 4', gridRow: 'span 1', minWidth: 0,
+                background: accentBg, color: accentInk, borderRadius: 'var(--r)',
+                position: 'relative', overflow: 'hidden', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 14, padding: '0 18px',
+                boxShadow: `0 14px 30px -18px ${accentBg}`,
               }}>
-                <span style={{
-                  alignSelf: 'flex-start',
-                  border: '1px solid var(--accent)', color: 'var(--accent)',
-                  fontFamily: "'IBM Plex Mono', monospace", fontSize: 8,
-                  letterSpacing: '0.12em', textTransform: 'uppercase', fontWeight: 500,
-                  padding: '2px 6px', borderRadius: 3, marginBottom: 'auto',
-                }}>Last winner</span>
-                <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.2, color: 'var(--ink)' }}>
-                  {tile.winnerName}
-                  <small style={{ display: 'block', fontWeight: 400, fontSize: '9.5px', color: 'var(--ink2)', marginTop: 1 }}>{tile.sub}</small>
-                </span>
+                <div aria-hidden="true" style={{
+                  position: 'absolute', right: -50, top: -60, width: 190, height: 190, borderRadius: '50%',
+                  background: `color-mix(in srgb, ${accentInk} 9%, transparent)`, pointerEvents: 'none',
+                }} />
+                <div style={{
+                  width: 46, height: 46, borderRadius: Math.max(8, kit.radius - 6), flexShrink: 0, position: 'relative',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: `color-mix(in srgb, ${accentInk} 14%, transparent)`, color: accentInk,
+                }}>{svgIcon(tile.icon, 22)}</div>
+                <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
+                  <div style={{ ...headingStyle, fontSize: kit.transform === 'uppercase' ? '1.2rem' : '1.08rem', lineHeight: 1.12 }}>{tile.label}</div>
+                  <div style={{ fontSize: '0.78rem', opacity: 0.78, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tile.sub}</div>
+                </div>
+                <div style={{
+                  position: 'relative', flexShrink: 0, padding: '8px 14px', borderRadius: 999, fontSize: '0.78rem', fontWeight: 700,
+                  background: accentInk, color: accentBg,
+                }}>Register</div>
               </div>
             )
           }
+
+          const tall = !!size.tall
+          const isWinner = tile.type === 'winner'
+          const label = isWinner ? tile.winnerName : tile.label
+          const tappable = !isWinner
           return (
-            <div key={i} onClick={() => tile.href ? (window.location.href = tile.href) : tile.action?.()} style={{
-              gridColumn: `span ${spanClass}`,
-              background: tile.badge ? `linear-gradient(135deg, var(--tile), rgba(${accentBg === '#fff' || accentBg === '#ffffff' ? '255,255,255' : '34,197,94'}, 0.12))` : 'var(--tile)',
-              border: tile.badge ? '1px solid var(--accent)' : '1px solid var(--line)', borderRadius: 'var(--r)',
-              position: 'relative', overflow: 'hidden', cursor: 'pointer',
-              display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '10px 11px',
-              transition: 'border-color 0.14s',
-              animation: tile.badge ? 'loyaltyPulse 2s ease-in-out infinite' : undefined,
+            <div key={i} className={tappable ? 'cap-tile' : undefined} onClick={tappable ? () => open(tile) : undefined} style={{
+              gridColumn: size.wide ? 'span 4' : size.tall && size.right ? '3 / span 2' : 'span 2',
+              gridRow: tall ? 'span 2' : 'span 1', minWidth: 0,
+              background: 'var(--tile)', border: `1px solid ${outlined ? 'var(--line)' : 'transparent'}`, borderRadius: 'var(--r)',
+              position: 'relative', overflow: 'hidden', cursor: tappable ? 'pointer' : 'default',
+              display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 6, padding: tall ? 18 : '12px 13px',
+              boxShadow: kit.light ? '0 1px 2px rgba(0,0,0,0.04), 0 6px 18px -10px rgba(0,0,0,0.15)' : kit.glow ? '0 12px 30px -16px rgba(0,0,0,0.8)' : 'none',
             }}>
-              {tile.badge && (
-                <span style={{
-                  position: 'absolute', top: 8, right: 8, width: 8, height: 8,
-                  borderRadius: '50%', background: 'var(--accent)',
-                  boxShadow: `0 0 6px ${accentBg}`,
-                  animation: 'loyaltyDot 1.5s ease-in-out infinite',
+              {!kit.light && (
+                <div aria-hidden="true" style={{
+                  position: 'absolute', right: -40, top: -40, width: tall ? 190 : 130, height: tall ? 190 : 130, borderRadius: '50%', pointerEvents: 'none',
+                  background: `radial-gradient(circle, color-mix(in srgb, ${iconColor} ${kit.glow ? 30 : 16}%, transparent), transparent 70%)`,
                 }} />
               )}
-              {tile.image
-                ? <img src={tile.image} alt="" style={{ width: 20, height: 20, borderRadius: 5, objectFit: 'cover', marginBottom: 'auto', flexShrink: 0 }} />
-                : typeof tile.icon === 'string'
-                ? <span style={{ width: 20, height: 20, marginBottom: 'auto', color: 'var(--accent)' }} dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(tile.icon) }} />
-                : <span style={{ width: 20, height: 20, marginBottom: 'auto', color: 'var(--accent)' }}>{tile.icon}</span>
-              }
-              <span style={{ fontSize: 12, fontWeight: 600, lineHeight: 1.15, color: tile.badge ? 'var(--accent)' : 'var(--ink)' }}>
-                {tile.label}
-                <small style={{ display: 'block', fontWeight: 400, fontSize: '9.5px', color: 'var(--ink2)', marginTop: 1 }}>{tile.sub}</small>
-              </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
+                {tile.image
+                  ? <img src={tile.image} alt="" style={{ width: tall ? 42 : 32, height: tall ? 42 : 32, borderRadius: chipR, objectFit: 'cover' }} />
+                  : (
+                    <div style={{
+                      width: tall ? 42 : 32, height: tall ? 42 : 32, borderRadius: chipR, flexShrink: 0, color: iconColor,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      background: `color-mix(in srgb, ${iconColor} ${kit.light ? 12 : 16}%, transparent)`,
+                    }}>{svgIcon(isWinner ? trophy : tile.icon, tall ? 20 : 18)}</div>
+                  )}
+                {tappable && (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg>
+                )}
+              </div>
+              <div style={{ position: 'relative', minWidth: 0 }}>
+                {isWinner && (
+                  <div style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: iconColor, marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{tile.eyebrow}</div>
+                )}
+                <div style={{
+                  ...headingStyle, lineHeight: 1.1, color: 'var(--ink)',
+                  fontSize: tall ? (kit.transform === 'uppercase' ? '1.75rem' : '1.55rem') : (kit.transform === 'uppercase' ? '1.2rem' : '1.08rem'),
+                  overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                }}>{label}</div>
+                <div style={{
+                  fontSize: tall ? '0.85rem' : '0.74rem', color: 'var(--ink2)', marginTop: tall ? 4 : 2,
+                  ...(tall ? { display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }),
+                }}>{tile.sub}</div>
+              </div>
             </div>
           )
         }

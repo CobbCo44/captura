@@ -11,7 +11,7 @@ const productTiers = [
     features: [
       'A unique QR code on every item, up to 100,000 a year',
       'Unlimited products, retail channels and batches',
-      'Warranty registration, promos, loyalty and events',
+      'Warranty registration, promos and events',
       'Every contact tagged with the channel it came from',
       'Live scan map and channel reporting',
       'Shopify sync and CSV export',
@@ -220,7 +220,7 @@ export default function Pricing() {
       <div style={{ textAlign: 'center', color: '#52525B', fontSize: '0.9rem', marginBottom: 40, maxWidth: 560, margin: '0 auto 40px', lineHeight: 1.6 }}>
         {isStorefront
           ? 'Flat monthly pricing with no per-contact fees. Upgrade or cancel anytime.'
-          : 'A contact is one person who opts in through a warranty, promo, loyalty signup or event, counted once. Repeat visits from the same person are free, and so is everything collected during your 14-day trial.'}
+          : 'A contact is one person who opts in through a warranty registration, promo or event, counted once. Repeat visits from the same person are free, and so is everything collected during your 14-day trial.'}
       </div>
 
       <div style={{ textAlign: 'center', color: '#3F3F46', fontSize: '0.85rem', paddingBottom: 40 }}>

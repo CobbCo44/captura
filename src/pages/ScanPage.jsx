@@ -4,6 +4,9 @@ import DOMPurify from 'dompurify'
 import { supabase } from '../lib/supabase'
 import PromoImage from '../components/PromoImage'
 import { gtinVariants } from '../lib/gs1'
+
+// Loyalty runs on storefronts only (see the loyalty load below)
+const BRAND_LOYALTY = false
 import { getKit } from '../lib/kits'
 import { loadTileConfig, resolveTileOrder } from '../lib/tiles'
 
@@ -311,8 +314,9 @@ export default function ScanPage({ previewData } = {}) {
       if (promoData) setActivePromo(promoData)
     }
 
-    // Load loyalty rewards if product has loyalty enabled
-    if (qr?.products?.loyalty_enabled || product?.loyalty_enabled) {
+    // Loyalty is storefront-only: codes on packaging can be scanned in the store
+    // aisle without buying, so product scans never load or award points.
+    if (BRAND_LOYALTY && (qr?.products?.loyalty_enabled || product?.loyalty_enabled)) {
       const loyaltyBrandId = qr?.brand_id || brand?.id
       if (loyaltyBrandId) {
         const { data: rewards } = await supabase
@@ -980,7 +984,7 @@ export default function ScanPage({ previewData } = {}) {
     utilDefs.winner = { key: 'winner', type: 'winner', winnerName: `${activePromo.winner_name}${activePromo.winner_city ? ' \u00B7 ' + activePromo.winner_city : ''}`, sub: 'Won the last drop' }
   }
   const loyaltyHasReward = loyaltyState?.returning && loyaltyRewards.some(r => (loyaltyState.balance || 0) >= r.points_required)
-  if (product?.loyalty_enabled) {
+  if (BRAND_LOYALTY && product?.loyalty_enabled) {
     utilDefs.loyalty = {
       key: 'loyalty',
       label: redemptionProof ? 'Reward Redeemed' : thresholdCelebration ? `You earned ${thresholdCelebration.name}!` : loyaltyState?.returning ? `${loyaltyState.balance} Points` : 'Loyalty',

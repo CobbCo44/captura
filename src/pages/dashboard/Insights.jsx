@@ -340,7 +340,7 @@ export default function Insights({ brand }) {
           <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 700 }}>By Channel</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: 4 }}>
-              Scans, sign-ups and claims for each retail channel. Sign-ups are loyalty, promo, warranty and event entries.
+              Scans, sign-ups and claims for each retail channel. Sign-ups are warranty, promo and event entries.
             </p>
           </div>
           <div style={{ overflowX: 'auto' }}>

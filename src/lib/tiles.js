@@ -20,7 +20,6 @@ export const PRODUCT_TILES = [
   { key: 'reorder', name: 'Reorder' },
   { key: 'warranty', name: 'Warranty' },
   { key: 'winner', name: 'Last Winner' },
-  { key: 'loyalty', name: 'Loyalty' },
 ]
 
 export function nativeTilesFor(context) {

@@ -54,7 +54,7 @@ const PRODUCT_PLANS = [
     features: [
       'A unique QR code on every item, up to 100,000 a year',
       'Unlimited products, retail channels and batches',
-      'Warranty registration, promos, loyalty and events',
+      'Warranty registration, promos and events',
       'Every contact tagged with the channel it came from',
       'Live scan map and channel reporting',
       'Shopify sync and CSV export',
@@ -457,7 +457,7 @@ export default function Billing({ brand, onboarding = false }) {
       {!isStorefront && (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1.6, marginTop: 20, maxWidth: 860 }}>
           <strong style={{ color: 'var(--text)' }}>What counts as a contact:</strong> one person who opts in through a warranty registration,
-          promo, loyalty signup or event, counted once. When the same person comes back, it's free. Contacts collected during your free trial are free.
+          promo or event, counted once. When the same person comes back, it's free. Contacts collected during your free trial are free.
         </p>
       )}
 

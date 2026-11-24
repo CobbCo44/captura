@@ -91,7 +91,6 @@ export default function Overview({ brand }) {
           { key: 'product', label: 'Add a product', desc: 'Enter your first product with a GTIN', done: hasProducts, path: '/dashboard/products' },
           { key: 'qr', label: 'Create a QR code', desc: 'Generate a branded QR for your product', done: hasQR, path: '/dashboard/qr-codes' },
           { key: 'promo', label: 'Create a promo', desc: 'Run a giveaway to capture consumers', done: hasPromo, path: '/dashboard/promos' },
-          { key: 'rewards', label: 'Set up loyalty rewards', desc: 'Reward repeat scanners with points', done: hasRewards, path: '/dashboard/loyalty' },
           { key: 'scan', label: 'Test your QR code', desc: 'Scan it with your phone to see the live page', done: scans.length > 0, path: '/dashboard/qr-codes' },
         ],
       })

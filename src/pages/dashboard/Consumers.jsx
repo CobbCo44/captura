@@ -263,7 +263,7 @@ export default function Consumers({ brand }) {
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: 4 }}>
             {isStorefront
               ? 'All customers from loyalty signups, promo entries, and events'
-              : 'All consumers from loyalty signups, promo entries, events, warranty registrations, and serialized QR scans'}
+              : 'All consumers from warranty registrations, promo entries, events and serialized QR scans'}
           </p>
         </div>
         {canUseFeature(brand, 'customerExport') ? (
@@ -282,10 +282,12 @@ export default function Consumers({ brand }) {
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Total Consumers</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#FAFAFA' }}>{allConsumers.length}</div>
         </div>
+        {isStorefront && (
         <div className="card" style={{ padding: '16px 20px' }}>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Loyalty Members</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--success)' }}>{allConsumers.filter(c => c.type === 'Loyalty').length}</div>
         </div>
+        )}
         <div className="card" style={{ padding: '16px 20px' }}>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: 4 }}>Promo Entries</div>
           <div style={{ fontSize: '1.6rem', fontWeight: 800, color: '#D4D4D8' }}>{promoEntries.length}</div>
@@ -309,7 +311,7 @@ export default function Consumers({ brand }) {
       {/* Filters */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <button onClick={() => setFilter('all')} style={tabStyle(filter === 'all')}>All ({allConsumers.length})</button>
-        <button onClick={() => setFilter('loyalty')} style={tabStyle(filter === 'loyalty')}>Loyalty ({allConsumers.filter(c => c.type === 'Loyalty').length})</button>
+        {isStorefront && <button onClick={() => setFilter('loyalty')} style={tabStyle(filter === 'loyalty')}>Loyalty ({allConsumers.filter(c => c.type === 'Loyalty').length})</button>}
         <button onClick={() => setFilter('promo')} style={tabStyle(filter === 'promo')}>Promo ({promoEntries.length})</button>
         <button onClick={() => setFilter('event')} style={tabStyle(filter === 'event')}>Event ({eventEntries.length})</button>
         {!isStorefront && <button onClick={() => setFilter('warranty')} style={tabStyle(filter === 'warranty')}>Warranty ({warrantyRegs.length})</button>}
